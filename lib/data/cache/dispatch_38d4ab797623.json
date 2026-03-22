@@ -1,0 +1,16 @@
+{
+  "columns": [
+    "revenue_eur_per_mw",
+    "cycles",
+    "full_equivalent_cycles",
+    "avg_dod",
+    "price_min_eur_mwh",
+    "price_max_eur_mwh",
+    "price_spread_eur_mwh"
+  ],
+  "created_at": "2026-03-21T20:06:50.485364+00:00",
+  "market": "da_id_overlay_frontier_v2",
+  "rows": 365,
+  "strategy": "frontier_2025_2.0h_2p75",
+  "year": 2025
+}

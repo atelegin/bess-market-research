@@ -1,0 +1,16 @@
+{
+  "columns": [
+    "revenue_eur_per_mw",
+    "cycles",
+    "full_equivalent_cycles",
+    "avg_dod",
+    "price_min_eur_mwh",
+    "price_max_eur_mwh",
+    "price_spread_eur_mwh"
+  ],
+  "created_at": "2026-03-21T20:05:27.231769+00:00",
+  "market": "da_id_overlay",
+  "rows": 365,
+  "strategy": "conservative",
+  "year": 2023
+}

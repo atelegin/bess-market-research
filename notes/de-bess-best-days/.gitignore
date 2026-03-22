@@ -1,0 +1,9 @@
+.DS_Store
+__pycache__/
+.pytest_cache/
+.venv/
+data/cache/*.json
+data/cache/*.parquet
+!data/cache/.gitkeep
+data/precomputed.pkl
+

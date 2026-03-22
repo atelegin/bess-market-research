@@ -1,0 +1,51 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="120" y1="80" x2="1480" y2="820" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F1B33"/>
+      <stop offset="1" stop-color="#1F4A7C"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="1110" y1="250" x2="1400" y2="610" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4614C"/>
+      <stop offset="1" stop-color="#F6A04D"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" rx="32" fill="url(#bg)"/>
+  <circle cx="1300" cy="280" r="220" fill="url(#accent)" fill-opacity="0.18"/>
+  <circle cx="1410" cy="680" r="170" fill="#F4614C" fill-opacity="0.10"/>
+  <rect x="92" y="96" width="1416" height="708" rx="28" fill="white" fill-opacity="0.05" stroke="white" stroke-opacity="0.10"/>
+
+  <text x="132" y="182" fill="#F4F7FB" font-family="Georgia, 'Times New Roman', serif" font-size="74" font-weight="700">
+    The Cost of Missing the Best Days
+  </text>
+  <text x="132" y="258" fill="#D7E0ED" font-family="Arial, sans-serif" font-size="34">
+    A review-first Streamlit article on German BESS merchant revenue,
+  </text>
+  <text x="132" y="304" fill="#D7E0ED" font-family="Arial, sans-serif" font-size="34">
+    best-day concentration, day-ahead visibility, and timed flexibility.
+  </text>
+
+  <rect x="132" y="376" width="548" height="232" rx="24" fill="white" fill-opacity="0.07" stroke="white" stroke-opacity="0.10"/>
+  <text x="170" y="438" fill="#F4F7FB" font-family="Arial, sans-serif" font-size="30" font-weight="700">
+    Review path
+  </text>
+  <text x="170" y="498" fill="#F4F7FB" font-family="Arial, sans-serif" font-size="28">
+    1. Open the live Streamlit app
+  </text>
+  <text x="170" y="548" fill="#F4F7FB" font-family="Arial, sans-serif" font-size="28">
+    2. Read sections 1-4 in order
+  </text>
+  <rect x="742" y="376" width="626" height="302" rx="24" fill="white" fill-opacity="0.07" stroke="white" stroke-opacity="0.10"/>
+  <text x="780" y="438" fill="#F4F7FB" font-family="Arial, sans-serif" font-size="30" font-weight="700">
+    Core question
+  </text>
+  <text x="780" y="500" fill="#F4F7FB" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700">
+    How costly is it to miss
+  </text>
+  <text x="780" y="552" fill="#F4F7FB" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700">
+    the best merchant days,
+  </text>
+  <text x="780" y="604" fill="#F4F7FB" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700">
+    and what can operators see ex ante?
+  </text>
+</svg>

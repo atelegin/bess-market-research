@@ -1,0 +1,8 @@
+{
+  "columns": [
+    "price_eur_mwh"
+  ],
+  "created_at": "2026-03-21T20:04:05.843442+00:00",
+  "rows": 50451,
+  "source": "https://api.energy-charts.info/price"
+}
