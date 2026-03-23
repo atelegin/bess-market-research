@@ -4,6 +4,7 @@ __pycache__/
 .env
 .DS_Store
 *.parquet
+lib/data/cache/day_ahead_prices_*.json
 ROADMAP.md
 notebooks/
 .claude/
