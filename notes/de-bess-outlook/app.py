@@ -1086,4 +1086,20 @@ with st.expander("Full data source table"):
     )
     st.markdown(header + rows, unsafe_allow_html=True)
 
+# ── Series anchor & next-note hook ────────────────────────────
+st.markdown("---")
+render_closing(
+    "This is the first note in a series on BESS merchant economics — "
+    "from market opportunity and cycling trade-offs to degradation, "
+    "warranty economics, and owner governance."
+)
+st.markdown(
+    '<div style="margin-top: 0.5rem; font-size: 0.95rem; color: #666;">'
+    "<b>Next:</b> the revenue pool is there — but how many cycles does it "
+    "actually take to capture most of it, and at what point does an extra "
+    "cycle stop paying for itself?"
+    "</div>",
+    unsafe_allow_html=True,
+)
+
 render_footer()
