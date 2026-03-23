@@ -390,7 +390,7 @@ st.markdown(f"""
 
 Ancillary markets have a fixed size. FCR demand for the Denmark West / Germany
 LFC block is **613 MW**
-([ENTSO-E FCR Cooperation](https://www.entsoe.eu/network_codes/eb/fcr/), 2026 announcement). Combined FCR + aFRR capacity
+([FCR Cooperation, Demand per LFC block in 2026](https://eepublicdownloads.blob.core.windows.net/public-cdn-container/clean-documents/Network%20codes%20documents/NC%20EB/2025/Announcement_Demand_per_LFC_block_in_2026.pdf)). Combined FCR + aFRR capacity
 addressable by batteries is approximately 4.5 GW.
 
 With the BESS fleet projected to grow from **{bess_2026:.0f} GW (2026) to {bess_2030:.0f} GW (2030)**,
@@ -902,8 +902,8 @@ dramatically improves PV sensitivity identification: the panel covers PV from
   Simulated on 2024 DE DA prices with slope ≈ 1.5 EUR/MWh/GW. At 30 GW, -34% wholesale.
 - **High (CAISO-scaled):** `C_max`=82, `B_half`=11 GW. Fitted on
   [CAISO](https://www.caiso.com/documents/2024-special-report-on-battery-storage-may-29-2025.pdf)
-  observed revenue decline: $103/kW (2022, 4 GW) → $40/kW (2025, 15 GW). Scaled to DE
-  by fleet/peak-demand ratio (DE 80 GW peak vs CAISO 52 GW). This is the only market
+  observed revenue decline: $103/kW (2022, ~4 GW) → $78/kW (2023, ~8 GW) → $53/kW (2024, ~13 GW).
+  Scaled to DE by fleet/peak-demand ratio (DE 80 GW peak vs CAISO 52 GW). This is the only market
   with observed cannibalization at 10+ GW fleet sizes.
 
 **Other limitations:**
@@ -1067,7 +1067,7 @@ with st.expander("Full data source table"):
          "Source": "[Energy-Charts](https://energy-charts.info/) / [EEG 2023 §4](https://www.gesetze-im-internet.de/eeg_2014/__4.html)",
          "Confidence": "Policy target"},
         {"#": "9", "Input": f"Demand (2026–2040): 600 to {demand_2040} TWh",
-         "Source": "[dena Leitstudie](https://www.dena.de/themen-projekte/projekte/dena-leitstudie-aufbruch-klimaneutralitaet/) / [Agora Energiewende](https://www.agora-energiewende.de/data-tools/agorameter)",
+         "Source": "[dena Leitstudie](https://www.dena.de/fileadmin/dena/Publikationen/PDFs/2021/Abschlussbericht_dena-Leitstudie_Aufbruch_Klimaneutralitaet.pdf) / [Agora Energiewende](https://www.agora-energiewende.de/data-tools/agorameter)",
          "Confidence": "Scenario assumption"},
         {"#": "10", "Input": f"Gas price TTF (2026–2040): 35 to {gas_2040} €/MWh",
          "Source": "[ICE TTF](https://www.theice.com/products/27996665/Dutch-TTF-Gas-Futures) / [EEX Power Derivatives](https://www.eex.com/en/market-data/power/futures)",
