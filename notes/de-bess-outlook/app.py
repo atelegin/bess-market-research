@@ -467,10 +467,10 @@ Use the sidebar sliders to explore (sorted by impact on 2035 revenue):
 | Scenario | Impact on 2035 revenue |
 |:---|:---|
 | Cannibalisation: Low → High (CAISO) | ~53% swing (dominant uncertainty) |
-| Gas TTF €60/MWh (vs €30 base) | ~15% higher (wider peak spreads) |
-| Gas TTF €15/MWh | ~10% lower (compressed peak prices) |
 | BESS fleet 60 GW (vs {bess_2040:.0f} GW base) | ~15–20% lower wholesale |
 | BESS fleet 20 GW | ~15% higher wholesale |
+| Gas TTF €60/MWh (vs €30 base) | ~15% higher (wider peak spreads) |
+| Gas TTF €15/MWh | ~10% lower (compressed peak prices) |
 | Demand 1200 TWh (vs {demand_2040} base) | ~8% higher via stronger recovery |
 | Solar PV 400 GW (vs {pv_2040} GW base) | ~6% higher (deeper duck curve) |
 
@@ -615,9 +615,205 @@ with _col_txt:
     st.markdown(f"""
 **Key levers that don't depend on cannibalisation:**
 - **Gas price** (±€20k/MW) — observable now, hedgeable
-- **Fleet buildout speed** — observable via [MaStR](https://www.marktstammdatenregister.de)
+- **Fleet buildout speed** — observable via MaStR; see [Energy-Charts: Installed Power](https://www.energy-charts.info/charts/installed_power/chart.htm?l=en&c=DE) for a visual summary
 - **Capacity market** — policy decision, not modelled (upside)
 - **CAPEX decline** (~8%/yr) — improves IRR even if revenue falls
+""")
+
+st.markdown("---")
+
+# ── Section 7: Fleet buildout scenarios ─────────────────────
+st.markdown(f"""
+## Fleet buildout: where 20–60 GW comes from
+
+The BESS fleet slider (currently set to **{bess_2040:.0f} GW by 2040**) is the second-largest
+driver of revenue outcomes after cannibalisation. Here is the logic behind the range.
+
+### Near-term (~2025–2027): largely committed
+
+Germany's grid-scale BESS fleet reached **~2.4 GW** by late 2025
+([MaStR](https://www.marktstammdatenregister.de)). The visible pipeline — projects
+with grid connection agreements and construction timelines — totals **~9.5 GW**,
+with ~5.6 GW scheduled to commission through 2026–2027
+([Modo Energy](https://modoenergy.com/research/en/de-germany-bess-batteries-buildout-capacity-growth-installation-grid-scale-february-2026)).
+If delivered on time, the fleet would reach **~8 GW by Q4 2027**.
+
+This near-term trajectory is not a scenario — it is an observable pipeline. The model
+holds capacity through {COMMITTED_THROUGH} fixed regardless of the 2040 slider.
+
+### The signal vs noise problem
+
+Beyond the committed pipeline, the numbers become dramatic — and misleading:
+
+| Metric | Value | What it means |
+|:---|---:|:---|
+| Installed fleet (late 2025) | ~2.4 GW | What actually exists |
+| Pipeline (grid connection agreed) | ~9.5 GW | High confidence, 2–3 year horizon |
+| Grid connections approved | ≥78 GW | BNetzA-confirmed, but many speculative |
+| Grid connection *requests* | 500+ GW | Includes placeholder applications, ~6× peak demand |
+
+The gap between 78 GW approved and 2.4 GW installed is the key uncertainty.
+Most approved connections are speculative or conditional — developers secure grid access
+early, then decide whether to build based on evolving economics. The **500+ GW of requests**
+([pv magazine](https://www.pv-magazine.com/2025/09/02/germany-battery-storage-grid-connection-requests-exceed-500-gw/))
+is a pipeline bubble, not a buildout forecast.
+
+### The NEP anchor: 41–94 GW by 2037
+
+The [Netzentwicklungsplan (NEP) 2037/2045](https://www.netzentwicklungsplan.de/en/nep-aktuell/netzentwicklungsplan-20372045-2025),
+Version 2025, approved by BNetzA in April 2025, assumes **41–94 GW** of battery storage
+by 2037 across scenarios A–C. This is a dramatic increase from the previous NEP
+(2023 version: 24 GW by 2037).
+
+The wide range reflects genuine uncertainty about electrification speed, grid expansion,
+and the role storage plays relative to other flexibility options (demand response,
+interconnectors, hydrogen).
+
+### How the slider maps to these anchors
+
+| Slider | Interpretation | Consistent with |
+|:---|:---|:---|
+| **20 GW** | Grid bottlenecks, permitting delays, slower electrification | Below NEP Scenario A — a stress test |
+| **40 GW** (default) | Mid-range NEP trajectory, moderate delivery rate | NEP Scenario A/B lower bound |
+| **60 GW** | Fast delivery, supportive regulation, CAPEX decline | NEP Scenario B/C range |
+
+All three are plausible. The model default of 40 GW is deliberately conservative
+relative to the NEP midpoint, reflecting historical experience that grid planning
+targets tend to lead actual deployment.
+
+### Buildout trajectories
+""")
+
+# ── Chart: fleet buildout trajectories (GW) ──────────────────
+BUILDOUT_SCENARIOS = {"20 GW": 20, "40 GW": 40, "60 GW": 60}
+BUILDOUT_COLORS = {"20 GW": "#22c55e", "40 GW": "#eab308", "60 GW": "#ef4444"}
+
+# Historical grid-scale installed capacity (MaStR, >1 MW systems)
+# Sources: Modo Energy buildout reports, ess-news.com, BNetzA MaStR
+import datetime as _dt
+_HIST_QUARTERLY_GW = [
+    (_dt.date(2022, 1, 1), 0.55), (_dt.date(2022, 4, 1), 0.60),
+    (_dt.date(2022, 7, 1), 0.70), (_dt.date(2022, 10, 1), 0.80),
+    (_dt.date(2023, 1, 1), 0.90), (_dt.date(2023, 4, 1), 1.00),
+    (_dt.date(2023, 7, 1), 1.15), (_dt.date(2023, 10, 1), 1.30),
+    (_dt.date(2024, 1, 1), 1.45), (_dt.date(2024, 4, 1), 1.60),
+    (_dt.date(2024, 7, 1), 1.80), (_dt.date(2024, 10, 1), 2.05),
+    (_dt.date(2025, 1, 1), 2.20), (_dt.date(2025, 4, 1), 2.35),
+    (_dt.date(2025, 7, 1), 2.40), (_dt.date(2025, 10, 1), 2.45),
+    (_dt.date(2026, 1, 1), 2.80),
+]
+_hist_dates = [d for d, _ in _HIST_QUARTERLY_GW]
+_hist_vals = [v for _, v in _HIST_QUARTERLY_GW]
+
+fig_bo = go.Figure()
+
+# Historical quarterly markers
+fig_bo.add_trace(go.Scatter(
+    x=_hist_dates, y=_hist_vals,
+    name="Installed grid-scale (MaStR)", mode="lines+markers",
+    line=dict(color="#14213d", width=2),
+    marker=dict(size=5, color="#14213d", symbol="circle"),
+))
+
+# Convert forward years to dates for consistent x-axis
+def _year_to_date(y):
+    return _dt.date(y, 1, 1)
+
+# Anchor: last historical point — forward lines start here
+_last_hist_date, _last_hist_gw = _HIST_QUARTERLY_GW[-1]
+
+# Build smooth forward trajectory: linear interpolation at quarterly resolution
+def _quarterly_trajectory(buildout: dict[int, float]) -> list[tuple[_dt.date, float]]:
+    """Interpolate annual buildout values to quarterly dates,
+    anchored from the last historical observation."""
+    # Anchor points: last observation + year-end values mapped to Dec 31
+    anchors = [(_last_hist_date, _last_hist_gw)]
+    for y in sorted(buildout):
+        if y < 2026:
+            continue
+        anchors.append((_dt.date(y, 12, 31), buildout[y]))
+
+    # Generate quarterly dates and interpolate linearly between anchors
+    pts = []
+    for i in range(len(anchors) - 1):
+        d0, v0 = anchors[i]
+        d1, v1 = anchors[i + 1]
+        span = (d1 - d0).days
+        # Emit quarterly points within this segment
+        d = d0
+        while d <= d1:
+            frac = (d - d0).days / span if span > 0 else 0
+            pts.append((d, v0 + (v1 - v0) * frac))
+            # Advance ~3 months
+            m = d.month + 3
+            y = d.year + (m - 1) // 12
+            m = (m - 1) % 12 + 1
+            d = _dt.date(y, m, 1)
+    # Add final anchor if not already included
+    if pts[-1][0] != anchors[-1][0]:
+        pts.append(anchors[-1])
+    return pts
+
+# Shaded band between 20 and 60 GW trajectories
+_bo_20 = _scale_buildout(20)
+_bo_60 = _scale_buildout(60)
+_q_20 = _quarterly_trajectory(_bo_20)
+_q_60 = _quarterly_trajectory(_bo_60)
+fig_bo.add_trace(go.Scatter(
+    x=[d for d, _ in _q_20], y=[v for _, v in _q_20],
+    mode="lines", line=dict(width=0), showlegend=False,
+))
+fig_bo.add_trace(go.Scatter(
+    x=[d for d, _ in _q_60], y=[v for _, v in _q_60],
+    mode="lines", line=dict(width=0), showlegend=False,
+    fill="tonexty", fillcolor="rgba(20,33,61,0.06)",
+))
+
+# Scenario lines
+for label, target in BUILDOUT_SCENARIOS.items():
+    bo = _scale_buildout(target)
+    q_pts = _quarterly_trajectory(bo)
+    is_active = target == bess_2040
+    fig_bo.add_trace(go.Scatter(
+        x=[d for d, _ in q_pts], y=[v for _, v in q_pts],
+        name=label, mode="lines",
+        line=dict(
+            color=BUILDOUT_COLORS[label],
+            width=2.5 if is_active else 1.2,
+            dash="solid" if is_active else "dash",
+        ),
+        opacity=1.0 if is_active else 0.4,
+    ))
+
+# Committed pipeline marker
+_committed_date = _year_to_date(COMMITTED_THROUGH)
+fig_bo.add_vline(x=_committed_date, line=dict(color="#5c677d", width=1, dash="dot"))
+fig_bo.add_annotation(
+    x=_committed_date, y=0.97, xref="x", yref="paper",
+    text=f"Committed ({COMMITTED_THROUGH})", showarrow=False,
+    font=dict(size=9, color="#5c677d"),
+)
+
+st.plotly_chart(
+    _styled_chart(fig_bo, "BESS fleet buildout scenarios (GW installed)", "GW", height=380),
+    use_container_width=True,
+)
+render_chart_caption(
+    "Quarterly grid-scale installed capacity from MaStR (>1 MW systems). "
+    f"Forward trajectories for 20 / 40 / 60 GW by 2040. "
+    f"Capacity through {COMMITTED_THROUGH} is fixed (pipeline committed). "
+    "Slider selection highlighted."
+)
+
+st.markdown(f"""
+### What to watch
+
+Fleet buildout is the **one uncertainty that resolves in real time**. Unlike cannibalisation
+(which requires 10+ GW to measure), buildout progress is observable quarter by quarter via
+[MaStR](https://www.marktstammdatenregister.de) and
+[Energy-Charts](https://www.energy-charts.info/charts/installed_power/chart.htm?l=en&c=DE).
+If you are tracking this market, the commissioning rate in 2026–2028 is the single most
+informative leading indicator for long-term revenue.
 """)
 
 st.markdown("---")

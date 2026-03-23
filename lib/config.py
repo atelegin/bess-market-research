@@ -43,6 +43,11 @@ REGELLEISTUNG_DATACENTER = "https://www.regelleistung.net/apps/datacenter/tender
 # ── BESS fleet buildout (GW) ────────────────────────────────
 # Source: MaStR for 2024-2025, NEP/BNetzA grid development plan for 2026+
 # Adjustable via UI slider for 2040 target
+#
+# The model tracks power (GW), not energy capacity (GWh).
+# Cannibalisation is driven by GW competing for the same hourly spreads
+# and MW slots in ancillary tenders. Duration affects revenue per MW
+# separately (via duration_h parameter in dispatch and ancillary models).
 DEFAULT_BESS_BUILDOUT: Dict[int, float] = {
     2020: 0.5,  2021: 0.7,  2022: 1.0,  2023: 1.5,
     2024: 2.4,  2025: 3.5,  2026: 5.0,  2027: 7.0,
