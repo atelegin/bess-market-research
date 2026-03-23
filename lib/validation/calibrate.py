@@ -247,9 +247,9 @@ def main():
     print("DE forward projection 2026-2040 (default scenario)")
     print(f"{'━' * 70}")
 
-    from config import DEFAULT_BESS_BUILDOUT, DEMAND_2026, DEMAND_2040, fleet_degradation_factor
-    from model.projection import interpolate_linear
-    from config import TTF_2026, TTF_2040, PV_GW_2026, PV_GW_2040
+    from lib.config import DEFAULT_BESS_BUILDOUT, DEMAND_2026, DEMAND_2040, fleet_degradation_factor
+    from lib.models.projection import interpolate_linear
+    from lib.config import TTF_2026, TTF_2040, PV_GW_2026, PV_GW_2040
 
     print(f"\n  {'Year':>6} {'WS':>7} {'Anc':>7} {'Deg':>6} {'Total':>7}")
     for y in range(2026, 2041):

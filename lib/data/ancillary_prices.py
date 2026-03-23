@@ -14,8 +14,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-CACHE_DIR = Path(__file__).parent / "cache"
-CACHE_DIR.mkdir(exist_ok=True)
+from lib.data.cache import CACHE_DIR
 
 BASE_URL = "https://www.regelleistung.net/apps/cpp-publisher/api/v1/download/tenders/files"
 
