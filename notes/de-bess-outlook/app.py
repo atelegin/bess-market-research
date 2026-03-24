@@ -349,8 +349,8 @@ st.plotly_chart(make_chart(proj_df), use_container_width=True, config={"displayM
 render_chart_caption(
     f"Stacked revenue by market. Historical bars (2023\u20132025): "
     f"<a href='https://www.cleanhorizon.com/battery-index/'>Clean Horizon Battery Storage Index</a>. "
-    f"Forecast (2026\u20132040): open-data model. {duration:.0f}h battery, 85% RTE, 2 cycles/day, "
-    f"incl. fleet degradation with augmentation. "
+    f"Forecast (2026\u20132040): open-data model. {duration:.0f}h battery, 85% round-trip efficiency, 2 cycles/day, "
+    f"incl. fleet degradation (with periodic cell augmentation). "
     f"Shaded band = Bull/Bear range across all parameters (BESS buildout, gas, demand, PV, cannibalisation)."
 )
 
@@ -398,7 +398,7 @@ st.markdown(f"""
 ## The ancillary cliff: 2026–2030
 
 Ancillary markets have a fixed size. FCR demand for the Denmark West / Germany
-LFC block is **613 MW**
+load-frequency control (LFC) block is **613 MW**
 ([FCR Cooperation, Demand per LFC block in 2026](https://eepublicdownloads.blob.core.windows.net/public-cdn-container/clean-documents/Network%20codes%20documents/NC%20EB/2025/Announcement_Demand_per_LFC_block_in_2026.pdf)). Combined FCR + aFRR capacity
 addressable by batteries is approximately 4.5 GW.
 
@@ -518,7 +518,7 @@ predictions. The scenarios only diverge meaningfully once the fleet exceeds ~10 
 **Why this uncertainty is irreducible right now:**
 - Cannibalisation is a *structural* parameter — how much BESS fleet compresses DA spreads per GW added.
 - It can only be measured when fleet growth is large enough to move prices (~10+ GW).
-- Germany has never had 10 GW of BESS. The only market that has is CAISO (California) — hence the High scenario.
+- Germany has never had 10 GW of BESS. The only market that has is California's grid operator (CAISO), whose observed revenue decline informs the High cannibalisation scenario.
 - Until the fleet grows past ~10 GW, all three scenarios predict revenue within ±10% of each other.
 
 **What this means for investors:**
@@ -840,18 +840,18 @@ st.markdown("""
 
 - **Inertia / grid services** — Germany has no market or tariff for synthetic inertia
   (unlike Ireland's DS3 or Great Britain's stability pathfinder). The concept of
-  *Momentanreserve* from inverter-based resources is under discussion in ENTSO-E and
+  *Momentanreserve* (instantaneous reserve) from inverter-based resources is under discussion in ENTSO-E and
   BNetzA grid code processes, but there is no timeline, no price signal, and no data
   to calibrate against. Until a concrete mechanism exists, this remains speculative upside.
 
 - **Co-location with renewables** — co-locating BESS with solar/wind behind a shared grid
   connection point offers additional revenue streams (grid fee savings of ~5–8 kEUR/MW/yr,
-  curtailment capture, *Direktvermarktung* optimisation). However, this is a fundamentally
+  curtailment capture, *Direktvermarktung* (direct marketing of renewable output) optimisation). However, this is a fundamentally
   different business case (solar+storage vs standalone BESS) with project-specific economics
   that cannot be meaningfully generalised at market level.
 
 - **Merchant vs contracted** — this models a fully merchant battery; PPA/tolling structures reduce volatility.
-- **Technology cost declines** — we model revenue, not IRR. CAPEX is falling ~8%/yr.
+- **Technology cost declines** — this model covers revenue, not IRR. CAPEX is falling ~8%/yr.
 
 These omissions are generally **upside risks** for investors — the model presents
 a conservative, merchant-only revenue floor.
