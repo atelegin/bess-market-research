@@ -276,7 +276,7 @@ def make_chart(df, height=520):
         barmode="stack", template="plotly_white",
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         height=height, margin=dict(l=50, r=20, t=30, b=40),
-        xaxis=dict(tickvals=list(range(2024, 2042, 2)), tickangle=0, tickfont=dict(color="#5c677d")),
+        xaxis=dict(tickvals=[2025, 2028, 2031, 2034, 2037, 2040], tickangle=0, tickfont=dict(color="#5c677d")),
         yaxis=dict(title="\u20ack / MW / year", range=[0, y_max], title_font=dict(color="#5c677d"), tickfont=dict(color="#5c677d")),
         legend=dict(orientation="h", y=-0.12, font=dict(size=11, color="#14213d"), traceorder="normal"),
     )
