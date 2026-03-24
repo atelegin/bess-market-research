@@ -668,10 +668,10 @@ is a pipeline bubble, not a buildout forecast.
 
 ### The NEP anchor: 41–94 GW by 2037
 
-The [Netzentwicklungsplan (NEP) 2037/2045](https://www.netzentwicklungsplan.de/en/nep-aktuell/netzentwicklungsplan-20372045-2025),
-Version 2025, approved by BNetzA in April 2025, assumes **41–94 GW** of battery storage
-by 2037 across scenarios A–C. This is a dramatic increase from the previous NEP
-(2023 version: 24 GW by 2037).
+Germany's official grid development plan
+([NEP 2037/2045, 2025 edition](https://www.netzentwicklungsplan.de/en/nep-aktuell/netzentwicklungsplan-20372045-2025))
+assumes **41–94 GW** of battery storage by 2037 across scenarios A–C — a dramatic
+increase from 24 GW in the previous edition.
 
 The wide range reflects genuine uncertainty about electrification speed, grid expansion,
 and the role storage plays relative to other flexibility options (demand response,
