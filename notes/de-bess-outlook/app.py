@@ -276,9 +276,9 @@ def make_chart(df, height=520):
         barmode="stack", template="plotly_white",
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         height=height, margin=dict(l=50, r=20, t=30, b=40),
-        xaxis=dict(dtick=1, tickangle=-45, tickfont=dict(color="#5c677d")),
+        xaxis=dict(dtick=2, tickangle=0, tickfont=dict(color="#5c677d")),
         yaxis=dict(title="\u20ack / MW / year", range=[0, y_max], title_font=dict(color="#5c677d"), tickfont=dict(color="#5c677d")),
-        legend=dict(orientation="h", y=-0.18, font=dict(size=11, color="#14213d")),
+        legend=dict(orientation="h", y=-0.12, font=dict(size=11, color="#14213d"), traceorder="normal"),
     )
     return fig
 
@@ -335,7 +335,7 @@ with col4:
 st.markdown("")
 
 # ── Chart ────────────────────────────────────────────────────
-st.plotly_chart(make_chart(proj_df), use_container_width=True)
+st.plotly_chart(make_chart(proj_df), use_container_width=True, config={"displayModeBar": False})
 
 render_chart_caption(
     f"Stacked revenue by market. Historical bars (2023\u20132025): "
@@ -587,10 +587,9 @@ if _yr_10gw:
         font=dict(size=9, color="#5c677d"),
     )
 
-st.plotly_chart(
-    _styled_chart(fig_fan, "Scenario fan: revenue range by cannibalisation assumption", "kEUR/MW/yr", height=380),
-    use_container_width=True,
-)
+_fan_styled = _styled_chart(fig_fan, "Scenario fan: revenue range by cannibalisation assumption", "kEUR/MW/yr", height=380)
+_fan_styled.update_xaxes(dtick=2, tickangle=0)
+st.plotly_chart(_fan_styled, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
     "Three cannibalisation scenarios over the full projection horizon. "
     "Shaded area = range of outcomes. Scenarios are indistinguishable until fleet passes ~10 GW. "
@@ -796,7 +795,7 @@ fig_bo.add_annotation(
 
 st.plotly_chart(
     _styled_chart(fig_bo, "BESS fleet buildout scenarios (GW installed)", "GW", height=380),
-    use_container_width=True,
+    use_container_width=True, config={"displayModeBar": False},
 )
 render_chart_caption(
     "Quarterly grid-scale installed capacity from MaStR (>1 MW systems). "
