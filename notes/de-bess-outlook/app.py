@@ -384,7 +384,7 @@ and **€{ch_2025:.0f}k** (2025) per MW for a {duration:.0f}h system:
 | Revenue stream | What it is | Share in 2026 |
 |:---|:---|---:|
 | **Day-Ahead arbitrage** | Buy low, sell high on EPEX day-ahead auction | ~{r26['da']/r26['total']*100:.0f}% |
-| **Intraday arbitrage** | Same on 15-min continuous market | ~{r26['id']/r26['total']*100:.0f}% |
+| **Intraday arbitrage** | Buy low, sell high on EPEX intraday continuous market | ~{r26['id']/r26['total']*100:.0f}% |
 | **FCR** | Frequency containment (primary reserve) | ~{r26['fcr']/r26['total']*100:.0f}% |
 | **aFRR capacity** | Automatic frequency restoration reserve | ~{r26['afrr_cap']/r26['total']*100:.0f}% |
 | **aFRR energy** | Energy delivered when aFRR is activated | ~{r26['afrr_energy']/r26['total']*100:.0f}% |
