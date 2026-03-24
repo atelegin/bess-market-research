@@ -670,7 +670,7 @@ is a pipeline bubble, not a buildout forecast.
 
 Germany's official grid development plan
 ([NEP 2037/2045, 2025 edition](https://www.netzentwicklungsplan.de/en/nep-aktuell/netzentwicklungsplan-20372045-2025))
-assumes **41–94 GW** of battery storage by 2037 across scenarios A–C — a dramatic
+assumes **41–94 GW** of battery storage by 2037, depending on scenario — a dramatic
 increase from 24 GW in the previous edition.
 
 The wide range reflects genuine uncertainty about electrification speed, grid expansion,
