@@ -484,8 +484,8 @@ Use the sidebar sliders to explore (sorted by impact on 2035 revenue):
 | Solar PV 400 GW (vs {pv_2040} GW base) | ~6% higher (deeper duck curve) |
 
 **Cannibalisation is the dominant uncertainty**, dwarfing all other scenario parameters.
-The three scenarios in the sidebar range from optimistic (fitted on 1.5–6.8 GW DE+UK data)
-to CAISO-observed (4→15 GW, revenue −60%). Use the scenario selector to see the full range.
+The three scenarios in the sidebar — explained in detail in the next section — range
+from mild to severe. Use the scenario selector to see the full range.
 
 The other big swing factor is **gas price**.
 """)
