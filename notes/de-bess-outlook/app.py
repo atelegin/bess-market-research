@@ -624,7 +624,7 @@ with _col_txt:
 **Key levers that don't depend on cannibalisation:**
 - **Gas price** (±€20k/MW) — observable now, hedgeable
 - **Fleet buildout speed** — observable via MaStR; see [Energy-Charts: Installed Power](https://www.energy-charts.info/charts/installed_power/chart.htm?l=en&c=DE) for a visual summary
-- **Capacity market** — policy decision, not modelled (upside)
+- **Capacity market** — Germany has none yet, but one is under discussion (potential upside; see "What this model does NOT include" below)
 - **CAPEX decline** (~8%/yr) — improves IRR even if revenue falls
 """)
 
