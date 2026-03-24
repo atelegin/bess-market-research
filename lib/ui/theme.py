@@ -227,10 +227,11 @@ def render_closing(text: str) -> None:
     st.markdown(f'<div class="closing-line">{text}</div>', unsafe_allow_html=True)
 
 
-def render_footer(author: str = "Anton Telegin", year: int = 2026) -> None:
+def render_footer(author: str = "Anton Telegin", year: int = 2026,
+                  linkedin: str = "https://www.linkedin.com/in/atelegin/") -> None:
     st.markdown(
         f'<div class="small-note" style="margin-top: 2rem; text-align: center;">'
-        f'&copy; {year} {author}. Model &amp; data: open source. '
-        f'This is not investment advice.</div>',
+        f'&copy; {year} <a href="{linkedin}" style="color: inherit;">{author}</a>. '
+        f'Model &amp; data: open source.</div>',
         unsafe_allow_html=True,
     )
