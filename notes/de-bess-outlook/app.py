@@ -444,8 +444,8 @@ Four forces are at work:
    vs. today's ~€35/MWh.
 
 4. **Demand growth** (positive): electrification of transport, heating, and industry
-   is projected to push demand from ~600 to {demand_2040} TWh. Higher demand =
-   higher peak prices = better spreads.
+   is projected to push demand from ~600 to {demand_2040} TWh. Higher demand →
+   higher peak prices → better spreads.
 
 {"By ~" + str(floor_year) + ", demand growth overtakes cannibalisation, producing a modest **recovery to €" + f"{r40['total']:.0f}" + "k by 2040**." if r40['total'] > r_floor['total'] else "Under the current scenario, cannibalisation dominates through 2040."}
 """)
