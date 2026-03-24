@@ -588,7 +588,7 @@ if _yr_10gw:
     )
 
 _fan_styled = _styled_chart(fig_fan, "Scenario fan: revenue range by cannibalisation assumption", "kEUR/MW/yr", height=380)
-_fan_styled.update_xaxes(tickvals=[2026, 2029, 2032, 2035, 2038, 2040], tickangle=0)
+_fan_styled.update_xaxes(tickvals=[2025, 2028, 2031, 2034, 2037, 2040], tickangle=0)
 st.plotly_chart(_fan_styled, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
     "Three cannibalisation scenarios over the full projection horizon. "
