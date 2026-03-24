@@ -681,9 +681,9 @@ interconnectors, hydrogen).
 
 | Slider | Interpretation | Consistent with |
 |:---|:---|:---|
-| **20 GW** | Grid bottlenecks, permitting delays, slower electrification | Below NEP Scenario A — a stress test |
-| **40 GW** (default) | Mid-range NEP trajectory, moderate delivery rate | NEP Scenario A/B lower bound |
-| **60 GW** | Fast delivery, supportive regulation, CAPEX decline | NEP Scenario B/C range |
+| **20 GW** | Grid bottlenecks, permitting delays, slower electrification | Below NEP low end — a stress test |
+| **40 GW** (default) | Mid-range NEP trajectory, moderate delivery rate | NEP low-to-mid range |
+| **60 GW** | Fast delivery, supportive regulation, CAPEX decline | NEP mid-to-high range |
 
 All three are plausible. The model default of 40 GW is deliberately conservative
 relative to the NEP midpoint, reflecting historical experience that grid planning
