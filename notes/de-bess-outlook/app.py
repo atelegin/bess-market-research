@@ -321,6 +321,15 @@ render_header(
     subtitle="An open-data revenue projection for grid-scale battery storage in Germany.",
 )
 
+st.markdown("""
+Germany is building grid-scale battery storage at record pace — but what will
+these assets actually earn over a 15-year project life? This interactive model
+combines publicly available market data (wholesale prices, ancillary auction
+results, fleet deployment statistics) to project BESS revenue across five market
+segments from 2026 to 2040. Use the sidebar to stress-test the key assumptions
+and explore how the revenue stack shifts under different scenarios.
+""")
+
 # ── KPIs ─────────────────────────────────────────────────────
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -354,7 +363,7 @@ st.markdown(f"""
 A {duration:.0f}-hour battery storage system in Germany currently earns around
 **€{ch_2025:.0f}k per MW per year** across wholesale arbitrage and ancillary services
 ([Clean Horizon](https://www.cleanhorizon.com/battery-index/), 2025 average).
-Our open-data model projects total revenue will fall to **~€{r30['total']:.0f}k by 2030** as
+The model projects total revenue will fall to **~€{r30['total']:.0f}k by 2030** as
 the BESS fleet scales from {bess_2026:.0f} GW to {bess_2030:.0f} GW, before stabilising at
 **€{r_floor['total']:.0f}–{r40['total']:.0f}k** through 2040 as electricity demand growth
 from electrification offsets storage cannibalisation.
@@ -381,7 +390,7 @@ and **€{ch_2025:.0f}k** (2025) per MW for a {duration:.0f}h system:
 | **aFRR energy** | Energy delivered when aFRR is activated | ~{r26['afrr_energy']/r26['total']*100:.0f}% |
 
 **Today, ancillary services (FCR + aFRR) account for ~{anc_share_2026:.0f}%** of total revenue.
-This will change dramatically.
+As the fleet scales, this picture will shift dramatically — the next section explains why.
 """)
 
 # ── Section 2 ────────────────────────────────────────────────
@@ -394,7 +403,7 @@ LFC block is **613 MW**
 addressable by batteries is approximately 4.5 GW.
 
 With the BESS fleet projected to grow from **{bess_2026:.0f} GW (2026) to {bess_2030:.0f} GW (2030)**,
-batteries will rapidly saturate these markets. Our model shows ancillary revenue
+batteries will rapidly saturate these markets. The model projects ancillary revenue
 per MW collapsing from **€{r26['fcr']+r26['afrr_cap']+r26['afrr_energy']:.0f}k (2026)
 to €{r30['fcr']+r30['afrr_cap']+r30['afrr_energy']:.0f}k (2030)** — a
 {(1 - (r30['fcr']+r30['afrr_cap']+r30['afrr_energy']) / max(r26['fcr']+r26['afrr_cap']+r26['afrr_energy'], 1)) * 100:.0f}% decline.
@@ -412,7 +421,7 @@ wh_40 = r40['da'] + r40['id'] if r40 is not None else 0
 st.markdown(f"""
 ## Wholesale arbitrage: the long-term revenue base
 
-While ancillary revenue collapses, wholesale arbitrage (DA + ID) {"holds up well" if wh_30 >= wh_26 * 0.85 else "declines more gradually"}
+While ancillary revenue is projected to decline sharply, wholesale arbitrage (DA + ID) {"holds up well" if wh_30 >= wh_26 * 0.85 else "declines more gradually"}
 — **€{wh_26:.0f}k (2026)** {"→" if wh_30 != wh_26 else ""} **€{wh_30:.0f}k (2030)**,
 then {"recovering to" if wh_40 > wh_floor else "stabilising around"}
 **€{wh_floor:.0f}–{wh_40:.0f}k** through 2040.
@@ -420,14 +429,14 @@ then {"recovering to" if wh_40 > wh_floor else "stabilising around"}
 Four forces are at work:
 
 1. **Cannibalisation** (negative): more batteries compete for the same price spreads.
-   Our model shows this effect accelerating between 10–25 GW of installed fleet,
+   The model projects this effect accelerating between 10–25 GW of installed fleet,
    then plateauing — marginal GW beyond ~30 GW have diminishing impact on spreads.
 
 2. **Solar PV growth** (positive): Germany targets ~{pv_2040} GW of installed solar
    by 2040 (from ~100 GW today). More PV deepens the midday price trough ("duck curve"),
    creating wider daily spreads that batteries can arbitrage.
 
-3. **Gas price** (structural): natural gas sets the marginal cost for peaker hours.
+3. **Gas price** (structural): natural gas sets the marginal cost during evening peak hours.
    Higher gas prices → higher evening peaks → wider spreads. At
    [TTF](https://www.theice.com/products/27996665/Dutch-TTF-Gas-Futures)
    (Title Transfer Facility — the European gas benchmark) €{gas_2040}/MWh
@@ -443,7 +452,7 @@ Four forces are at work:
 
 # ── Section 4 ────────────────────────────────────────────────
 st.markdown(f"""
-## The revenue floor: €{r_floor['total']:.0f}–{r40['total']:.0f}k/MW — is it enough?
+## The revenue floor: €{r_floor['total']:.0f}–{r40['total']:.0f}k/MW — is it enough for positive project economics?
 
 The model projects a floor of **~€{r_floor['total']:.0f}k/MW/year** around {floor_year}. This is the
 "steady state" after ancillary revenues have been competed away and before demand
@@ -466,7 +475,7 @@ Use the sidebar sliders to explore (sorted by impact on 2035 revenue):
 
 | Scenario | Impact on 2035 revenue |
 |:---|:---|
-| Cannibalisation: Low → High (CAISO) | ~53% swing (dominant uncertainty) |
+| Cannibalisation: Low → High ([CAISO](https://www.caiso.com/) — California grid operator) | ~53% swing (dominant uncertainty) |
 | BESS fleet 60 GW (vs {bess_2040:.0f} GW base) | ~15–20% lower wholesale |
 | BESS fleet 20 GW | ~15% higher wholesale |
 | Gas TTF €60/MWh (vs €30 base) | ~15% higher (wider peak spreads) |
