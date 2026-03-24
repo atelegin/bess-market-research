@@ -480,7 +480,7 @@ Use the sidebar sliders to explore (sorted by impact on 2035 revenue):
 | BESS fleet 20 GW | ~15% higher wholesale |
 | Gas TTF €60/MWh (vs €30 base) | ~15% higher (wider peak spreads) |
 | Gas TTF €15/MWh | ~10% lower (compressed peak prices) |
-| Demand 1200 TWh (vs {demand_2040} base) | ~8% higher via stronger recovery |
+| Demand 1200 TWh (vs {demand_2040} TWh base) | ~8% higher via stronger recovery |
 | Solar PV 400 GW (vs {pv_2040} GW base) | ~6% higher (deeper duck curve) |
 
 **Cannibalisation is the dominant uncertainty**, dwarfing all other scenario parameters.
