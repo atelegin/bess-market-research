@@ -475,7 +475,7 @@ Use the sidebar sliders to explore (sorted by impact on 2035 revenue):
 
 | Scenario | Impact on 2035 revenue |
 |:---|:---|
-| Cannibalisation: Low → High ([CAISO](https://www.caiso.com/) — California grid operator) | ~53% swing (dominant uncertainty) |
+| Cannibalisation: Low → High | ~53% swing (dominant uncertainty) |
 | BESS fleet 60 GW (vs {bess_2040:.0f} GW base) | ~15–20% lower wholesale |
 | BESS fleet 20 GW | ~15% higher wholesale |
 | Gas TTF €60/MWh (vs €30 base) | ~15% higher (wider peak spreads) |
