@@ -588,7 +588,7 @@ if _yr_10gw:
     )
 
 _fan_styled = _styled_chart(fig_fan, "Scenario fan: revenue range by cannibalisation assumption", "kEUR/MW/yr", height=380)
-_fan_styled.update_xaxes(dtick=2, tickangle=0)
+_fan_styled.update_xaxes(tickvals=[2026, 2029, 2032, 2035, 2038, 2040], tickangle=0)
 st.plotly_chart(_fan_styled, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
     "Three cannibalisation scenarios over the full projection horizon. "
@@ -793,10 +793,13 @@ fig_bo.add_annotation(
     font=dict(size=9, color="#5c677d"),
 )
 
-st.plotly_chart(
-    _styled_chart(fig_bo, "BESS fleet buildout scenarios (GW installed)", "GW", height=380),
-    use_container_width=True, config={"displayModeBar": False},
+_bo_styled = _styled_chart(fig_bo, "BESS fleet buildout scenarios (GW installed)", "GW", height=380)
+_bo_styled.update_xaxes(
+    tickvals=[_dt.date(y, 1, 1) for y in [2025, 2028, 2031, 2034, 2037, 2040]],
+    ticktext=["2025", "2028", "2031", "2034", "2037", "2040"],
+    tickangle=0,
 )
+st.plotly_chart(_bo_styled, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
     "Quarterly grid-scale installed capacity from MaStR (>1 MW systems). "
     f"Forward trajectories for 20 / 40 / 60 GW by 2040. "
