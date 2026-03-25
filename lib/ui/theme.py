@@ -18,6 +18,7 @@ _FONT_IMPORT = "@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+S
 
 _CSS_VARS = """
 :root {
+    color-scheme: light only;
     --bg: #f4efe7;
     --card: rgba(255, 251, 245, 0.92);
     --ink: #14213d;
