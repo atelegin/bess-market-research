@@ -51,28 +51,94 @@ apply_theme(show_sidebar=False)  # set True if sidebar is needed
 render_header(
     title="[TITLE]",
     kicker="GERMAN BESS | [TOPIC]",
-    subtitle="[One-line description]",
+    subtitle="[One-line tagline]",
 )
 
-render_standfirst("[Opening paragraph — context and motivation.]")
+# ── Intro (2-4 sentences) ──────────────────────────────────
+# What this article does, for whom, what the reader gets.
+# Never jump straight into data or executive summary.
+st.markdown("""
+[Intro paragraph: context, motivation, what the reader will learn.
+Use the sidebar to...]
+""")
 
 
 # ── Load pre-computed results ────────────────────────────────
 data = load_precomputed()
 
 
-# ── Analysis ────────────────────────────────────────────────
+# ── KPIs ────────────────────────────────────────────────────
+# col1, col2, col3 = st.columns(3)
+# with col1:
+#     st.metric("Label", "€Xk/MW")
 
-# TODO: analysis code here — use data["key"] to access precomputed results
 
+# ── Main chart ──────────────────────────────────────────────
+# st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+# render_chart_caption("What the chart shows. Source links. Assumptions.")
+
+
+# ── Executive Summary ────────────────────────────────────────
+# st.markdown("---")
+# st.markdown("""
+# ## Executive Summary
+#
+# [2-3 paragraphs. The whole story compressed. Use hedged language
+# for projections: "the model projects", "is expected to".]
+# """)
+
+
+# ── Sections ─────────────────────────────────────────────────
+# Each section heading must be self-explanatory (no "Is it enough?"
+# without "enough for what?").
+#
+# Language reminders:
+# - Projections need hedging ("is projected to", not "will")
+# - Explain abbreviations at first use: CAISO (California grid operator)
+# - German terms get English in parens: *Kraftwerksstrategie* (power plant strategy)
+# - Use → for causal chains: Higher demand → higher prices → wider spreads
+# - Relative claims over absolutes: "loses a quarter" not "earns €230k"
+# - No loose ends: if a claim sets up a topic, reference where it's addressed
+#
+# st.markdown("""
+# ## [Self-explanatory heading]
+#
+# [Section content]
+# """)
+#
 # render_chart_title("Chart headline")
-# st.plotly_chart(fig, use_container_width=True)
+# st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 # render_chart_caption("What the chart shows.")
-
+#
 # render_takeaway("Key insight from this section.")
 
-# render_annotation("Why this matters", "Explanation text.")
+
+# ── What this model does NOT include ─────────────────────────
+# st.markdown("---")
+# st.markdown("""
+# ## What this model does NOT include
+#
+# - **[Omission]** — [why it's excluded, what it would mean if included]
+# """)
 
 
-# ── Footer ──────────────────────────────────────────────────
+# ── Data Sources & Methodology ───────────────────────────────
+# st.markdown("---")
+# st.markdown("## Data Sources & Methodology")
+# with st.expander("[Model component]"):
+#     st.markdown("[Technical detail — lives in expanders, not main flow]")
+
+
+# ── Closing ──────────────────────────────────────────────────
+# st.markdown("---")
+# render_closing(
+#     "[Series framing — e.g. 'This is the Nth note in a series on BESS merchant economics...']"
+# )
+# st.markdown(
+#     '<div style="margin-top: 0.5rem; font-size: 0.95rem; color: #666;">'
+#     "<b>Next:</b> [teaser for next note]"
+#     "</div>",
+#     unsafe_allow_html=True,
+# )
+
 render_footer()
