@@ -157,9 +157,10 @@ def fetch_afrr_annual_revenue(year: int) -> dict | None:
         participation = 0.40
         afrr_cap = annual_cap_keur * participation
 
-        # aFRR energy revenue estimate: ~8-10% of capacity revenue
-        # (energy is called ~10% of time, paid at energy price)
-        afrr_energy = afrr_cap * 0.10
+        # aFRR energy revenue estimate: ~3-4% activation ratio (2024 actual data
+        # from netztransparenz.de AktivierteSRL shows avg 63 MW vs ~2000 MW contracted).
+        # Energy revenue ≈ activation_ratio × capacity_revenue as rough proxy.
+        afrr_energy = afrr_cap * 0.04
 
         result = {"afrr_cap_keur": afrr_cap, "afrr_energy_keur": afrr_energy}
         pd.DataFrame([result]).to_csv(cache_path, index=False)
