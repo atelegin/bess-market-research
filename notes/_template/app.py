@@ -123,10 +123,37 @@ data = load_precomputed()
 
 
 # ── Data Sources & Methodology ───────────────────────────────
+# Use expanders to keep detail out of the main flow.
+# Each expander covers one topic: model, data, metrics, etc.
+# Include source links and parameter tables.
+#
 # st.markdown("---")
 # st.markdown("## Data Sources & Methodology")
-# with st.expander("[Model component]"):
-#     st.markdown("[Technical detail — lives in expanders, not main flow]")
+#
+# with st.expander("Model / dispatch"):
+#     st.markdown("""
+# [Model description, key assumptions]
+#
+# | Parameter | Value |
+# |:---|:---|
+# | ... | ... |
+# """)
+#
+# with st.expander("Price / market data"):
+#     st.markdown("""
+# | Market | Source | Resolution |
+# |:---|:---|:---|
+# | Day-ahead | [Energy-Charts](https://energy-charts.info/) | Hourly |
+# | Intraday | [Netztransparenz](https://ds.netztransparenz.de) | 15-min |
+# | FCR capacity | [regelleistung.net](https://www.regelleistung.net) | 4h products |
+# | aFRR capacity | [regelleistung.net](https://www.regelleistung.net) | 4h products |
+# """)
+#
+# with st.expander("Key metrics / definitions"):
+#     st.markdown("""
+# **Full equivalent cycle (FEC)** = cumulative discharged energy ÷ nameplate
+# energy capacity. Standard definition per manufacturer warranties and DNV.
+# """)
 
 
 # ── Closing ──────────────────────────────────────────────────

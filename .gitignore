@@ -6,5 +6,10 @@ __pycache__/
 *.parquet
 lib/data/cache/day_ahead_prices_*.json
 ROADMAP.md
+DIGEST_SPEC.md
 notebooks/
 .claude/
+lib/data/cache/dispatch_*.json
+lib/data/cache/dispatch_*.parquet
+lib/data/cache/afrr_activations_*.json
+lib/data/cache/netztransparenz_id_aep_*.json
