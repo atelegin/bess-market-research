@@ -212,22 +212,8 @@ render_standfirst(
     "warranty limits — and that ceiling is falling as the fleet grows."
 )
 
-# ── Duration selector ──────────────────────────────────────────
-dur_col1, dur_col2 = st.columns([3, 1])
-with dur_col2:
-    selected_duration = st.radio(
-        "Battery duration",
-        [1.0, 2.0, 4.0],
-        index=1,
-        format_func=lambda d: f"{int(d)}h",
-        horizontal=True,
-    )
-
-# Filter frontiers for selected duration
-f2h = frontiers[frontiers["duration_h"] == selected_duration]
-
 render_footer_note(
-    f"<strong>Base case:</strong> {int(selected_duration)}h battery, "
+    "<strong>Base case:</strong> 2h battery (switchable below), "
     "2021–2025 historical prices, "
     "DA + intraday overlay + ancillary cycling (FCR + aFRR), SoC 5–95%"
     "<br><strong>Method:</strong> Perfect-foresight LP (SciPy HiGHS) — upper bound"
@@ -266,6 +252,21 @@ def _rev_and_cpd_at_pct(yf, pct, days):
 def _power_law(x, a, b):
     return a * np.power(x, b)
 
+
+# ── Duration selector (inline, near chart) ─────────────────────
+_dur_col1, _dur_col2 = st.columns([3, 1])
+with _dur_col1:
+    render_chart_title("Total cycling is falling — and the market, not the warranty, sets the limit")
+with _dur_col2:
+    selected_duration = st.radio(
+        "Battery duration",
+        [1.0, 2.0, 4.0],
+        index=1,
+        format_func=lambda d: f"{int(d)}h",
+        horizontal=True,
+    )
+
+f2h = frontiers[frontiers["duration_h"] == selected_duration]
 
 # ── Historical data ─────────────────────────────────────────────
 hero_years_with_2026 = list(YEARS) + [2026]
@@ -476,8 +477,6 @@ bear_rev_ws = [(bear_rev_by_year[y]["da"] + bear_rev_by_year[y]["id"]) if y in b
 # ── Build the combined chart ────────────────────────────────────
 default_pct = 90
 
-render_chart_title("Total cycling is ~1.7 cycles/day today — falling toward ~1.2 by 2030")
-
 fig_hero = go.Figure()
 
 # X-axis labels
@@ -671,9 +670,9 @@ render_chart_caption(
     "Bars = wholesale revenue (perfect foresight upper bound). "
     "Line = total cycles/day (wholesale + aFRR + FCR). "
     f"Shaded band = bull / bear scenario range "
-    f"({BULL_PARAMS['bess_2040']}–{BEAR_PARAMS['bess_2040']} GW fleet, "
+    f"({BULL_PARAMS['bess_2040']}–{BEAR_PARAMS['bess_2040']} GW fleet by 2040, "
     f"gas €{BULL_PARAMS['gas_2040']}–{BEAR_PARAMS['gas_2040']}/MWh, "
-    f"PV {BULL_PARAMS['pv_2040']}–{BEAR_PARAMS['pv_2040']} GW). "
+    f"PV {BULL_PARAMS['pv_2040']}–{BEAR_PARAMS['pv_2040']} GW — all 2040 targets). "
     "Drag the slider from 90% toward 100%: revenue barely changes, "
     "but cycles jump. 2026* = Q1 annualised from 90 days (Jan–Mar) — "
     "excludes summer PV surplus and winter price spikes, so treat with caution."
@@ -939,12 +938,23 @@ for label, cap_pct, color, width in CAPTURE_LEVELS:
         showlegend=False,
     ))
 
+# Add reference line: projected 100% wholesale cpd at 2030 fleet
+_gw_2030_lt = user_buildout.get(2030, BESS_2040_DEFAULT)
+_cpd_100_at_2030 = _power_law(float(_gw_2030_lt), *_popt_by_pct[100])
+fig_lt.add_vline(
+    x=_cpd_100_at_2030,
+    line=dict(color="#94a3b8", width=1.5, dash="dash"),
+    annotation_text=f"100% capture\nat {_gw_2030_lt:.0f} GW (~2030):\n{_cpd_100_at_2030:.1f} c/d",
+    annotation_font=dict(size=9, color="#5c677d"),
+    annotation_position="top right",
+)
+
 styled_layout(fig_lt, height=400, y_title="Lifetime revenue (M€/MW)")
 fig_lt.update_layout(
     showlegend=True,
     legend=dict(orientation="h", y=-0.15),
     margin=dict(l=55, r=25, t=25, b=70),
-    xaxis=dict(title="Cycles per day", range=[0, 2.5]),
+    xaxis=dict(title="Cycles per day", range=[0, 4.0]),
     yaxis=dict(
         tickprefix="€", ticksuffix="M",
         gridcolor="rgba(148,163,184,0.12)",
@@ -973,11 +983,11 @@ is at **~{_p90[0]:.1f} cycles/day** (€{_p90[1]:.1f}M) — lower cycling, but
 nearly the same lifetime total. The curves are flat near the peak: cycling
 slightly less costs very little but extends the battery by years.
 
-Note how the peak here is consistent with the first chart: as the fleet grows,
-the market offers fewer profitable windows at high cycling rates. The lifetime
-model accounts for this — cycling at 2 c/d today captures close to 100%, but
-in later years the same rate may only capture 80–90% because the fleet has
-absorbed most arbitrage opportunities.
+The vertical dashed line shows where 100% capture lands at ~2030 fleet levels.
+Beyond that point, the battery is cycling harder than the market can support —
+extra cycles do not generate extra revenue, they just accelerate degradation.
+The lifetime peak sits to the left of this line: even if you *could* cycle more,
+degradation costs mean you *shouldn't*.
 
 **Caveats that push the peak to the right:** time value of money (not modelled —
 €1 earned today is worth more than €1 in year 15), and mid-life augmentation
