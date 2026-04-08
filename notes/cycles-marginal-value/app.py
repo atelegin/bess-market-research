@@ -1265,11 +1265,12 @@ _total_2035 = _cpd_2035_ws + _afrr_2035 + FCR_CPD_CONST
 _rev_2030 = proj_rev_by_year.get(2030, {})
 _rev_2035 = proj_rev_by_year.get(2035, {})
 
-st.markdown("## The cycle budget is shrinking from both sides")
+st.markdown("## The cycle budget is shrinking")
 
 st.markdown("""
-The market offers fewer profitable cycling windows (supply side), and the first
-cycle captures an increasing share of what remains (demand side).
+As the fleet grows, cannibalisation compresses spreads in two ways: the market
+offers fewer profitable cycling windows overall, and the remaining windows are
+shallower — so the first cycle captures an increasing share of total revenue.
 
 **The cycle budget is a consequence of trading strategy, not a fixed market
 requirement.**
