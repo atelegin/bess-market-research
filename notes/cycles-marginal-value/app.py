@@ -1069,8 +1069,6 @@ def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100, frontier_re
     return total
 
 COD_YEARS = [
-    (2023, "#a3b8c8", 1.8),
-    (2024, "#6b88a4", 2.0),
     (2026, "#14213d", 2.5),
 ]
 
@@ -1162,7 +1160,7 @@ fig_lt.update_layout(
 st.plotly_chart(fig_lt, use_container_width=True, config={"displayModeBar": False})
 
 render_chart_caption(
-    f"{int(_s3_dur)}h battery, COD {COD_YEARS[0][0]}–{COD_YEARS[-1][0]}. "
+    f"{int(_s3_dur)}h battery, COD {COD_YEARS[0][0]}. "
     f"At each cycling rate, the model asks: how much revenue does this capture "
     f"in each year of the battery's life, given projected fleet growth? "
     f"Higher cycling earns more per year but wears the battery faster. "
