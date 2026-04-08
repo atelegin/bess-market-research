@@ -253,18 +253,17 @@ def _power_law(x, a, b):
     return a * np.power(x, b)
 
 
-# ── Duration selector (inline, near chart) ─────────────────────
-_dur_col1, _dur_col2 = st.columns([3, 1])
-with _dur_col1:
-    render_chart_title("Total cycling is falling — and the market, not the warranty, sets the limit")
-with _dur_col2:
-    selected_duration = st.radio(
-        "Battery duration",
-        [1.0, 2.0, 4.0],
-        index=1,
-        format_func=lambda d: f"{int(d)}h",
-        horizontal=True,
-    )
+# ── Duration selector (inline pill toggle) ─────────────────────
+render_chart_title("Total cycling is falling — and the market, not the warranty, sets the limit")
+selected_duration = st.pills(
+    "Battery duration",
+    options=[1.0, 2.0, 4.0],
+    default=2.0,
+    format_func=lambda d: f"{int(d)}h battery",
+    label_visibility="collapsed",
+)
+if selected_duration is None:
+    selected_duration = 2.0
 
 f2h = frontiers[frontiers["duration_h"] == selected_duration]
 
@@ -944,9 +943,10 @@ _cpd_100_at_2030 = _power_law(float(_gw_2030_lt), *_popt_by_pct[100])
 fig_lt.add_vline(
     x=_cpd_100_at_2030,
     line=dict(color="#94a3b8", width=1.5, dash="dash"),
-    annotation_text=f"100% capture\nat {_gw_2030_lt:.0f} GW (~2030):\n{_cpd_100_at_2030:.1f} c/d",
+    annotation_text=f"← {_cpd_100_at_2030:.1f} c/d = 100% capture at {_gw_2030_lt:.0f} GW (~2030)",
     annotation_font=dict(size=9, color="#5c677d"),
     annotation_position="top right",
+    annotation_textangle=0,
 )
 
 styled_layout(fig_lt, height=400, y_title="Lifetime revenue (M€/MW)")
