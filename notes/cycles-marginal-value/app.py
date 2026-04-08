@@ -531,12 +531,22 @@ fig_hero.add_trace(go.Scatter(
 fig_hero.add_trace(go.Scatter(
     x=["2026*"] + proj_labels, y=[hist_total[-1]] + proj_total,
     name="Total cycles/day (projected)",
-    mode="lines+text",
+    mode="lines",
     line=dict(color="#14213d", width=2.5, dash="dash"),
-    text=[""] + [f"{v:.1f}" if y in (2030, 2035, 2040) else ""
-          for v, y in zip(proj_total, proj_years)],
+    yaxis="y2",
+))
+
+# Key projected years: markers + labels
+_key_proj_x = [str(y) for y in proj_years if y in (2030, 2035, 2040)]
+_key_proj_y = [v for v, y in zip(proj_total, proj_years) if y in (2030, 2035, 2040)]
+fig_hero.add_trace(go.Scatter(
+    x=_key_proj_x, y=_key_proj_y,
+    mode="markers+text",
+    marker=dict(size=8, color="#14213d"),
+    text=[f"{v:.1f}" for v in _key_proj_y],
     textposition="top center",
     textfont=dict(size=10, color="#14213d"),
+    showlegend=False,
     yaxis="y2",
 ))
 
@@ -605,12 +615,19 @@ for pct in PCT_RANGE:
             ),
             go.Scatter(
                 x=["2026*"] + proj_labels, y=[h_total[-1]] + p_total,
-                mode="lines+text",
+                mode="lines",
                 line=dict(color="#14213d", width=2.5, dash="dash"),
-                text=[""] + [f"{v:.1f}" if y in (2030, 2035, 2040) else ""
-                      for v, y in zip(p_total, proj_years)],
+                yaxis="y2",
+            ),
+            go.Scatter(
+                x=[str(y) for y in proj_years if y in (2030, 2035, 2040)],
+                y=[v for v, y in zip(p_total, proj_years) if y in (2030, 2035, 2040)],
+                mode="markers+text",
+                marker=dict(size=8, color="#14213d"),
+                text=[f"{v:.1f}" for v, y in zip(p_total, proj_years) if y in (2030, 2035, 2040)],
                 textposition="top center",
                 textfont=dict(size=10, color="#14213d"),
+                showlegend=False,
                 yaxis="y2",
             ),
             go.Scatter(
