@@ -491,10 +491,10 @@ _fig_concept = make_subplots(
     subplot_titles=[
         "<b>11 Dec 2024</b><br>"
         "<span style='font-size:11px;color:#5c677d'>"
-        "2 cycles · 0.8 FEC · <b>€463</b> revenue</span>",
+        "0.8 FEC · <b>€463</b> revenue</span>",
         "<b>19 Apr 2024</b><br>"
         "<span style='font-size:11px;color:#5c677d'>"
-        "3 cycles · 1.8 FEC · <b>€41</b> revenue</span>",
+        "1.8 FEC · <b>€41</b> revenue</span>",
     ],
     horizontal_spacing=0.08,
 )
@@ -528,8 +528,8 @@ _fig_concept.update_layout(
 st.plotly_chart(_fig_concept, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
     "Real DA prices, 2h battery, perfect-foresight dispatch. "
-    "11 Dec: one large spread → few cycles, high revenue. "
-    "19 Apr: many small oscillations → more cycles, 11× less revenue. "
+    "11 Dec: one large spread → 0.8 FEC, high revenue. "
+    "19 Apr: many small oscillations → 1.8 FEC, 11× less revenue. "
     "Gas prices widen spreads (revenue); fleet growth eliminates windows (cycling)."
 )
 
