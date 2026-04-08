@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from scipy.optimize import curve_fit
@@ -965,6 +966,26 @@ _frontier_ref_lt = _s3_f[_s3_f["year"].isin(_frontier_ref_years)].groupby(
     pct_of_max=("pct_of_max", "mean"),
 ).sort_values("max_cycles_per_day")
 
+# Extend frontier beyond market saturation: add synthetic high-cpd points
+# where revenue stays at max but FEC keeps growing (pure degradation cost).
+_max_fec_lt = _frontier_ref_lt["annual_fec"].max()
+_max_cpd_lt = _max_fec_lt / 365
+_TARGET_MAX_CPD = 3.5  # extend all durations to this for comparison
+_ext_rows = []
+if _max_cpd_lt < _TARGET_MAX_CPD:
+    _max_rev_lt = _frontier_ref_lt["annual_revenue_eur_per_mw"].max()
+    for extra_cpd in np.arange(_max_cpd_lt + 0.25, _TARGET_MAX_CPD + 0.01, 0.25):
+        _ext_rows.append({
+            "max_cycles_per_day": extra_cpd,
+            "annual_fec": extra_cpd * 365,
+            "annual_revenue_eur_per_mw": _max_rev_lt,
+            "pct_of_max": 100.0,
+        })
+if _ext_rows:
+    _frontier_ref_lt = pd.concat(
+        [_frontier_ref_lt, pd.DataFrame(_ext_rows)], ignore_index=True
+    ).sort_values("annual_fec")
+
 fig_lt = go.Figure()
 
 _peak_cpd, _peak_rev = 0, 0  # from first (primary) COD
@@ -1004,8 +1025,7 @@ fig_lt.update_layout(
     showlegend=True,
     legend=dict(orientation="h", y=-0.15),
     margin=dict(l=55, r=25, t=25, b=70),
-    xaxis=dict(title="Cycles per day",
-               range=[0, max(r["annual_fec"] / 365 for _, r in _frontier_ref_lt.iterrows()) * 1.15]),
+    xaxis=dict(title="Cycles per day", range=[0, _TARGET_MAX_CPD]),
     yaxis=dict(
         tickprefix="€", ticksuffix="M",
         gridcolor="rgba(148,163,184,0.12)",
@@ -1015,7 +1035,7 @@ fig_lt.update_layout(
 st.plotly_chart(fig_lt, use_container_width=True, config={"displayModeBar": False})
 
 render_chart_caption(
-    f"Lifetime revenue for a {int(_s3_dur)}h battery, COD {COD}. "
+    f"Lifetime revenue for a {int(_s3_dur)}h battery, COD {COD_YEARS[0][0]}–{COD_YEARS[-1][0]}. "
     f"Capture profile: 2023–2024 historical shape, capped by projected market "
     f"capacity at each year's fleet size. "
     f'Revenue stream: <a href="{NOTE1_URL}">{NOTE1_TITLE}</a> projections. Ancillary (FCR + aFRR) added in full. '
