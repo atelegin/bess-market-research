@@ -218,9 +218,11 @@ render_standfirst(
     "treat cycle count as a proxy for earnings."
     "\n\n"
     "This note tests that assumption against five years of German wholesale "
-    "prices. The result: the link between cycling and revenue is far weaker "
-    "than commonly assumed. Revenue depends on spread size; cycling depends "
-    "on the number of profitable windows per day. These move independently."
+    "prices. The result: a battery needs far fewer cycles than most models "
+    "assume. The first daily cycle captures 75–90% of available revenue; "
+    "the rest adds cycling wear for diminishing returns. And as the fleet "
+    "grows, the market is offering even fewer profitable windows — the "
+    "required cycling rate is falling, not rising."
 )
 
 st.markdown("---")
