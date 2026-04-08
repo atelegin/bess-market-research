@@ -946,10 +946,12 @@ def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100, frontier_re
         total += (ws_rev * (eff_pct / 100) + anc_rev) * cap_frac
     return total
 
-COD = 2026
-CAPTURE_LEVELS = [("100% targeted", 100, "#e76f51", 2.5),
-                  ("95% targeted",   95, "#f59e0b", 2.0),
-                  ("90% targeted",   90, "#2a9d8f", 2.0)]
+COD_YEARS = [
+    (2026, "#14213d", 2.5),
+    (2028, "#2a9d8f", 2.0),
+    (2030, "#f59e0b", 2.0),
+    (2035, "#e76f51", 1.5),
+]
 
 _s3_dur, _s3_f, _, _, _ = _dur_pills(
     "Lifetime revenue peaks well below maximum cycling intensity", "dur_lifetime")
@@ -965,33 +967,35 @@ _frontier_ref_lt = _s3_f[_s3_f["year"].isin(_frontier_ref_years)].groupby(
 
 fig_lt = go.Figure()
 
-_peak_data = {}
-for label, cap_pct, color, width in CAPTURE_LEVELS:
+_peak_cpd, _peak_rev = 0, 0  # from first (primary) COD
+for cod_year, color, width in COD_YEARS:
     cpd_vals, lt_rev_k = [], []
     for _, row in _frontier_ref_lt.iterrows():
         cpd = row["annual_fec"] / 365
-        lt = _lifetime_revenue(COD, cpd, row["annual_fec"], cap_pct=cap_pct,
+        lt = _lifetime_revenue(cod_year, cpd, row["annual_fec"], cap_pct=100,
                                frontier_ref=_frontier_ref_lt)
         cpd_vals.append(cpd)
         lt_rev_k.append(lt / 1000)
 
     peak_idx = int(np.argmax(lt_rev_k))
-    _peak_data[cap_pct] = (cpd_vals[peak_idx], lt_rev_k[peak_idx])
+    if cod_year == COD_YEARS[0][0]:
+        _peak_cpd = cpd_vals[peak_idx]
+        _peak_rev = lt_rev_k[peak_idx]
 
     fig_lt.add_trace(go.Scatter(
         x=cpd_vals, y=lt_rev_k,
         mode="lines",
-        name=label,
+        name=f"COD {cod_year}",
         line=dict(color=color, width=width),
-        hovertemplate="%{x:.1f} cycles/day<br>€%{y:.1f}M lifetime<extra>" + label + "</extra>",
+        hovertemplate=f"COD {cod_year}<br>" + "%{x:.1f} c/d<br>€%{y:.1f}M<extra></extra>",
     ))
     fig_lt.add_trace(go.Scatter(
         x=[cpd_vals[peak_idx]], y=[lt_rev_k[peak_idx]],
         mode="markers+text",
-        marker=dict(size=10, color=color, symbol="diamond"),
+        marker=dict(size=8, color=color, symbol="diamond"),
         text=[f"{cpd_vals[peak_idx]:.1f}"],
         textposition="top center",
-        textfont=dict(size=10, color=color),
+        textfont=dict(size=9, color=color),
         showlegend=False,
     ))
 
@@ -1010,34 +1014,28 @@ fig_lt.update_layout(
 
 st.plotly_chart(fig_lt, use_container_width=True, config={"displayModeBar": False})
 
-_p100 = _peak_data[100]
-_p90 = _peak_data[90]
 render_chart_caption(
     f"Lifetime revenue for a {int(_s3_dur)}h battery, COD {COD}. "
     f"Capture profile: 2023–2024 historical shape, capped by projected market "
-    f"capacity at each year's fleet size (power-law fit). "
-    f"This means cycling at 2 c/d today may only capture ~80% in later years "
-    f"when the fleet is larger. "
+    f"capacity at each year's fleet size. "
     f'Revenue stream: <a href="{NOTE1_URL}">{NOTE1_TITLE}</a> projections. Ancillary (FCR + aFRR) added in full. '
     f"Degradation: ~1.8%/yr at 2 c/d (calendar + cycling), augmentation at "
     f'~{_AUG_FEC:.0f} FEC, EOL at {_EOL_FLOOR:.0%} capacity — consistent with <a href="{NOTE1_URL}">{NOTE1_TITLE}</a>.'
 )
 
 st.markdown(f"""
-Even targeting 100% of available wholesale revenue, the lifetime curve peaks at
-**~{_p100[0]:.1f} cycles/day** (€{_p100[1]:.1f}M). At 90% capture, the peak
-is at **~{_p90[0]:.1f} cycles/day** (€{_p90[1]:.1f}M) — lower cycling, but
-nearly the same lifetime total. The curves are flat near the peak: cycling
-slightly less costs very little but extends the battery by years.
-
-Beyond the peak, extra cycles do not generate enough extra revenue to offset
-the faster degradation — the battery wears out sooner with barely any more
-lifetime earnings.
+For a COD {COD_YEARS[0][0]} battery, lifetime revenue peaks at
+**~{_peak_cpd:.1f} cycles/day** (€{_peak_rev:.1f}M). Later COD years peak
+at lower cycling rates and lower total revenue — the fleet is larger, spreads
+are narrower, and there are fewer profitable windows to chase.
+Beyond each peak, extra cycles do not earn enough to offset faster degradation.
+The curves are flat near the peak: cycling slightly less costs very little
+but extends the battery by years.
 
 **Caveats that push the peak to the right:** time value of money (not modelled —
 €1 earned today is worth more than €1 in year 15), and mid-life augmentation
 (adding cells extends effective lifetime). Both favour more aggressive early
-cycling. The peaks shown here are a lower bound, not a recommendation.
+cycling. The peak shown here is a lower bound, not a recommendation.
 
 """)
 
