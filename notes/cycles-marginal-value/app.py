@@ -541,18 +541,22 @@ _fig_concept.update_layout(
     ),
 )
 _y_max = max(max(_prices_a), max(_prices_b)) * 1.05
-for ax_pair in [("xaxis", "yaxis", "yaxis3"), ("xaxis2", "yaxis2", "yaxis4")]:
-    x_ax, y_price, y_power = ax_pair
+# With secondary_y + 2 cols: yaxis=col1 price, yaxis2=col1 power,
+# yaxis3=col2 price, yaxis4=col2 power
+for x_ax, y_price, y_power, show_title in [
+    ("xaxis", "yaxis", "yaxis2", True),
+    ("xaxis2", "yaxis3", "yaxis4", False),
+]:
     _fig_concept.update_layout(**{
         x_ax: dict(title="", tickfont=dict(size=9, color="#5c677d"), dtick=6),
         y_price: dict(
-            title="€/MWh" if "2" not in y_price else "",
+            title="€/MWh" if show_title else "",
             title_font=dict(size=10, color="#5c677d"),
             tickfont=dict(size=9, color="#5c677d"),
             range=[0, _y_max],
         ),
         y_power: dict(
-            title="MW" if "4" in y_power else "",
+            title="MW" if not show_title else "",
             title_font=dict(size=10, color="#5c677d"),
             tickfont=dict(size=9, color="#5c677d"),
             range=[-1.2, 1.2],
