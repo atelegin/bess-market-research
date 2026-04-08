@@ -495,51 +495,55 @@ _dis_b = [0, 0, 0, 0, 0, 0, 0, 1.0, 0.67, 0, 0, 0, 0, 0, 0, 0,
           0, 1.0, 0.67, 0, 0, 0, 0, 0]
 
 _fig_concept = make_subplots(
-    rows=2, cols=2,
+    rows=1, cols=2,
     subplot_titles=[
         "<b>28 Aug 2022</b>  ·  0.9 FEC  ·  <b>€1 038</b>",
         "<b>31 Oct 2024</b>  ·  1.7 FEC  ·  <b>€66</b>",
-        "", "",
     ],
-    row_heights=[0.6, 0.4],
-    vertical_spacing=0.06,
     horizontal_spacing=0.08,
 )
-# Row 1: price lines
-for col, prices, color in [(1, _prices_a, "#3b82f6"), (2, _prices_b, "#f87171")]:
+# Price line + coloured segments for charge/discharge
+_CHG_COLOR = "rgba(34,197,94,0.25)"   # green fill = buying
+_DIS_COLOR = "rgba(249,115,22,0.25)"  # orange fill = selling
+for col, prices, chg, dis, line_color in [
+    (1, _prices_a, _chg_a, _dis_a, "#3b82f6"),
+    (2, _prices_b, _chg_b, _dis_b, "#f87171"),
+]:
+    # Base price line
     _fig_concept.add_trace(go.Scatter(
         x=_hours_24, y=prices, mode="lines",
-        line=dict(color=color, width=2.5),
+        line=dict(color=line_color, width=2.5),
         showlegend=False,
     ), row=1, col=col)
-# Row 2: charge/discharge bars
-for col, chg, dis in [(1, _chg_a, _dis_a), (2, _chg_b, _dis_b)]:
-    _fig_concept.add_trace(go.Bar(
-        x=_hours_24, y=[-c for c in chg],
-        marker_color="rgba(34,197,94,0.6)", width=0.8,
-        showlegend=col == 1, name="Charge",
-    ), row=2, col=col)
-    _fig_concept.add_trace(go.Bar(
-        x=_hours_24, y=dis,
-        marker_color="rgba(249,115,22,0.6)", width=0.8,
-        showlegend=col == 1, name="Discharge",
-    ), row=2, col=col)
+    # Highlight charge hours (green shading to zero)
+    chg_y = [p if c > 0.01 else None for p, c in zip(prices, chg)]
+    _fig_concept.add_trace(go.Scatter(
+        x=_hours_24, y=chg_y, mode="none",
+        fill="tozeroy", fillcolor=_CHG_COLOR,
+        showlegend=col == 1, name="Buy",
+    ), row=1, col=col)
+    # Highlight discharge hours (orange shading to zero)
+    dis_y = [p if d > 0.01 else None for p, d in zip(prices, dis)]
+    _fig_concept.add_trace(go.Scatter(
+        x=_hours_24, y=dis_y, mode="none",
+        fill="tozeroy", fillcolor=_DIS_COLOR,
+        showlegend=col == 1, name="Sell",
+    ), row=1, col=col)
 
 _fig_concept.update_layout(
     template="plotly_white",
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    height=350,
+    height=270,
     margin=dict(l=40, r=20, t=40, b=35),
-    barmode="relative",
     legend=dict(
-        orientation="h", y=-0.12,
+        orientation="h", y=-0.15,
         font=dict(size=10, color="#14213d"),
         bgcolor="rgba(0,0,0,0)",
     ),
 )
 _y_max = max(max(_prices_a), max(_prices_b)) * 1.05
-for ax in ["xaxis", "xaxis2", "xaxis3", "xaxis4"]:
+for ax in ["xaxis", "xaxis2"]:
     _fig_concept.update_layout(**{ax: dict(
         title="", tickfont=dict(size=9, color="#5c677d"), dtick=6,
     )})
@@ -548,10 +552,6 @@ _fig_concept.update_layout(
                tickfont=dict(size=9, color="#5c677d"), range=[0, _y_max]),
     yaxis2=dict(title="", tickfont=dict(size=9, color="#5c677d"),
                 range=[0, _y_max]),
-    yaxis3=dict(title="MW", title_font=dict(size=10, color="#5c677d"),
-                tickfont=dict(size=9, color="#5c677d"), range=[-1.2, 1.2]),
-    yaxis4=dict(title="", tickfont=dict(size=9, color="#5c677d"),
-                range=[-1.2, 1.2]),
 )
 st.plotly_chart(_fig_concept, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
