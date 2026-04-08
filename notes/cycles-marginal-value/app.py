@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import streamlit as st
 from scipy.optimize import curve_fit
 
@@ -223,7 +224,7 @@ render_standfirst(
 )
 
 render_footer_note(
-    "<strong>Base case:</strong> 2h battery (switchable below), "
+    "<strong>Base case:</strong> 1h / 2h / 4h battery (switchable per chart), "
     "2021–2025 historical prices, "
     "DA + intraday overlay + ancillary cycling (FCR + aFRR), SoC 5–95%"
     "<br><strong>Method:</strong> Perfect-foresight LP (SciPy HiGHS) — upper bound"
@@ -461,32 +462,72 @@ bull_proj_gw = [bull_buildout.get(y, bull_buildout[max(k for k in bull_buildout 
 bear_proj_gw = [bear_buildout.get(y, bear_buildout[max(k for k in bear_buildout if k <= y)]) for y in proj_years]
 
 st.markdown(f"""
-The logic sounds intuitive: every cycle earns money, so maximising cycles
-maximises revenue. The manufacturer's warranty is the only speed limit — push
-up against it, and you are leaving nothing on the table.
-
-But the German wholesale market tells a different story. The first daily cycle
-captures the bulk of available revenue. The second adds progressively less.
-And fleet growth is shrinking the number of profitable windows faster than
-new demand can create them. **The market — not the warranty — is the binding
-constraint on useful cycling.**
-
 The chart below tracks total cycling (wholesale + ancillary) over time. Use the
-**capture slider** to explore the trade-off: at 100 %, the battery chases every
-last spread the model can find; at 90 %, it skips the smallest windows — fewer
+**capture slider** to explore the trade-off: at 100%, the battery chases every
+last spread the model can find; at 90%, it skips the smallest windows — fewer
 cycles, almost the same revenue.
 
 Notice how narrow the shaded band is compared to [{NOTE1_TITLE}]({NOTE1_URL}).
 The same bull / bear scenarios ({BULL_PARAMS['bess_2040']} – {BEAR_PARAMS['bess_2040']} GW
 fleet by 2040, gas €{BEAR_PARAMS['gas_2040']}–{BULL_PARAMS['gas_2040']}/MWh,
 PV {BULL_PARAMS['pv_2040']}–{BEAR_PARAMS['pv_2040']} GW) produce wide revenue
-bands but tight cycling bands. That is because cycling depends on the **number**
-of profitable windows per day — shaped by the solar duck curve, wind patterns,
-and demand — not on how **valuable** each window is. Expensive gas widens every
-spread but barely creates new ones. Fleet growth compresses spreads below the
-trading threshold, eliminating windows — but this happens gradually, so the
-band stays narrow.
+bands but tight cycling bands — because gas prices widen spreads but don't
+create new ones, while fleet growth eliminates windows only gradually.
 """)
+
+# ── Conceptual illustration: spread size vs window count ───
+_hours = list(range(25))
+# Day A: two wide spreads (high revenue, few cycles)
+_prices_a = [45, 40, 38, 35, 33, 35, 40, 55, 80, 95, 100, 90,
+             60, 45, 40, 38, 42, 55, 75, 95, 105, 85, 60, 45, 45]
+# Day B: many small oscillations (low revenue, many cycles)
+_prices_b = [52, 48, 55, 45, 53, 47, 56, 44, 54, 46, 55, 45,
+             53, 47, 56, 44, 54, 46, 55, 45, 53, 47, 52, 48, 50]
+
+_fig_concept = make_subplots(
+    rows=1, cols=2,
+    subplot_titles=["<b>Fewer windows, larger spreads</b><br>"
+                    "<span style='font-size:11px;color:#5c677d'>"
+                    "2 cycles → high revenue</span>",
+                    "<b>More windows, smaller spreads</b><br>"
+                    "<span style='font-size:11px;color:#5c677d'>"
+                    "5 cycles → low revenue</span>"],
+    horizontal_spacing=0.08,
+)
+for col, prices, color in [(1, _prices_a, "#3b82f6"), (2, _prices_b, "#f87171")]:
+    _fig_concept.add_trace(go.Scatter(
+        x=_hours, y=prices, mode="lines",
+        line=dict(color=color, width=2.5),
+        fill="tozeroy", fillcolor=f"rgba({','.join(str(int(color.lstrip('#')[i:i+2], 16)) for i in (0,2,4))}, 0.08)",
+        showlegend=False,
+    ), row=1, col=col)
+_fig_concept.update_layout(
+    template="plotly_white",
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    height=250,
+    margin=dict(l=40, r=20, t=55, b=35),
+    showlegend=False,
+)
+for ax in ["xaxis", "xaxis2"]:
+    _fig_concept.update_layout(**{ax: dict(
+        title="Hour", title_font=dict(size=10, color="#5c677d"),
+        tickfont=dict(size=9, color="#5c677d"), dtick=6,
+    )})
+for ax in ["yaxis", "yaxis2"]:
+    _fig_concept.update_layout(**{ax: dict(
+        title="€/MWh" if ax == "yaxis" else "",
+        title_font=dict(size=10, color="#5c677d"),
+        tickfont=dict(size=9, color="#5c677d"),
+        range=[25, 115],
+    )})
+st.plotly_chart(_fig_concept, use_container_width=True, config={"displayModeBar": False})
+render_chart_caption(
+    "Conceptual illustration. Revenue is set by spread size (left). "
+    "Cycling is set by the number of profitable windows (right). "
+    "Gas prices widen spreads but don't create new windows. "
+    "Fleet growth eliminates windows but doesn't change their shape."
+)
 
 # Project wholesale c/d for each capture % (using half-yearly fit)
 all_cpd_proj = {}        # base-case
@@ -1045,6 +1086,8 @@ render_chart_caption(
     f"EOL at {_EOL_FLOOR:.0%}. Ancillary (FCR + aFRR) included at 100%."
 )
 
+st.markdown("")  # spacer after caption
+
 st.markdown(f"""
 For a COD {COD_YEARS[0][0]} battery, lifetime revenue peaks at
 **~{_peak_cpd:.1f} cycles/day** (€{_peak_rev:.1f}M) — right around typical
@@ -1055,10 +1098,10 @@ are narrower, and there are fewer profitable windows to chase.
 The curves are flat near the peak: cycling slightly less costs very little
 but extends the battery by years.
 
-**Caveats that push the peak to the right:** time value of money (not modelled —
-€1 earned today is worth more than €1 in year 15), and mid-life augmentation
-(adding cells extends effective lifetime). Both favour more aggressive early
-cycling. The peak shown here is a lower bound, not a recommendation.
+**Caveats that push the peak ~0.3–0.5 c/d to the right:** time value of money
+(not modelled — €1 earned today is worth more than €1 in year 15), and mid-life
+augmentation (adding cells extends effective lifetime). Both favour more
+aggressive early cycling.
 
 """)
 
@@ -1181,7 +1224,6 @@ Three implications for operators and investors:
 
 _total_today = hero_ancillary_cpd[-1] + all_cpd[90][-1]
 render_takeaway(
-    f"The belief that more cycles always means more revenue is wrong. "
     f"A German {int(selected_duration)}h BESS today needs ~{_total_today:.1f} "
     f"cycles/day in total (~{_total_today * 365:.0f} FEC/year) — falling toward "
     f"~{_total_2030:.1f} by 2030. The binding constraint is not the warranty — "
