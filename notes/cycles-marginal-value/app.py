@@ -890,7 +890,7 @@ render_chart_caption(
     f"The second cycle peaked at €{max(rev_2nd):.0f}k in 2022 (energy crisis spreads), "
     f"and fell to €{rev_2nd[4]:.0f}k in 2025 as the fleet tripled. "
     f"The third cycle never exceeds €8k in any year. "
-    f"2026* = Q1 annualised ({Q1_2026_GW} GW fleet)."
+    f"2026* = Q1 annualised."
 )
 
 st.markdown("---")
