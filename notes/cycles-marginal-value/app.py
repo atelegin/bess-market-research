@@ -475,25 +475,27 @@ bands but tight cycling bands — because gas prices widen spreads but don't
 create new ones, while fleet growth eliminates windows only gradually.
 """)
 
-# ── Real-day illustration: spread size vs window count ─────
+# ── Real-day illustration: more cycles ≠ more revenue ──────
 _hours = list(range(24))
-# Day A: 29 Oct 2024 — classic duck curve, spread €188, 2 clear windows
-_prices_a = [101.3, 100.0, 98.8, 98.2, 100.0, 113.1, 127.4, 157.7,
-             151.3, 129.7, 120.7, 113.0, 105.4, 117.7, 135.9, 172.3,
-             212.7, 285.8, 257.4, 203.8, 140.6, 124.0, 118.1, 103.1]
-# Day B: 1 Dec 2024 — choppy oscillations, spread €39, many small windows
-_prices_b = [99.7, 90.0, 88.1, 85.7, 84.8, 85.3, 84.4, 90.0,
-             99.6, 94.6, 89.3, 82.4, 85.2, 83.1, 90.6, 108.6,
-             121.5, 117.8, 121.5, 110.2, 91.4, 84.4, 97.0, 85.0]
+# Day A: 11 Dec 2024 — one big peak, spread €339, 2 cycles, €463 revenue
+_prices_a = [115.9, 108.2, 107.3, 106.2, 108.7, 125.3, 163.4, 295.5,
+             369.0, 377.1, 348.6, 380.0, 385.9, 404.9, 372.0, 380.9,
+             437.9, 445.1, 359.9, 341.2, 206.8, 171.2, 150.0, 136.0]
+# Day B: 19 Apr 2024 — choppy oscillations, spread €33, 3 cycles, €41 revenue
+_prices_b = [77.2, 60.8, 50.5, 49.5, 48.0, 49.1, 60.1, 69.0,
+             76.0, 68.3, 60.2, 56.1, 50.9, 47.0, 44.9, 44.6,
+             50.9, 58.8, 63.5, 65.3, 66.3, 66.2, 65.3, 63.2]
 
 _fig_concept = make_subplots(
     rows=1, cols=2,
-    subplot_titles=["<b>29 Oct 2024 — two windows, €188 spread</b><br>"
-                    "<span style='font-size:11px;color:#5c677d'>"
-                    "Classic duck curve: few cycles, high revenue</span>",
-                    "<b>1 Dec 2024 — many windows, €39 spread</b><br>"
-                    "<span style='font-size:11px;color:#5c677d'>"
-                    "Choppy day: more cycles, low revenue</span>"],
+    subplot_titles=[
+        "<b>11 Dec 2024</b><br>"
+        "<span style='font-size:11px;color:#5c677d'>"
+        "2 cycles · 0.8 FEC · <b>€463</b> revenue</span>",
+        "<b>19 Apr 2024</b><br>"
+        "<span style='font-size:11px;color:#5c677d'>"
+        "3 cycles · 1.8 FEC · <b>€41</b> revenue</span>",
+    ],
     horizontal_spacing=0.08,
 )
 for col, prices, color in [(1, _prices_a, "#3b82f6"), (2, _prices_b, "#f87171")]:
@@ -525,10 +527,10 @@ _fig_concept.update_layout(
 )
 st.plotly_chart(_fig_concept, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
-    "Real DA prices from Energy-Charts. Revenue is set by spread size (left) — "
-    "gas prices widen spreads but don't create new windows. "
-    "Cycling is set by the number of profitable windows (right) — "
-    "fleet growth eliminates windows but doesn't change their shape."
+    "Real DA prices, 2h battery, perfect-foresight dispatch. "
+    "11 Dec: one large spread → few cycles, high revenue. "
+    "19 Apr: many small oscillations → more cycles, 11× less revenue. "
+    "Gas prices widen spreads (revenue); fleet growth eliminates windows (cycling)."
 )
 
 # Project wholesale c/d for each capture % (using half-yearly fit)
