@@ -58,8 +58,12 @@ h1, h2, h3 {
     color: var(--ink);
     letter-spacing: -0.02em;
 }
+h2 { margin-top: 1.5rem; }
 body, .stMarkdown, .stMetric, .stDataFrame {
     font-family: 'IBM Plex Sans', sans-serif;
+}
+[data-testid="stVerticalBlock"] {
+    gap: 0.4rem !important;
 }
 """
 
@@ -209,11 +213,7 @@ def render_chart_title(text: str) -> None:
 
 
 def render_chart_caption(text: str) -> None:
-    st.markdown(
-        f'<div class="chart-caption" style="margin-top:-0.8rem; padding-bottom:1.2rem;">'
-        f'{text}</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f'<div class="chart-caption">{text}</div>', unsafe_allow_html=True)
 
 
 def render_annotation(title: str, text: str) -> None:
