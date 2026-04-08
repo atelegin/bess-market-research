@@ -476,61 +476,80 @@ create new ones, while fleet growth eliminates windows only gradually.
 """)
 
 # ── Real-day illustration: more cycles ≠ more revenue ──────
-_hours = list(range(24))
-# Day A: 11 Dec 2024 — one big peak, spread €339, 2 cycles, €463 revenue
-_prices_a = [115.9, 108.2, 107.3, 106.2, 108.7, 125.3, 163.4, 295.5,
-             369.0, 377.1, 348.6, 380.0, 385.9, 404.9, 372.0, 380.9,
-             437.9, 445.1, 359.9, 341.2, 206.8, 171.2, 150.0, 136.0]
-# Day B: 19 Apr 2024 — choppy oscillations, spread €33, 3 cycles, €41 revenue
-_prices_b = [77.2, 60.8, 50.5, 49.5, 48.0, 49.1, 60.1, 69.0,
-             76.0, 68.3, 60.2, 56.1, 50.9, 47.0, 44.9, 44.6,
-             50.9, 58.8, 63.5, 65.3, 66.3, 66.2, 65.3, 63.2]
+_hours_24 = list(range(24))
+_hours_25 = list(range(25))  # SoC has 25 points (start of each hour + end)
+# Day A: 28 Aug 2022 — energy crisis, one massive spread, 0.93 FEC, €1038
+_prices_a = [585.0, 491.4, 467.7, 430.0, 426.0, 409.9, 427.3, 441.9,
+             467.4, 437.6, 275.1, 256.9, 116.0, 75.8, 13.3, 62.2,
+             105.9, 336.2, 579.2, 676.4, 700.8, 646.1, 606.7, 590.0]
+_soc_a = [50.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0,
+          5.0, 5.0, 5.0, 5.0, 51.4, 95.0, 95.0, 95.0, 95.0, 93.9,
+          40.0, 40.0, 40.0, 40.0]
+# Day B: 2 Jan 2022 — choppy winter day, 2.09 FEC, €87
+_prices_b = [57.1, 52.6, 49.0, 34.9, 29.6, 34.0, 34.5, 41.8,
+             49.0, 60.0, 70.1, 66.3, 64.5, 47.0, 40.0, 29.1,
+             32.8, 43.0, 61.0, 60.9, 54.1, 46.2, 46.3, 32.9]
+_soc_b = [50.0, 5.0, 5.0, 5.0, 5.0, 51.4, 95.0, 95.0, 95.0, 95.0,
+          95.0, 41.1, 5.0, 5.0, 5.0, 5.0, 51.4, 95.0, 95.0, 41.1,
+          5.0, 5.0, 5.0, 5.0, 40.0]
 
 _fig_concept = make_subplots(
-    rows=1, cols=2,
+    rows=2, cols=2,
     subplot_titles=[
-        "<b>11 Dec 2024</b><br>"
-        "<span style='font-size:11px;color:#5c677d'>"
-        "0.8 FEC · <b>€463</b> revenue</span>",
-        "<b>19 Apr 2024</b><br>"
-        "<span style='font-size:11px;color:#5c677d'>"
-        "1.8 FEC · <b>€41</b> revenue</span>",
+        "<b>28 Aug 2022</b>  ·  0.9 FEC  ·  <b>€1 038</b> revenue",
+        "<b>2 Jan 2022</b>  ·  2.1 FEC  ·  <b>€87</b> revenue",
+        "", "",
     ],
+    row_heights=[0.55, 0.45],
+    vertical_spacing=0.08,
     horizontal_spacing=0.08,
 )
+# Price traces (row 1)
 for col, prices, color in [(1, _prices_a, "#3b82f6"), (2, _prices_b, "#f87171")]:
     _fig_concept.add_trace(go.Scatter(
-        x=_hours, y=prices, mode="lines",
-        line=dict(color=color, width=2.5),
-        fill="tozeroy", fillcolor=f"rgba({','.join(str(int(color.lstrip('#')[i:i+2], 16)) for i in (0,2,4))}, 0.08)",
+        x=_hours_24, y=prices, mode="lines",
+        line=dict(color=color, width=2),
+        fill="tozeroy",
+        fillcolor=f"rgba({','.join(str(int(color.lstrip('#')[i:i+2], 16)) for i in (0,2,4))}, 0.08)",
         showlegend=False,
     ), row=1, col=col)
+# SoC traces (row 2)
+for col, soc in [(1, _soc_a), (2, _soc_b)]:
+    _fig_concept.add_trace(go.Scatter(
+        x=_hours_25, y=soc, mode="lines",
+        line=dict(color="#14213d", width=2),
+        fill="tozeroy", fillcolor="rgba(20,33,61,0.10)",
+        showlegend=False,
+    ), row=2, col=col)
 _fig_concept.update_layout(
     template="plotly_white",
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    height=250,
-    margin=dict(l=40, r=20, t=55, b=35),
+    height=380,
+    margin=dict(l=40, r=20, t=40, b=35),
     showlegend=False,
 )
-for ax in ["xaxis", "xaxis2"]:
-    _fig_concept.update_layout(**{ax: dict(
-        title="Hour", title_font=dict(size=10, color="#5c677d"),
-        tickfont=dict(size=9, color="#5c677d"), dtick=6,
-    )})
 _y_max = max(max(_prices_a), max(_prices_b)) * 1.05
+for ax in ["xaxis", "xaxis2", "xaxis3", "xaxis4"]:
+    _fig_concept.update_layout(**{ax: dict(
+        title="", tickfont=dict(size=9, color="#5c677d"), dtick=6,
+    )})
 _fig_concept.update_layout(
     yaxis=dict(title="€/MWh", title_font=dict(size=10, color="#5c677d"),
                tickfont=dict(size=9, color="#5c677d"), range=[0, _y_max]),
-    yaxis2=dict(title="", title_font=dict(size=10, color="#5c677d"),
-                tickfont=dict(size=9, color="#5c677d"), range=[0, _y_max]),
+    yaxis2=dict(title="", tickfont=dict(size=9, color="#5c677d"),
+                range=[0, _y_max]),
+    yaxis3=dict(title="SoC %", title_font=dict(size=10, color="#5c677d"),
+                tickfont=dict(size=9, color="#5c677d"), range=[0, 100]),
+    yaxis4=dict(title="", tickfont=dict(size=9, color="#5c677d"),
+                range=[0, 100]),
 )
 st.plotly_chart(_fig_concept, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
-    "Real DA prices, 2h battery, perfect-foresight dispatch. "
-    "11 Dec: one large spread → 0.8 FEC, high revenue. "
-    "19 Apr: many small oscillations → 1.8 FEC, 11× less revenue. "
-    "Gas prices widen spreads (revenue); fleet growth eliminates windows (cycling)."
+    "Real DA prices and optimal dispatch (2h battery, perfect foresight). "
+    "Left: one deep spread during the energy crisis — the battery charges once "
+    "and earns €1 038. Right: a choppy winter day — the battery cycles 2× more "
+    "but earns 12× less. Revenue follows spread size, not cycling intensity."
 )
 
 # Project wholesale c/d for each capture % (using half-yearly fit)
