@@ -981,7 +981,8 @@ fig_lt.update_layout(
     showlegend=True,
     legend=dict(orientation="h", y=-0.15),
     margin=dict(l=55, r=25, t=25, b=70),
-    xaxis=dict(title="Cycles per day", range=[0, 4.0]),
+    xaxis=dict(title="Cycles per day",
+               range=[0, max(r["annual_fec"] / 365 for _, r in _frontier_ref.iterrows()) * 1.15]),
     yaxis=dict(
         tickprefix="€", ticksuffix="M",
         gridcolor="rgba(148,163,184,0.12)",
