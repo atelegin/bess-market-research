@@ -962,20 +962,6 @@ for label, cap_pct, color, width in CAPTURE_LEVELS:
         showlegend=False,
     ))
 
-# Add reference line: projected 100% wholesale cpd at 2030 fleet
-_gw_2030_lt = user_buildout.get(2030, BESS_2040_DEFAULT)
-_cpd_100_at_2030 = _power_law(float(_gw_2030_lt), *_popt_by_pct[100])
-fig_lt.add_vline(
-    x=_cpd_100_at_2030,
-    line=dict(color="#94a3b8", width=1.5, dash="dash"),
-)
-fig_lt.add_annotation(
-    x=_cpd_100_at_2030 + 0.05, y=0.02, yref="paper",
-    text=f"100% capture at {_gw_2030_lt:.0f} GW (~2030) →",
-    font=dict(size=9, color="#5c677d"),
-    showarrow=False, xanchor="left",
-)
-
 styled_layout(fig_lt, height=400, y_title="Lifetime revenue (M€/MW)")
 fig_lt.update_layout(
     showlegend=True,
@@ -1011,11 +997,9 @@ is at **~{_p90[0]:.1f} cycles/day** (€{_p90[1]:.1f}M) — lower cycling, but
 nearly the same lifetime total. The curves are flat near the peak: cycling
 slightly less costs very little but extends the battery by years.
 
-The vertical dashed line shows where 100% capture lands at ~2030 fleet levels.
-Beyond that point, the battery is cycling harder than the market can support —
-extra cycles do not generate extra revenue, they just accelerate degradation.
-The lifetime peak sits to the left of this line: even if you *could* cycle more,
-degradation costs mean you *shouldn't*.
+Beyond the peak, extra cycles do not generate enough extra revenue to offset
+the faster degradation — the battery wears out sooner with barely any more
+lifetime earnings.
 
 **Caveats that push the peak to the right:** time value of money (not modelled —
 €1 earned today is worth more than €1 in year 15), and mid-life augmentation
