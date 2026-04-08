@@ -222,13 +222,6 @@ render_standfirst(
     "on the number of profitable windows per day. These move independently."
 )
 
-render_footer_note(
-    "<strong>Base case:</strong> 1h / 2h / 4h battery (switchable per chart), "
-    "2021–2025 historical prices, "
-    "DA + intraday overlay + ancillary cycling (FCR + aFRR), SoC 5–95%"
-    "<br><strong>Method:</strong> Perfect-foresight LP (SciPy HiGHS) — upper bound"
-)
-
 st.markdown("---")
 
 
