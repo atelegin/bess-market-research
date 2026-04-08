@@ -683,7 +683,7 @@ fig_hero.update_layout(
 st.markdown("""
 Use the **capture slider** below to explore the trade-off: at 100%, the battery
 chases every last spread the model can find; at 90%, it skips the smallest
-windows — significantly fewer cycles for only 10% less revenue.
+windows — ~30% fewer cycles for 10% less revenue.
 """)
 
 _dur_pills("Total cycling is falling — and the market, not the warranty, sets the limit", "dur_hero")
