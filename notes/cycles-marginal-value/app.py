@@ -175,9 +175,6 @@ ANCILLARY_CPD = {
 ANCILLARY_TEAL = "#2a9d8f"
 ANCILLARY_FCR_COLOR = "#e9c46a"
 
-# aFRR energy net spread revenue (kEUR/MW/yr, incremental over wholesale)
-AFRR_ENERGY_NET_KEUR = {2023: 20, 2024: 10, 2025: -5}
-
 # aFRR activation data
 AFRR_YEARLY = {
     2023: {"avg_pos_mw": 68.6, "avg_neg_mw": 80.9, "total_twh": 1.31,
@@ -927,15 +924,6 @@ _AUG_FEC = 8500.0        # augmentation threshold (total FEC)
 _AUG_RESTORE = 0.92      # post-augmentation capacity
 _EOL_FLOOR = 0.60        # end-of-life threshold
 
-def _cohort_cap(age_years, annual_fec):
-    """Effective capacity fraction for a single cohort."""
-    fade = _CAL_FADE + _CYC_FADE * (annual_fec / _CYC_REF)
-    cap = 1.0 - fade * age_years
-    if annual_fec * age_years >= _AUG_FEC:
-        aug_yr = _AUG_FEC / annual_fec
-        cap = _AUG_RESTORE - fade * (age_years - aug_yr)
-    return max(cap, _EOL_FLOOR)
-
 # Build capture profile per year: for each cycling rate, what % of max revenue
 # is captured? Use historical data for past years, power-law projection for future.
 # This ensures chart 3 is consistent with chart 1's projection.
@@ -1251,51 +1239,8 @@ st.markdown("---")
 
 
 # ════════════════════════════════════════════════════════════════
-#  PROJECTION SUMMARY
+#  DATA SOURCES & METHODOLOGY
 # ════════════════════════════════════════════════════════════════
-
-_gw_2030 = user_buildout.get(2030, BESS_2040_DEFAULT)
-_gw_2035 = user_buildout.get(2035, BESS_2040_DEFAULT)
-_cpd_2030_ws = all_cpd_proj[90][proj_years.index(2030)]
-_cpd_2035_ws = all_cpd_proj[90][proj_years.index(2035)]
-_afrr_2030 = _power_law(float(_gw_2030), *_afrr_popt)
-_afrr_2035 = _power_law(float(_gw_2035), *_afrr_popt)
-_total_2030 = _cpd_2030_ws + _afrr_2030 + FCR_CPD_CONST
-_total_2035 = _cpd_2035_ws + _afrr_2035 + FCR_CPD_CONST
-_rev_2030 = proj_rev_by_year.get(2030, {})
-_rev_2035 = proj_rev_by_year.get(2035, {})
-
-st.markdown("## The cycle budget is shrinking")
-
-st.markdown("""
-As the fleet grows, cannibalisation compresses spreads in two ways: the market
-offers fewer profitable cycling windows overall, and the remaining windows are
-shallower — so the first cycle captures an increasing share of total revenue.
-
-**The cycle budget is a consequence of trading strategy, not a fixed market
-requirement.**
-""")
-
-
-
-# ── Method notes ─────────────────────────────────────────────────────────
-
-st.markdown("---")
-
-st.markdown("## What this model does NOT include")
-
-st.markdown(f"""
-- **Time value of money.** No discounting — €1 earned in year 15 counts the same as
-  €1 today. This understates the value of aggressive early cycling.
-- **Real-world forecast error.** Dispatch uses perfect foresight — an upper bound
-  that no real operator achieves. In practice, capture rates of 70–90% are typical,
-  which reduces both revenue *and* required cycling.
-- **Ancillary commitments.** FCR and aFRR capacity obligations may reduce
-  available wholesale cycling windows — the model does not capture this constraint.
-- **Cell-level degradation physics.** The model uses a simplified linear fade.
-  Real degradation depends on depth of discharge, temperature, and C-rate —
-  the subject of the next note.
-""")
 
 st.markdown("---")
 
@@ -1311,7 +1256,7 @@ on arbitrage revenue at each cycling rate.
 | Duration | 2h (base case) |
 | SoC window | 5–95% |
 | Round-trip efficiency | 86% |
-| Min spread threshold | €5/MWh |
+| Min spread threshold | €5/MWh (filters trades below typical transaction costs) |
 | Cycle cap range | 0.25–4.0 cycles/day |
 | Resolution | Hourly (DA) + 15-min (intraday) |
 """)
@@ -1366,15 +1311,31 @@ Partial cycles are summed pro-rata. Only the discharge side counts —
 charging losses are excluded from the cycle count.
 """)
 
+with st.expander("Model limitations"):
+    st.markdown("""
+- **Time value of money.** No discounting — €1 earned in year 15 counts the same as
+  €1 today. This understates the value of aggressive early cycling.
+- **Real-world forecast error.** Dispatch uses perfect foresight — an upper bound
+  that no real operator achieves. In practice, capture rates of 70–90% are typical,
+  which reduces both revenue *and* required cycling.
+- **Ancillary commitments.** FCR and aFRR capacity obligations may reduce
+  available wholesale cycling windows — the model does not capture this constraint.
+- **Cell-level degradation physics.** The model uses a simplified linear fade.
+  Real degradation depends on depth of discharge, temperature, and C-rate —
+  the subject of the next note.
+""")
+
 # ── Summary & series anchor ──────────────────────────────────
 st.markdown("---")
 
 st.markdown("""
 **In short:** German BESS needs far fewer cycles than most models assume.
 The first daily cycle captures the bulk of wholesale revenue; the second adds
-little; the third is negligible. As the fleet grows, the market offers fewer
-profitable windows — total cycling is falling toward 1 cycle/day by 2030.
-The binding constraint is the market, not the warranty.
+little; the third is negligible. As the fleet grows, cannibalisation compresses
+spreads — fewer profitable windows, and each window is shallower. Total cycling
+is falling toward 1 cycle/day by 2030. The cycle budget is a consequence of
+trading strategy, not a fixed market requirement — and the binding constraint
+is the market, not the warranty.
 """)
 
 render_closing(
