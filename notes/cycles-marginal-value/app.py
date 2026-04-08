@@ -1251,61 +1251,6 @@ st.markdown("---")
 
 
 # ════════════════════════════════════════════════════════════════
-#  ANCILLARY CYCLING — compact paragraph + expander
-# ════════════════════════════════════════════════════════════════
-
-st.markdown("## What about ancillary cycling?")
-
-st.markdown(f"""
-The total cycling line in the first chart above already includes ancillary
-activations. Here is what drives those extra cycles.
-
-**FCR** adds a stable **~0.25 cycles/day** — driven by grid frequency physics,
-not market conditions. **aFRR** adds **~0.4 cycles/day** in 2024, but is declining
-as more batteries split the activation signal (down from 0.45 in 2023 to 0.31
-in 2025). Combined with wholesale (~1.1 cycles/day at 90% capture), total cycling
-is **~1.7 cycles/day** in 2024 — and shrinking as the fleet grows.
-
-The incremental *revenue* from aFRR energy activations is also vanishing.
-Net revenue here means the spread between what BESS earns on activated energy
-and what it would have earned trading the same MWh on the wholesale market
-(opportunity cost). That spread was ~€20k/MW in 2023, ~€10k in 2024, and
-**negative** in 2025 (−€5k) as activation bid prices converged toward wholesale
-levels. Ancillary cycling is increasingly a pure cost, not a revenue source.
-""")
-
-with st.expander("Ancillary cycling details"):
-    st.markdown(f"""
-| Source | 2023 | 2024 | 2025 |
-|:---|:---|:---|:---|
-| **FCR** (grid frequency) | 0.25 | 0.25 | 0.25 |
-| **aFRR** (activated reserves) | 0.45 | 0.40 | 0.31 |
-| **Total ancillary** | 0.70 | 0.65 | 0.56 |
-| aFRR energy net revenue | €20k/MW | €10k/MW | −€5k/MW |
-| aFRR activation ratio | {AFRR_YEARLY[2023]['avg_pos_mw']/AFRR_YEARLY[2023]['contracted_pos']*100:.1f}% | {AFRR_YEARLY[2024]['avg_pos_mw']/AFRR_YEARLY[2024]['contracted_pos']*100:.1f}% | {AFRR_YEARLY[2025]['avg_pos_mw']/AFRR_YEARLY[2025]['contracted_pos']*100:.1f}% |
-
-**FCR:** computed from 1-second grid frequency measurements
-([TransnetBW via power-grid-frequency.org](https://osf.io/m43tg/), 2015–2020),
-standard droop curve (±10 mHz deadband, full activation at ±200 mHz).
-Result ~0.25 FEC/day — validated against
-[M5BAT study](https://doi.org/10.1016/j.est.2020.101982)
-(0.28 EFC/day over 4 years of real FCR operation in Germany).
-
-**aFRR:** actual activated reserve volumes (*AktivierteSRL*) from
-[netztransparenz.de](https://ds.netztransparenz.de) (15-minute resolution,
-quality-assured data). Activation ratio is the average positive activated
-volume as a share of total contracted positive capacity.
-
-**A 4h battery needs roughly half the cycling rate of a 1h system** for the
-same revenue share — the saturation curve shifts left with longer duration.
-This means a 4h system's unused cycle budget can serve as degradation buffer
-or absorb ancillary activations more comfortably.
-    """)
-
-st.markdown("---")
-
-
-# ════════════════════════════════════════════════════════════════
 #  PROJECTION SUMMARY
 # ════════════════════════════════════════════════════════════════
 
@@ -1387,15 +1332,29 @@ Intraday prices capped at ±150 €/MWh to limit outlier sensitivity.
 """)
 
 with st.expander("Ancillary cycling data"):
-    st.markdown("""
-| Source | Data | Reference |
-|:---|:---|:---|
-| **FCR** | 1-second grid frequency (Continental Europe) | [TransnetBW via power-grid-frequency.org](https://osf.io/m43tg/), 2015–2020 |
-| **FCR validation** | M5BAT real-world FCR operation (0.28 EFC/day, 4 years) | [Figgener et al. 2020](https://doi.org/10.1016/j.est.2020.101982) |
-| **aFRR activations** | Activated reserves (*AktivierteSRL*), quality-assured | [Netztransparenz.de](https://ds.netztransparenz.de), 15-min resolution |
+    st.markdown(f"""
+| Source | 2023 | 2024 | 2025 |
+|:---|:---|:---|:---|
+| **FCR** (grid frequency) | 0.25 | 0.25 | 0.25 |
+| **aFRR** (activated reserves) | 0.45 | 0.40 | 0.31 |
+| **Total ancillary** | 0.70 | 0.65 | 0.56 |
+| aFRR activation ratio | {AFRR_YEARLY[2023]['avg_pos_mw']/AFRR_YEARLY[2023]['contracted_pos']*100:.1f}% | {AFRR_YEARLY[2024]['avg_pos_mw']/AFRR_YEARLY[2024]['contracted_pos']*100:.1f}% | {AFRR_YEARLY[2025]['avg_pos_mw']/AFRR_YEARLY[2025]['contracted_pos']*100:.1f}% |
 
-FCR cycling is computed from a standard droop curve (±10 mHz deadband,
-full activation at ±200 mHz). Result: ~0.25 FEC/day, stable across years.
+**FCR:** computed from 1-second grid frequency measurements
+([TransnetBW via power-grid-frequency.org](https://osf.io/m43tg/), 2015–2020),
+standard droop curve (±10 mHz deadband, full activation at ±200 mHz).
+Result: ~0.25 FEC/day, stable across years — validated against
+[M5BAT study](https://doi.org/10.1016/j.est.2020.101982)
+(0.28 EFC/day over 4 years of real FCR operation in Germany).
+
+**aFRR:** actual activated reserve volumes (*AktivierteSRL*) from
+[netztransparenz.de](https://ds.netztransparenz.de) (15-minute resolution,
+quality-assured data). Activation ratio is the average positive activated
+volume as a share of total contracted positive capacity. aFRR cycling is
+declining as more batteries split the activation signal.
+
+**A 4h battery needs roughly half the cycling rate of a 1h system** for the
+same revenue share — the saturation curve shifts left with longer duration.
 """)
 
 with st.expander("FEC definition"):
