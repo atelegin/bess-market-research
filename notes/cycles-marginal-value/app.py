@@ -1056,13 +1056,23 @@ def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100, frontier_re
     fallback_pct = float(_fref[_fref["annual_fec"] <= annual_fec + 1]
                          ["pct_of_max"].max()) if annual_fec > 0 else 0
     cumulative_fec = 0.0
+    cap = 1.0
+    augmented = False
     for yr_offset in range(ASSET_LIFE_CAP):
         cal_year = cod_year + yr_offset
         # Total FEC includes ancillary cycling for degradation
         anc_cpd = _anc_cpd_by_year.get(cal_year, _STEADY_ANC_CPD)
-        total_annual_fec = annual_fec + anc_cpd * 365
-        cap_frac = _cohort_cap(float(yr_offset), total_annual_fec)
-        if cap_frac <= _EOL_FLOOR:
+        year_fec = annual_fec + anc_cpd * 365
+        cumulative_fec += year_fec
+        # Degradation: linear fade proportional to total FEC
+        fade_rate = _CAL_FADE + _CYC_FADE * (year_fec / _CYC_REF)
+        cap -= fade_rate
+        # Augmentation trigger
+        if not augmented and cumulative_fec >= _AUG_FEC:
+            cap = _AUG_RESTORE
+            augmented = True
+        cap_frac = max(cap, _EOL_FLOOR)
+        if cap <= _EOL_FLOOR:
             break
         rev_data = _all_rev_by_year.get(cal_year, _all_rev_by_year.get(2040, {}))
         ws_rev = rev_data.get("da", 0) + rev_data.get("id", 0)
