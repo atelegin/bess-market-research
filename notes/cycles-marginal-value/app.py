@@ -747,13 +747,13 @@ _fig_concept = make_subplots(
 )
 _CHG_COLOR = "rgba(34,197,94,0.20)"
 _DIS_COLOR = "rgba(249,115,22,0.20)"
-for col, prices, chg, dis, line_color in [
-    (1, _prices_a, _chg_a, _dis_a, "#3b82f6"),
-    (2, _prices_b, _chg_b, _dis_b, "#f87171"),
+for col, prices, chg, dis in [
+    (1, _prices_a, _chg_a, _dis_a),
+    (2, _prices_b, _chg_b, _dis_b),
 ]:
     _fig_concept.add_trace(go.Scatter(
         x=_hours_24, y=prices, mode="lines",
-        line=dict(color=line_color, width=2.5),
+        line=dict(color="#14213d", width=2.5),
         showlegend=(col == 1), name="DA price",
     ), row=1, col=col)
     _xref = "x" if col == 1 else "x2"
@@ -797,8 +797,7 @@ _fig_concept.update_layout(
 _y_max = max(max(_prices_a), max(_prices_b)) * 1.05
 for ax in ["xaxis", "xaxis2"]:
     _fig_concept.update_layout(**{ax: dict(
-        title="Hour of day", title_font=dict(size=9, color="#5c677d"),
-        tickfont=dict(size=9, color="#5c677d"), dtick=6,
+        title="", tickfont=dict(size=9, color="#5c677d"), dtick=6,
     )})
 _fig_concept.update_layout(
     yaxis=dict(title="€/MWh", title_font=dict(size=10, color="#5c677d"),
