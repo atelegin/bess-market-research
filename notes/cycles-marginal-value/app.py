@@ -754,7 +754,7 @@ for col, prices, chg, dis, line_color in [
     _fig_concept.add_trace(go.Scatter(
         x=_hours_24, y=prices, mode="lines",
         line=dict(color=line_color, width=2.5),
-        showlegend=False,
+        showlegend=(col == 1), name="DA price",
     ), row=1, col=col)
     _xref = "x" if col == 1 else "x2"
     _yref = "y" if col == 1 else "y2"
