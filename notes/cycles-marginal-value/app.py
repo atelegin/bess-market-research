@@ -809,7 +809,7 @@ render_chart_caption(
     "Real DA prices and optimal dispatch (2h battery, perfect foresight). "
     "Green bars = charging, orange = discharging. "
     "FEC = full equivalent cycle. "
-    "Left: one deep spread — the battery charges once and earns €1 038. "
+    "Left: one deep spread — the battery charges once and earns €1 038/MW. "
     "Right: a solar duck-curve day with three clear buy/sell windows — "
     "more than twice the cycling for 10× less revenue."
 )
