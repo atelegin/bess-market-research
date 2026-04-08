@@ -453,11 +453,9 @@ bear_rev_by_year = _project_revenue(
 bull_proj_gw = [bull_buildout.get(y, bull_buildout[max(k for k in bull_buildout if k <= y)]) for y in proj_years]
 bear_proj_gw = [bear_buildout.get(y, bear_buildout[max(k for k in bear_buildout if k <= y)]) for y in proj_years]
 
-st.markdown(f"""
-The chart below tracks total cycling (wholesale + ancillary) over time. Use the
-**capture slider** to explore the trade-off: at 100%, the battery chases every
-last spread the model can find; at 90%, it skips the smallest windows — fewer
-cycles, almost the same revenue.
+st.markdown("""
+Revenue comes from price spreads — how deep they are, not how many times
+the battery cycles. Two real days illustrate why:
 """)
 
 # ── Real-day illustration: more cycles ≠ more revenue ──────
@@ -779,6 +777,12 @@ fig_hero.update_layout(
     ),
     sliders=sliders,
 )
+
+st.markdown("""
+Use the **capture slider** below to explore the trade-off: at 100%, the battery
+chases every last spread the model can find; at 90%, it skips the smallest
+windows — fewer cycles, almost the same revenue.
+""")
 
 _dur_pills("Total cycling is falling — and the market, not the warranty, sets the limit", "dur_hero")
 st.plotly_chart(fig_hero, use_container_width=True, config={"displayModeBar": False})
