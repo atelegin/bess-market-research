@@ -102,10 +102,6 @@ _COMPONENTS = """
     line-height: 1.55;
     margin: 0;
 }
-[data-testid="stElementContainer"]:has(.chart-caption) {
-    margin-top: -1rem;
-    margin-bottom: 1.5rem;
-}
 .takeaway-box {
     margin: 0.8rem 0 2rem 0;
     padding: 0.9rem 1rem;
@@ -213,7 +209,11 @@ def render_chart_title(text: str) -> None:
 
 
 def render_chart_caption(text: str) -> None:
-    st.markdown(f'<div class="chart-caption">{text}</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="chart-caption" style="margin-top:-0.8rem; padding-bottom:1.2rem;">'
+        f'{text}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def render_annotation(title: str, text: str) -> None:
