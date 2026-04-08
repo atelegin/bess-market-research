@@ -58,12 +58,8 @@ h1, h2, h3 {
     color: var(--ink);
     letter-spacing: -0.02em;
 }
-h2 { margin-top: 1.5rem; }
 body, .stMarkdown, .stMetric, .stDataFrame {
     font-family: 'IBM Plex Sans', sans-serif;
-}
-[data-testid="stVerticalBlock"] {
-    gap: 0.4rem !important;
 }
 """
 
