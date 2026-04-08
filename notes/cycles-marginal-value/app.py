@@ -215,12 +215,11 @@ render_standfirst(
     "BESS investment models. This note tests it against five years of "
     "German wholesale prices."
     "\n\n"
-    "The short answer: a German 2h battery today needs roughly 1.5 cycles "
-    "per day to capture 90% of available wholesale revenue. That's ~550 "
-    "FEC per year — well inside standard warranty limits. And the number "
-    "is falling: as the fleet grows, the market offers fewer profitable "
-    "windows, not more. By 2030, total cycling is projected below 1 "
-    "cycle per day."
+    "The short answer: a German battery today needs about 1.5 cycles per "
+    "day to capture most of the available wholesale revenue — well inside "
+    "standard warranty limits. And the number is falling: as the fleet "
+    "grows, the market offers fewer profitable windows. By 2030, total "
+    "cycling is projected below 1 cycle per day."
 )
 
 st.markdown("---")
