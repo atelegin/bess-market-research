@@ -968,10 +968,12 @@ _cpd_100_at_2030 = _power_law(float(_gw_2030_lt), *_popt_by_pct[100])
 fig_lt.add_vline(
     x=_cpd_100_at_2030,
     line=dict(color="#94a3b8", width=1.5, dash="dash"),
-    annotation_text=f"← {_cpd_100_at_2030:.1f} c/d = 100% capture at {_gw_2030_lt:.0f} GW (~2030)",
-    annotation_font=dict(size=9, color="#5c677d"),
-    annotation_position="top right",
-    annotation_textangle=0,
+)
+fig_lt.add_annotation(
+    x=_cpd_100_at_2030 + 0.05, y=0.02, yref="paper",
+    text=f"100% capture at {_gw_2030_lt:.0f} GW (~2030) →",
+    font=dict(size=9, color="#5c677d"),
+    showarrow=False, xanchor="left",
 )
 
 styled_layout(fig_lt, height=400, y_title="Lifetime revenue (M€/MW)")
