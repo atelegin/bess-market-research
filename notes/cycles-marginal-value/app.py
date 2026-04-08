@@ -909,8 +909,7 @@ more revenue per year, but the battery reaches end-of-life sooner.
 
 The chart below shows **total lifetime wholesale revenue** at each cycling rate,
 using projected revenue from [{NOTE1_TITLE}]({NOTE1_URL}) and the same degradation model.
-Ancillary capacity revenue (FCR, aFRR) is included but does not depend on
-the wholesale cycling rate shown here.
+Ancillary revenue (FCR, aFRR) is included; ancillary cycling wear is not.
 """)
 
 # ── Lifetime revenue using projected revenue stream ──
