@@ -458,13 +458,6 @@ The chart below tracks total cycling (wholesale + ancillary) over time. Use the
 **capture slider** to explore the trade-off: at 100%, the battery chases every
 last spread the model can find; at 90%, it skips the smallest windows — fewer
 cycles, almost the same revenue.
-
-Notice how narrow the shaded band is compared to [{NOTE1_TITLE}]({NOTE1_URL}).
-The same bull / bear scenarios ({BULL_PARAMS['bess_2040']} – {BEAR_PARAMS['bess_2040']} GW
-fleet by 2040, gas €{BEAR_PARAMS['gas_2040']}–{BULL_PARAMS['gas_2040']}/MWh,
-PV {BULL_PARAMS['pv_2040']}–{BEAR_PARAMS['pv_2040']} GW) produce wide revenue
-bands but tight cycling bands — because gas prices widen spreads but don't
-create new ones, while fleet growth eliminates windows only gradually.
 """)
 
 # ── Real-day illustration: more cycles ≠ more revenue ──────
@@ -800,6 +793,15 @@ render_chart_caption(
     "but cycles jump. 2026* = Q1 annualised from 90 days (Jan–Mar) — "
     "excludes summer PV surplus and winter price spikes, so treat with caution."
 )
+
+st.markdown(f"""
+Notice how narrow the shaded band is compared to [{NOTE1_TITLE}]({NOTE1_URL}).
+The same bull / bear scenarios ({BULL_PARAMS['bess_2040']} – {BEAR_PARAMS['bess_2040']} GW
+fleet by 2040, gas €{BEAR_PARAMS['gas_2040']}–{BULL_PARAMS['gas_2040']}/MWh,
+PV {BULL_PARAMS['pv_2040']}–{BEAR_PARAMS['pv_2040']} GW) produce wide revenue
+bands but tight cycling bands — because gas prices widen spreads but don't
+create new ones, while fleet growth eliminates windows only gradually.
+""")
 
 st.markdown("---")
 
@@ -1245,18 +1247,9 @@ wholesale **€{_rev_2035.get('da', 0) + _rev_2035.get('id', 0):.0f}k/MW/yr**.
 Annual budget: **{_total_2030 * 365:.0f} FEC/year** at {_gw_2030:.0f} GW —
 well within standard warranty limits (5,000+ cycles / 15–20 years).
 
-Three implications for operators and investors:
-
-1. **Fewer cycles will be needed** to capture whatever revenue the market offers.
-   The saturation curve is compressing — not just because spreads are smaller, but
-   because there are fewer distinct arbitrage windows per day.
-2. **Future cycles will be worth less** than today's. Marginal cycle value is
-   declining with fleet growth, so the rational approach is to cycle at the rate
-   justified by current marginal value — not to under-cycle today in anticipation
-   of better spreads tomorrow.
-3. **The cycle budget is a consequence of trading strategy, not a fixed market
-   requirement.** SoC window, spread thresholds, and intraday timing can
-   significantly reduce cycle consumption while preserving most revenue.
+**The cycle budget is a consequence of trading strategy, not a fixed market
+requirement.** SoC window, spread thresholds, and intraday timing can
+significantly reduce cycle consumption while preserving most revenue.
 """)
 
 _total_today = hero_ancillary_cpd[-1] + all_cpd[90][-1]
