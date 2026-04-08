@@ -1127,13 +1127,17 @@ if _ext_rows:
 fig_lt = go.Figure()
 
 _peak_cpd, _peak_rev = 0, 0  # from first (primary) COD
+# Average ancillary CPD over COD 2026 lifetime (for X-axis shift to total cycling)
+_avg_anc_cpd = np.mean([_anc_cpd_by_year.get(y, _STEADY_ANC_CPD)
+                        for y in range(2026, 2026 + ASSET_LIFE_CAP)])
+
 for cod_year, color, width in COD_YEARS:
     cpd_vals, lt_rev_k = [], []
     for _, row in _frontier_ref_lt.iterrows():
-        cpd = row["annual_fec"] / 365
-        lt = _lifetime_revenue(cod_year, cpd, row["annual_fec"], cap_pct=100,
+        ws_cpd = row["annual_fec"] / 365
+        lt = _lifetime_revenue(cod_year, ws_cpd, row["annual_fec"], cap_pct=100,
                                frontier_ref=_frontier_ref_lt)
-        cpd_vals.append(cpd)
+        cpd_vals.append(ws_cpd + _avg_anc_cpd)  # X = total cycling
         lt_rev_k.append(lt / 1000)
 
     peak_idx = int(np.argmax(lt_rev_k))
@@ -1179,7 +1183,8 @@ fig_lt.update_layout(
     showlegend=True,
     legend=dict(orientation="h", y=-0.15),
     margin=dict(l=55, r=25, t=25, b=70),
-    xaxis=dict(title="Cycles per day", range=[0, _TARGET_MAX_CPD]),
+    xaxis=dict(title="Total cycles per day (wholesale + ancillary)",
+               range=[_avg_anc_cpd, _TARGET_MAX_CPD + _avg_anc_cpd]),
     yaxis=dict(
         tickprefix="€", ticksuffix="M",
         gridcolor="rgba(148,163,184,0.12)",
