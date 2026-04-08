@@ -210,17 +210,12 @@ render_header(
     ),
 )
 
-st.markdown(f"""
-This is the second note in a series on German BESS merchant economics.
-The [first note]({NOTE1_URL}) projected revenue through 2040; this one asks
-how hard a battery has to work to capture it.
-""")
-
 render_standfirst(
     "Ask a battery trader how many cycles they need and the answer is "
     "<em>as many as the warranty allows</em>. The assumption behind most BESS "
     "investment models is the same: more cycles means more revenue. "
-    "This note tests it against five years of German wholesale prices."
+    f'The <a href="{NOTE1_URL}">first note</a> projected the revenue; '
+    "this one tests how hard a battery has to work to capture it."
     "\n\n"
     "The short answer: a German battery today needs about 1.5 cycles per "
     "day to capture most of the available wholesale revenue — well inside "
