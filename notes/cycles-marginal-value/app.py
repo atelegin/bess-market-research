@@ -909,7 +909,7 @@ more revenue per year, but the battery reaches end-of-life sooner.
 
 The chart below shows **total lifetime wholesale revenue** at each cycling rate,
 using projected revenue from [{NOTE1_TITLE}]({NOTE1_URL}) and the same degradation model.
-Ancillary revenue (FCR, aFRR) is included; ancillary cycling wear is not.
+Both ancillary revenue and ancillary cycling wear (FCR, aFRR) are included.
 """)
 
 # ── Lifetime revenue using projected revenue stream ──
@@ -1030,6 +1030,15 @@ def _year_capture_pct(cal_year, annual_fec, fallback_pct):
     return float(match["pct_of_max"].max()) if not match.empty else 0.0
 
 
+# Ancillary CPD lookup for any year (historical + projected + steady state)
+_anc_cpd_by_year = {}
+for _yr, (_fcr, _afrr) in ANCILLARY_CPD.items():
+    _anc_cpd_by_year[_yr] = _fcr + _afrr
+for _i, _yr in enumerate(proj_years):
+    _anc_cpd_by_year[_yr] = ancillary_proj[_i]
+_STEADY_ANC_CPD = _anc_cpd_by_year[max(_anc_cpd_by_year)]
+
+
 def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100, frontier_ref=None):
     """Sum projected revenue × capacity_fraction over asset life.
 
@@ -1038,15 +1047,21 @@ def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100, frontier_re
       2023-2024 average for projected years)
     - what the projected market can support at that year's fleet size
     - the operator's capture target (cap_pct)
+
+    Degradation includes both wholesale and ancillary cycling.
     """
     _fref = frontier_ref if frontier_ref is not None else _frontier_ref
     total = 0.0
     # Fallback capture at this cycling rate (from 2023-2024 shape)
     fallback_pct = float(_fref[_fref["annual_fec"] <= annual_fec + 1]
                          ["pct_of_max"].max()) if annual_fec > 0 else 0
+    cumulative_fec = 0.0
     for yr_offset in range(ASSET_LIFE_CAP):
         cal_year = cod_year + yr_offset
-        cap_frac = _cohort_cap(float(yr_offset), annual_fec)
+        # Total FEC includes ancillary cycling for degradation
+        anc_cpd = _anc_cpd_by_year.get(cal_year, _STEADY_ANC_CPD)
+        total_annual_fec = annual_fec + anc_cpd * 365
+        cap_frac = _cohort_cap(float(yr_offset), total_annual_fec)
         if cap_frac <= _EOL_FLOOR:
             break
         rev_data = _all_rev_by_year.get(cal_year, _all_rev_by_year.get(2040, {}))
@@ -1171,7 +1186,7 @@ render_chart_caption(
     f'Revenue: <a href="{NOTE1_URL}">{NOTE1_TITLE}</a> projections (to 2040, held flat beyond). '
     f"Degradation: calendar + cycling fade (faster cycling = shorter life), "
     f"augmentation at ~{_AUG_FEC:.0f} FEC, "
-    f"end-of-life (EOL) at {_EOL_FLOOR:.0%}. Ancillary revenue (FCR + aFRR) included, independent of cycling rate."
+    f"end-of-life (EOL) at {_EOL_FLOOR:.0%}. Ancillary revenue and cycling wear (FCR + aFRR) both included."
 )
 
 st.markdown("")  # spacer after caption
