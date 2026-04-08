@@ -1014,19 +1014,41 @@ _MAX_PROJ_GW = _gw_by_year[2040]  # for years beyond projection horizon
 
 ASSET_LIFE_CAP = 25
 
+# Per-year capture profiles: for each historical year, what % of max revenue
+# does a given FEC achieve?
+_capture_by_year = {}
+for _yr in YEARS:
+    _yf = f2h[f2h["year"] == _yr].sort_values("annual_fec")
+    if not _yf.empty:
+        _capture_by_year[_yr] = _yf[["annual_fec", "pct_of_max"]].copy()
+
+
+def _year_capture_pct(cal_year, annual_fec, fallback_pct):
+    """Capture % for a given year and FEC. Uses real profile for historical years,
+    fallback (from 2023-2024 average) for projected years."""
+    profile = _capture_by_year.get(cal_year)
+    if profile is None:
+        return fallback_pct
+    if annual_fec <= 0:
+        return 0.0
+    match = profile[profile["annual_fec"] <= annual_fec + 1]
+    return float(match["pct_of_max"].max()) if not match.empty else 0.0
+
+
 def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100, frontier_ref=None):
     """Sum projected revenue × capacity_fraction over asset life.
 
     For each year, the effective capture % is the minimum of:
-    - what this cycling rate achieves on the 2023-2024 historical profile
+    - what this cycling rate achieves (year-specific profile for history,
+      2023-2024 average for projected years)
     - what the projected market can support at that year's fleet size
     - the operator's capture target (cap_pct)
     """
     _fref = frontier_ref if frontier_ref is not None else _frontier_ref
     total = 0.0
-    # Historical capture at this cycling rate (from 2023-2024 shape)
-    hist_pct = float(_fref[_fref["annual_fec"] <= annual_fec + 1]
-                     ["pct_of_max"].max()) if annual_fec > 0 else 0
+    # Fallback capture at this cycling rate (from 2023-2024 shape)
+    fallback_pct = float(_fref[_fref["annual_fec"] <= annual_fec + 1]
+                         ["pct_of_max"].max()) if annual_fec > 0 else 0
     for yr_offset in range(ASSET_LIFE_CAP):
         cal_year = cod_year + yr_offset
         cap_frac = _cohort_cap(float(yr_offset), annual_fec)
@@ -1036,7 +1058,8 @@ def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100, frontier_re
         ws_rev = rev_data.get("da", 0) + rev_data.get("id", 0)
         anc_rev = (rev_data.get("fcr", 0) + rev_data.get("afrr_cap", 0)
                    + rev_data.get("afrr_energy", 0))
-        # For projected years, cap the capture % by what the market offers
+        # Year-specific capture for history, projected cap for future
+        hist_pct = _year_capture_pct(cal_year, annual_fec, fallback_pct)
         year_gw = _gw_by_year.get(cal_year, _MAX_PROJ_GW)
         if cal_year > max(YEARS):
             eff_pct = min(hist_pct, _projected_capture_pct(target_cpd, year_gw), cap_pct)
