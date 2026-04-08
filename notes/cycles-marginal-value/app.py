@@ -795,6 +795,8 @@ render_chart_caption(
     "excludes summer PV surplus and winter price spikes, so treat with caution."
 )
 
+st.markdown("")  # spacer
+
 st.markdown(f"""
 Notice how narrow the shaded band is compared to [{NOTE1_TITLE}]({NOTE1_URL}).
 The same bull / bear scenarios ({BULL_PARAMS['bess_2040']} – {BEAR_PARAMS['bess_2040']} GW
