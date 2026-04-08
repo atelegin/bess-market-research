@@ -443,10 +443,18 @@ constraint on useful cycling.**
 The chart below tracks total cycling (wholesale + ancillary) over time. Use the
 **capture slider** to explore the trade-off: at 100 %, the battery chases every
 last spread the model can find; at 90 %, it skips the smallest windows — fewer
-cycles, almost the same revenue. The shaded band shows bull / bear scenario
-range ({BULL_PARAMS['bess_2040']} – {BEAR_PARAMS['bess_2040']} GW fleet by 2040,
-varying gas price, demand, solar build-out, and cannibalisation — same parameters
-as [{NOTE1_TITLE}]({NOTE1_URL})).
+cycles, almost the same revenue.
+
+Notice how narrow the shaded band is compared to [{NOTE1_TITLE}]({NOTE1_URL}).
+The same bull / bear scenarios ({BULL_PARAMS['bess_2040']} – {BEAR_PARAMS['bess_2040']} GW
+fleet by 2040, gas €{BEAR_PARAMS['gas_2040']}–{BULL_PARAMS['gas_2040']}/MWh,
+PV {BULL_PARAMS['pv_2040']}–{BEAR_PARAMS['pv_2040']} GW) produce wide revenue
+bands but tight cycling bands. That is because cycling depends on the **number**
+of profitable windows per day — shaped by the solar duck curve, wind patterns,
+and demand — not on how **valuable** each window is. Expensive gas widens every
+spread but barely creates new ones. Fleet growth compresses spreads below the
+trading threshold, eliminating windows — but this happens gradually, so the
+band stays narrow.
 """)
 
 # Project wholesale c/d for each capture % (using half-yearly fit)
