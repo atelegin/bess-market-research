@@ -90,9 +90,16 @@ from lib.models.projection import project_full_stack
 
 
 CANIB_MID = {"canib_max": 33.0, "canib_half": 13.0, "canib_steep": 0.17}
+CANIB_LOW = {"canib_max": 15.0, "canib_half": 25.0, "canib_steep": 0.80}
+CANIB_HIGH = {"canib_max": 82.0, "canib_half": 11.0, "canib_steep": 0.18}
 GAS_DEFAULT = 30       # €/MWh TTF
 PV_DEFAULT = 300       # GW installed PV
 DEMAND_DEFAULT = 1020  # TWh
+
+# Bull: low competition, expensive gas, high demand, low cannibalisation
+BULL_PARAMS = dict(bess_2040=20, gas_2040=80, demand_2040=1200, pv_2040=215, **CANIB_LOW)
+# Bear: crowded market, cheap gas, low demand, high cannibalisation
+BEAR_PARAMS = dict(bess_2040=60, gas_2040=15, demand_2040=700, pv_2040=400, **CANIB_HIGH)
 
 COMMITTED_THROUGH = 2027
 
@@ -117,8 +124,10 @@ def _scale_buildout(target_2040: float) -> dict[int, float]:
     return out
 
 
-def _project_revenue(buildout, gas=GAS_DEFAULT, pv=PV_DEFAULT, demand=DEMAND_DEFAULT):
+def _project_revenue(buildout, gas=GAS_DEFAULT, pv=PV_DEFAULT, demand=DEMAND_DEFAULT,
+                     canib=None):
     """Run note 1 projection model and return {year: dict} map."""
+    canib_params = canib if canib is not None else CANIB_MID
     stack = project_full_stack(
         years=list(range(2026, 2041)),
         historical_da_keur=105.0,
@@ -127,7 +136,7 @@ def _project_revenue(buildout, gas=GAS_DEFAULT, pv=PV_DEFAULT, demand=DEMAND_DEF
         demand_2040_twh=float(demand),
         gas_2040=float(gas),
         pv_2040_gw=float(pv),
-        **CANIB_MID,
+        **canib_params,
     )
     return {r["year"]: r for r in stack}
 
@@ -140,8 +149,7 @@ DURATIONS = data["durations"]
 RTE = data["rte"]
 fleet_gw = data["fleet_gw"]
 
-# Pre-filter for convenience
-f2h = frontiers[frontiers["duration_h"] == 2.0]
+# Duration will be selected by user — filtered below after page config
 
 # Q1 2026 annualised values (pre-computed from explore runs)
 Q1_2026_REV = {1.0: 84, 2.0: 100, 3.0: 102, "max": 102}  # kEUR/MW/yr
@@ -188,21 +196,39 @@ render_header(
     title="How Many Cycles Does a Battery Actually Need?",
     kicker="GERMAN BESS | CYCLING INTENSITY",
     subtitle=(
-        "Today a German BESS needs ~1.7 cycles per day in total — "
-        "and fleet growth is pushing that toward 1."
+        "The conventional wisdom: more cycles = more revenue, "
+        "and only the manufacturer sets the limit. The data says otherwise."
     ),
 )
 
 render_standfirst(
-    "How many daily cycles does a German battery need to capture most of its "
-    "revenue — and how is that changing as the fleet grows? "
-    "This note maps the diminishing returns of cycling from 2021 to 2040, "
-    "so investors and operators can size cycle budgets against actual market needs "
-    "rather than warranty ceilings."
+    "Ask a battery trader how many cycles they want and the answer is always "
+    "the same: as many as the warranty allows. The assumption is that each "
+    "cycle earns roughly the same, so cycling harder means earning more — "
+    "and the only constraint is cell degradation."
+    "\n\n"
+    "This note tests that assumption against five years of German wholesale "
+    "prices. The result: the market itself caps useful cycling well below "
+    "warranty limits — and that ceiling is falling as the fleet grows."
 )
 
+# ── Duration selector ──────────────────────────────────────────
+dur_col1, dur_col2 = st.columns([3, 1])
+with dur_col2:
+    selected_duration = st.radio(
+        "Battery duration",
+        [1.0, 2.0, 4.0],
+        index=1,
+        format_func=lambda d: f"{int(d)}h",
+        horizontal=True,
+    )
+
+# Filter frontiers for selected duration
+f2h = frontiers[frontiers["duration_h"] == selected_duration]
+
 render_footer_note(
-    "<strong>Base case:</strong> 2h battery, 2021–2025 historical prices, "
+    f"<strong>Base case:</strong> {int(selected_duration)}h battery, "
+    "2021–2025 historical prices, "
     "DA + intraday overlay + ancillary cycling (FCR + aFRR), SoC 5–95%"
     "<br><strong>Method:</strong> Perfect-foresight LP (SciPy HiGHS) — upper bound"
 )
@@ -381,24 +407,46 @@ proj_rev_by_year = _project_revenue(user_buildout)
 proj_years = list(range(2027, 2041))
 proj_gw = [user_buildout.get(y, user_buildout[max(k for k in user_buildout if k <= y)]) for y in proj_years]
 
+# ── Bull/Bear buildouts & revenue projections ──────────────────
+bull_buildout = _scale_buildout(BULL_PARAMS["bess_2040"])
+bear_buildout = _scale_buildout(BEAR_PARAMS["bess_2040"])
+bull_rev_by_year = _project_revenue(
+    bull_buildout, gas=BULL_PARAMS["gas_2040"],
+    pv=BULL_PARAMS["pv_2040"], demand=BULL_PARAMS["demand_2040"],
+    canib={k: BULL_PARAMS[k] for k in ("canib_max", "canib_half", "canib_steep")},
+)
+bear_rev_by_year = _project_revenue(
+    bear_buildout, gas=BEAR_PARAMS["gas_2040"],
+    pv=BEAR_PARAMS["pv_2040"], demand=BEAR_PARAMS["demand_2040"],
+    canib={k: BEAR_PARAMS[k] for k in ("canib_max", "canib_half", "canib_steep")},
+)
+bull_proj_gw = [bull_buildout.get(y, bull_buildout[max(k for k in bull_buildout if k <= y)]) for y in proj_years]
+bear_proj_gw = [bear_buildout.get(y, bear_buildout[max(k for k in bear_buildout if k <= y)]) for y in proj_years]
+
 st.markdown(f"""
-But where exactly does the value come from — and how fast is it shifting? The first
-daily cycle captures the bulk of wholesale revenue. The second adds progressively
-less. And fleet growth is shrinking the number of profitable windows faster than
-new demand can create them.
+The logic sounds intuitive: every cycle earns money, so maximising cycles
+maximises revenue. The manufacturer's warranty is the only speed limit — push
+up against it, and you are leaving nothing on the table.
+
+But the German wholesale market tells a different story. The first daily cycle
+captures the bulk of available revenue. The second adds progressively less.
+And fleet growth is shrinking the number of profitable windows faster than
+new demand can create them. **The market — not the warranty — is the binding
+constraint on useful cycling.**
 
 The chart below tracks total cycling (wholesale + ancillary) over time. Use the
-**capture slider** to explore the trade-off. At 100%, the battery chases every
-last spread the model can find. At 90%, it skips the smallest windows — fewer
-cycles, almost the same revenue. Where a real project lands depends on the trading algorithm and the operator's
-willingness to cycle for marginal gains.
-Projections use the [{NOTE1_TITLE}]({NOTE1_URL}) fleet model and a power-law fit
-to half-yearly historical data (2021 H1 – 2026 Q1).
+**capture slider** to explore the trade-off: at 100 %, the battery chases every
+last spread the model can find; at 90 %, it skips the smallest windows — fewer
+cycles, almost the same revenue. The shaded band shows bull / bear scenario
+range ({BULL_PARAMS['bess_2040']} – {BEAR_PARAMS['bess_2040']} GW fleet by 2040,
+varying gas price, demand, solar build-out, and cannibalisation — same parameters
+as [{NOTE1_TITLE}]({NOTE1_URL})).
 """)
 
 # Project wholesale c/d for each capture % (using half-yearly fit)
-all_cpd_proj = {}
-all_cpd_proj_rmse = {}
+all_cpd_proj = {}        # base-case
+all_cpd_proj_bull = {}   # bull scenario (low fleet)
+all_cpd_proj_bear = {}   # bear scenario (high fleet)
 for pct in PCT_RANGE:
     _fit_vals = np.array(hy_cpd.get(pct, all_cpd[pct]))
     _v = ~np.isnan(_fit_vals)
@@ -406,15 +454,23 @@ for pct in PCT_RANGE:
     _cpd_v = _fit_vals[_v]
     popt_pct, _ = curve_fit(_power_law, _gw_v, _cpd_v, p0=[2.0, -0.3])
     all_cpd_proj[pct] = [_power_law(gw, *popt_pct) for gw in proj_gw]
-    _res = _cpd_v - _power_law(_gw_v, *popt_pct)
-    all_cpd_proj_rmse[pct] = float(np.sqrt(np.mean(_res**2)))
+    all_cpd_proj_bull[pct] = [_power_law(gw, *popt_pct) for gw in bull_proj_gw]
+    all_cpd_proj_bear[pct] = [_power_law(gw, *popt_pct) for gw in bear_proj_gw]
 
-# Project ancillary cycling
+# Project ancillary cycling (base / bull / bear)
 afrr_proj = [_power_law(gw, *_afrr_popt) for gw in proj_gw]
 ancillary_proj = [a + FCR_CPD_CONST for a in afrr_proj]
+afrr_proj_bull = [_power_law(gw, *_afrr_popt) for gw in bull_proj_gw]
+ancillary_proj_bull = [a + FCR_CPD_CONST for a in afrr_proj_bull]
+afrr_proj_bear = [_power_law(gw, *_afrr_popt) for gw in bear_proj_gw]
+ancillary_proj_bear = [a + FCR_CPD_CONST for a in afrr_proj_bear]
 
 # Projected wholesale revenue from note 1 model (DA+ID)
 proj_rev_ws = [(proj_rev_by_year[y]["da"] + proj_rev_by_year[y]["id"]) if y in proj_rev_by_year else None
+               for y in proj_years]
+bull_rev_ws = [(bull_rev_by_year[y]["da"] + bull_rev_by_year[y]["id"]) if y in bull_rev_by_year else None
+               for y in proj_years]
+bear_rev_ws = [(bear_rev_by_year[y]["da"] + bear_rev_by_year[y]["id"]) if y in bear_rev_by_year else None
                for y in proj_years]
 
 # ── Build the combined chart ────────────────────────────────────
@@ -477,13 +533,14 @@ fig_hero.add_trace(go.Scatter(
     yaxis="y2",
 ))
 
-# Confidence band (±1 RMSE) around projected total c/d
-_band_rmse = all_cpd_proj_rmse[default_pct]
-proj_upper = [w + anc + _band_rmse for w, anc in zip(proj_ws, ancillary_proj)]
-proj_lower = [max(0, w + anc - _band_rmse) for w, anc in zip(proj_ws, ancillary_proj)]
+# Bull/Bear scenario band around projected total c/d
+bull_ws = all_cpd_proj_bull[default_pct]
+bear_ws = all_cpd_proj_bear[default_pct]
+proj_upper = [w + anc for w, anc in zip(bull_ws, ancillary_proj_bull)]
+proj_lower = [max(0, w + anc) for w, anc in zip(bear_ws, ancillary_proj_bear)]
 fig_hero.add_trace(go.Scatter(
     x=["2026*"] + proj_labels + proj_labels[::-1] + ["2026*"],
-    y=[hist_total[-1] + _band_rmse] + proj_upper + proj_lower[::-1] + [hist_total[-1] - _band_rmse],
+    y=[hist_total[-1]] + proj_upper + proj_lower[::-1] + [hist_total[-1]],
     fill="toself",
     fillcolor="rgba(20, 33, 61, 0.10)",
     line=dict(width=0),
@@ -514,9 +571,10 @@ for pct in PCT_RANGE:
     h_total = [w + anc for w, anc in zip(all_cpd[pct], hero_ancillary_cpd)]
     p_ws = all_cpd_proj[pct]
     p_total = [w + anc for w, anc in zip(p_ws, ancillary_proj)]
-    _br = all_cpd_proj_rmse[pct]
-    p_upper = [w + anc + _br for w, anc in zip(p_ws, ancillary_proj)]
-    p_lower = [max(0, w + anc - _br) for w, anc in zip(p_ws, ancillary_proj)]
+    p_bull_ws = all_cpd_proj_bull[pct]
+    p_bear_ws = all_cpd_proj_bear[pct]
+    p_upper = [w + anc for w, anc in zip(p_bull_ws, ancillary_proj_bull)]
+    p_lower = [max(0, w + anc) for w, anc in zip(p_bear_ws, ancillary_proj_bear)]
 
     frames.append(go.Frame(
         data=[
@@ -550,7 +608,7 @@ for pct in PCT_RANGE:
             ),
             go.Scatter(
                 x=["2026*"] + proj_labels + proj_labels[::-1] + ["2026*"],
-                y=[h_total[-1] + _br] + p_upper + p_lower[::-1] + [h_total[-1] - _br],
+                y=[h_total[-1]] + p_upper + p_lower[::-1] + [h_total[-1]],
                 fill="toself",
                 fillcolor="rgba(20, 33, 61, 0.10)",
                 line=dict(width=0),
@@ -612,7 +670,10 @@ st.plotly_chart(fig_hero, use_container_width=True, config={"displayModeBar": Fa
 render_chart_caption(
     "Bars = wholesale revenue (perfect foresight upper bound). "
     "Line = total cycles/day (wholesale + aFRR + FCR). "
-    "Shaded band = prediction interval based on half-yearly historical scatter. "
+    f"Shaded band = bull / bear scenario range "
+    f"({BULL_PARAMS['bess_2040']}–{BEAR_PARAMS['bess_2040']} GW fleet, "
+    f"gas €{BULL_PARAMS['gas_2040']}–{BEAR_PARAMS['gas_2040']}/MWh, "
+    f"PV {BULL_PARAMS['pv_2040']}–{BEAR_PARAMS['pv_2040']} GW). "
     "Drag the slider from 90% toward 100%: revenue barely changes, "
     "but cycles jump. 2026* = Q1 annualised from 90 days (Jan–Mar) — "
     "excludes summer PV surplus and winter price spikes, so treat with caution."
@@ -736,8 +797,11 @@ def _cohort_cap(age_years, annual_fec):
         cap = _AUG_RESTORE - fade * (age_years - aug_yr)
     return max(cap, _EOL_FLOOR)
 
-# Use 2023-2024 average capture profile — 2025 is too compressed (max 1.2 c/d)
-# to show a meaningful frontier shape
+# Build capture profile per year: for each cycling rate, what % of max revenue
+# is captured? Use historical data for past years, power-law projection for future.
+# This ensures chart 3 is consistent with chart 1's projection.
+
+# Historical capture profile (2023-2024 average as shape reference)
 _frontier_ref_years = [2023, 2024]
 _frontier_ref = f2h[f2h["year"].isin(_frontier_ref_years)].groupby(
     "max_cycles_per_day", as_index=False
@@ -746,6 +810,33 @@ _frontier_ref = f2h[f2h["year"].isin(_frontier_ref_years)].groupby(
     annual_fec=("annual_fec", "mean"),
     pct_of_max=("pct_of_max", "mean"),
 ).sort_values("max_cycles_per_day")
+
+# Power-law fit: given GW fleet, what cpd corresponds to each capture %?
+# We already have popt per pct from the projection above.
+# Build a lookup: for a given year's GW, the max cpd at 100% capture.
+_popt_by_pct = {}
+for pct in PCT_RANGE:
+    _fit_vals = np.array(hy_cpd.get(pct, all_cpd[pct]))
+    _v = ~np.isnan(_fit_vals)
+    _gw_v = _fit_gw[_v]
+    _cpd_v = _fit_vals[_v]
+    popt_pct, _ = curve_fit(_power_law, _gw_v, _cpd_v, p0=[2.0, -0.3])
+    _popt_by_pct[pct] = popt_pct
+
+def _projected_capture_pct(cpd_target, year_gw):
+    """Given a target c/d and fleet GW, what capture % does the market allow?
+
+    Uses the power-law fits: for each capture %, we know what cpd the market
+    offers at that fleet size. Find the highest capture % whose cpd <= target.
+    """
+    best_pct = PCT_RANGE[0]
+    for pct in PCT_RANGE:
+        cpd_at_pct = _power_law(year_gw, *_popt_by_pct[pct])
+        if cpd_at_pct <= cpd_target:
+            best_pct = pct
+        else:
+            break
+    return best_pct
 
 # Build unified revenue-by-year dict (historical + projected)
 import pickle as _pkl
@@ -772,11 +863,26 @@ _all_rev_by_year.update(_hist_rev_by_year)
 for _yr, _data in proj_rev_by_year.items():
     _all_rev_by_year[_yr] = _data
 
+# Fleet GW lookup for each calendar year (for projected capture)
+_gw_by_year = dict(fleet_gw)
+_gw_by_year[2026] = Q1_2026_GW
+for i, y in enumerate(proj_years):
+    _gw_by_year[y] = proj_gw[i]
+
 ASSET_LIFE_CAP = 25
 
-def _lifetime_revenue(cod_year, capture_pct, annual_fec):
-    """Sum projected revenue × capacity_fraction over asset life."""
+def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100):
+    """Sum projected revenue × capacity_fraction over asset life.
+
+    For each year, the effective capture % is the minimum of:
+    - what this cycling rate achieves on the 2023-2024 historical profile
+    - what the projected market can support at that year's fleet size
+    - the operator's capture target (cap_pct)
+    """
     total = 0.0
+    # Historical capture at this cycling rate (from 2023-2024 shape)
+    hist_pct = float(_frontier_ref[_frontier_ref["annual_fec"] <= annual_fec + 1]
+                     ["pct_of_max"].max()) if annual_fec > 0 else 0
     for yr_offset in range(ASSET_LIFE_CAP):
         cal_year = cod_year + yr_offset
         cap_frac = _cohort_cap(float(yr_offset), annual_fec)
@@ -786,13 +892,19 @@ def _lifetime_revenue(cod_year, capture_pct, annual_fec):
         ws_rev = rev_data.get("da", 0) + rev_data.get("id", 0)
         anc_rev = (rev_data.get("fcr", 0) + rev_data.get("afrr_cap", 0)
                    + rev_data.get("afrr_energy", 0))
-        total += (ws_rev * (capture_pct / 100) + anc_rev) * cap_frac
+        # For projected years, cap the capture % by what the market offers
+        year_gw = _gw_by_year.get(cal_year)
+        if year_gw is not None and cal_year > max(YEARS):
+            eff_pct = min(hist_pct, _projected_capture_pct(target_cpd, year_gw), cap_pct)
+        else:
+            eff_pct = min(hist_pct, cap_pct)
+        total += (ws_rev * (eff_pct / 100) + anc_rev) * cap_frac
     return total
 
 COD = 2026
-CAPTURE_LEVELS = [("100% captured", 100, "#e76f51", 2.5),
-                  ("95% captured",   95, "#f59e0b", 2.0),
-                  ("90% captured",   90, "#2a9d8f", 2.0)]
+CAPTURE_LEVELS = [("100% targeted", 100, "#e76f51", 2.5),
+                  ("95% targeted",   95, "#f59e0b", 2.0),
+                  ("90% targeted",   90, "#2a9d8f", 2.0)]
 
 render_chart_title("Lifetime revenue peaks well below maximum cycling intensity")
 
@@ -803,9 +915,7 @@ for label, cap_pct, color, width in CAPTURE_LEVELS:
     cpd_vals, lt_rev_k = [], []
     for _, row in _frontier_ref.iterrows():
         cpd = row["annual_fec"] / 365
-        # Use the lower of actual capture at this cycling rate vs the fixed cap
-        effective_capture = min(row["pct_of_max"], cap_pct)
-        lt = _lifetime_revenue(COD, effective_capture, row["annual_fec"])
+        lt = _lifetime_revenue(COD, cpd, row["annual_fec"], cap_pct=cap_pct)
         cpd_vals.append(cpd)
         lt_rev_k.append(lt / 1000)
 
@@ -846,8 +956,11 @@ st.plotly_chart(fig_lt, use_container_width=True, config={"displayModeBar": Fals
 _p100 = _peak_data[100]
 _p90 = _peak_data[90]
 render_chart_caption(
-    f"Lifetime revenue for a 2h battery, COD {COD}. Capture profile: 2023–2024 average. "
-    f"Three curves cap the wholesale capture target at 90%, 95%, or 100%. "
+    f"Lifetime revenue for a {int(selected_duration)}h battery, COD {COD}. "
+    f"Capture profile: 2023–2024 historical shape, capped by projected market "
+    f"capacity at each year's fleet size (power-law fit). "
+    f"This means cycling at 2 c/d today may only capture ~80% in later years "
+    f"when the fleet is larger. "
     f'Revenue stream: <a href="{NOTE1_URL}">{NOTE1_TITLE}</a> projections. Ancillary (FCR + aFRR) added in full. '
     f"Degradation: ~1.8%/yr at 2 c/d (calendar + cycling), augmentation at "
     f'~{_AUG_FEC:.0f} FEC, EOL at {_EOL_FLOOR:.0%} capacity — consistent with <a href="{NOTE1_URL}">{NOTE1_TITLE}</a>.'
@@ -859,6 +972,12 @@ Even targeting 100% of available wholesale revenue, the lifetime curve peaks at
 is at **~{_p90[0]:.1f} cycles/day** (€{_p90[1]:.1f}M) — lower cycling, but
 nearly the same lifetime total. The curves are flat near the peak: cycling
 slightly less costs very little but extends the battery by years.
+
+Note how the peak here is consistent with the first chart: as the fleet grows,
+the market offers fewer profitable windows at high cycling rates. The lifetime
+model accounts for this — cycling at 2 c/d today captures close to 100%, but
+in later years the same rate may only capture 80–90% because the fleet has
+absorbed most arbitrage opportunities.
 
 **Caveats that push the peak to the right:** time value of money (not modelled —
 €1 earned today is worth more than €1 in year 15), and mid-life augmentation
@@ -986,10 +1105,11 @@ Three implications for operators and investors:
 
 _total_today = hero_ancillary_cpd[-1] + all_cpd[90][-1]
 render_takeaway(
-    f"A German 2h BESS today needs ~{_total_today:.1f} cycles/day in total "
-    f"(~{_total_today * 365:.0f} FEC/year) — falling toward "
-    f"~{_total_2030:.1f} cycles/day by 2030. The market is not "
-    f"cycle-constrained — it is revenue-constrained."
+    f"The belief that more cycles always means more revenue is wrong. "
+    f"A German {int(selected_duration)}h BESS today needs ~{_total_today:.1f} "
+    f"cycles/day in total (~{_total_today * 365:.0f} FEC/year) — falling toward "
+    f"~{_total_2030:.1f} by 2030. The binding constraint is not the warranty — "
+    f"it is the market."
 )
 
 
