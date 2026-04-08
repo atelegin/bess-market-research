@@ -903,13 +903,15 @@ st.markdown("---")
 st.markdown("## More cycling means shorter battery life — where does lifetime revenue peak?")
 
 st.markdown(f"""
-The charts above show annual revenue. But a battery owner earns over the full
-asset life — and every cycle wears the cells. More aggressive cycling captures
-more revenue per year, but the battery reaches end-of-life sooner.
+The charts above show annual revenue — more cycling always means more revenue
+in a given year. But a battery owner earns over the full asset life, and every
+cycle wears the cells. The question here is different: accounting for battery
+wear, what cycling rate maximises **total earnings over the full asset life**?
 
-The chart below shows **total lifetime wholesale revenue** at each cycling rate,
-using projected revenue from [{NOTE1_TITLE}]({NOTE1_URL}) and the same degradation model.
-Both ancillary revenue and ancillary cycling wear (FCR, aFRR) are included.
+The chart below answers this using projected revenue from
+[{NOTE1_TITLE}]({NOTE1_URL}) and a degradation model where faster cycling
+shortens battery life. Both ancillary revenue and ancillary cycling wear
+(FCR, aFRR) are included.
 """)
 
 # ── Lifetime revenue using projected revenue stream ──
