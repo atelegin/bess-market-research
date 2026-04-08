@@ -797,7 +797,8 @@ _fig_concept.update_layout(
 _y_max = max(max(_prices_a), max(_prices_b)) * 1.05
 for ax in ["xaxis", "xaxis2"]:
     _fig_concept.update_layout(**{ax: dict(
-        title="", tickfont=dict(size=9, color="#5c677d"), dtick=6,
+        title="Hour of day", title_font=dict(size=9, color="#5c677d"),
+        tickfont=dict(size=9, color="#5c677d"), dtick=6,
     )})
 _fig_concept.update_layout(
     yaxis=dict(title="€/MWh", title_font=dict(size=10, color="#5c677d"),
