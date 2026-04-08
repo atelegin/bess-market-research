@@ -521,7 +521,7 @@ proj_total = [w + anc for w, anc in zip(proj_ws, ancillary_proj)]
 
 fig_hero.add_trace(go.Scatter(
     x=hist_labels, y=hist_total,
-    name="Total c/d (historical)",
+    name="Total cycles/day (historical)",
     mode="lines+markers+text",
     line=dict(color="#14213d", width=3),
     marker=dict(size=8, color="#14213d"),
@@ -533,7 +533,7 @@ fig_hero.add_trace(go.Scatter(
 
 fig_hero.add_trace(go.Scatter(
     x=["2026*"] + proj_labels, y=[hist_total[-1]] + proj_total,
-    name="Total c/d (projected)",
+    name="Total cycles/day (projected)",
     mode="lines+text",
     line=dict(color="#14213d", width=2.5, dash="dash"),
     text=[""] + [f"{v:.1f}" if y in (2030, 2035, 2040) else ""
@@ -1183,7 +1183,7 @@ warranty limits of 1.5–2 cycles/day. Cycling beyond the warranty envelope
 does not pay for the extra degradation it causes.
 The curve is flat near the peak: cycling slightly less costs very little
 but extends the battery by years. At projected cycling rates (falling
-toward 1 c/d by 2030), warranty limits are unlikely to bind — the
+toward 1 cycle/day by 2030), warranty limits are unlikely to bind — the
 constraint is the market, not the battery.
 """)
 
@@ -1375,7 +1375,7 @@ st.markdown("""
 **In short:** German BESS needs far fewer cycles than most models assume.
 The first daily cycle captures the bulk of wholesale revenue; the second adds
 little; the third is negligible. As the fleet grows, the market offers fewer
-profitable windows — total cycling is falling toward 1 c/d by 2030.
+profitable windows — total cycling is falling toward 1 cycle/day by 2030.
 The binding constraint is the market, not the warranty.
 """)
 
