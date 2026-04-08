@@ -100,8 +100,11 @@ _COMPONENTS = """
     color: var(--muted);
     font-size: 0.93rem;
     line-height: 1.55;
-    margin: -0.5rem 0 0 0;
-    padding-bottom: 1.5rem;
+    margin: 0;
+}
+[data-testid="stElementContainer"]:has(.chart-caption) {
+    margin-top: -1rem;
+    margin-bottom: 1.5rem;
 }
 .takeaway-box {
     margin: 0.8rem 0 2rem 0;
