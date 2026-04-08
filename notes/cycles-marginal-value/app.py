@@ -485,19 +485,19 @@ _prices_a = [585.0, 491.4, 467.7, 430.0, 426.0, 409.9, 427.3, 441.9,
 _soc_a = [50.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0,
           5.0, 5.0, 5.0, 5.0, 51.4, 95.0, 95.0, 95.0, 95.0, 93.9,
           40.0, 40.0, 40.0, 40.0]
-# Day B: 2 Jan 2022 — choppy winter day, 2.09 FEC, €87
-_prices_b = [57.1, 52.6, 49.0, 34.9, 29.6, 34.0, 34.5, 41.8,
-             49.0, 60.0, 70.1, 66.3, 64.5, 47.0, 40.0, 29.1,
-             32.8, 43.0, 61.0, 60.9, 54.1, 46.2, 46.3, 32.9]
-_soc_b = [50.0, 5.0, 5.0, 5.0, 5.0, 51.4, 95.0, 95.0, 95.0, 95.0,
-          95.0, 41.1, 5.0, 5.0, 5.0, 5.0, 51.4, 95.0, 95.0, 41.1,
-          5.0, 5.0, 5.0, 5.0, 40.0]
+# Day B: 31 Oct 2024 — typical autumn day, two clear windows, 1.67 FEC, €66
+_prices_b = [105.2, 98.5, 96.6, 94.8, 98.0, 102.3, 121.2, 135.5,
+             133.5, 123.3, 105.1, 98.0, 88.9, 92.6, 99.4, 111.5,
+             123.2, 129.0, 128.4, 117.8, 105.8, 85.3, 80.4, 64.6]
+_soc_b = [50.0, 50.0, 50.0, 50.0, 95.0, 95.0, 95.0, 95.0, 41.1,
+          5.0, 5.0, 5.0, 5.0, 51.4, 95.0, 95.0, 95.0, 95.0, 41.1,
+          5.0, 5.0, 5.0, 5.0, 5.0, 40.0]
 
 _fig_concept = make_subplots(
     rows=2, cols=2,
     subplot_titles=[
         "<b>28 Aug 2022</b>  ·  0.9 FEC  ·  <b>€1 038</b> revenue",
-        "<b>2 Jan 2022</b>  ·  2.1 FEC  ·  <b>€87</b> revenue",
+        "<b>31 Oct 2024</b>  ·  1.7 FEC  ·  <b>€66</b> revenue",
         "", "",
     ],
     row_heights=[0.55, 0.45],
@@ -548,8 +548,9 @@ st.plotly_chart(_fig_concept, use_container_width=True, config={"displayModeBar"
 render_chart_caption(
     "Real DA prices and optimal dispatch (2h battery, perfect foresight). "
     "Left: one deep spread during the energy crisis — the battery charges once "
-    "and earns €1 038. Right: a choppy winter day — the battery cycles 2× more "
-    "but earns 12× less. Revenue follows spread size, not cycling intensity."
+    "and earns €1 038. Right: a typical autumn 2024 day — the battery works "
+    "nearly twice as hard but earns 16× less. "
+    "Revenue follows spread size, not cycling intensity."
 )
 
 # Project wholesale c/d for each capture % (using half-yearly fit)
