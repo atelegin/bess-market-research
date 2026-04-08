@@ -1004,6 +1004,7 @@ _gw_by_year = dict(fleet_gw)
 _gw_by_year[2026] = Q1_2026_GW
 for i, y in enumerate(proj_years):
     _gw_by_year[y] = proj_gw[i]
+_MAX_PROJ_GW = _gw_by_year[2040]  # for years beyond projection horizon
 
 ASSET_LIFE_CAP = 25
 
@@ -1030,8 +1031,8 @@ def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100, frontier_re
         anc_rev = (rev_data.get("fcr", 0) + rev_data.get("afrr_cap", 0)
                    + rev_data.get("afrr_energy", 0))
         # For projected years, cap the capture % by what the market offers
-        year_gw = _gw_by_year.get(cal_year)
-        if year_gw is not None and cal_year > max(YEARS):
+        year_gw = _gw_by_year.get(cal_year, _MAX_PROJ_GW)
+        if cal_year > max(YEARS):
             eff_pct = min(hist_pct, _projected_capture_pct(target_cpd, year_gw), cap_pct)
         else:
             eff_pct = min(hist_pct, cap_pct)
@@ -1132,7 +1133,8 @@ render_chart_caption(
     f'Revenue: <a href="{NOTE1_URL}">{NOTE1_TITLE}</a> projections. '
     f"Degradation: calendar + cycling fade (faster cycling = shorter life), "
     f"augmentation at ~{_AUG_FEC:.0f} FEC, "
-    f"EOL at {_EOL_FLOOR:.0%}. Ancillary (FCR + aFRR) included at 100%."
+    f"EOL at {_EOL_FLOOR:.0%}. Ancillary revenue (FCR + aFRR) included, independent of cycling rate. "
+    f"Revenue beyond 2040 held at 2040 level."
 )
 
 st.markdown("")  # spacer after caption
