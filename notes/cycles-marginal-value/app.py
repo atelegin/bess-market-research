@@ -218,7 +218,7 @@ render_standfirst(
     "day to capture most of the available wholesale revenue — well inside "
     "standard warranty limits. And the cycling rate is falling: as the fleet "
     "grows, the market offers fewer profitable windows. By 2030, total "
-    "cycling is projected below 1 cycle per day."
+    "cycling is projected to drop to ~1 cycle per day."
 )
 
 st.markdown("---")
@@ -1212,7 +1212,7 @@ warranty limits of 1.5–2 cycles/day. Cycling beyond the warranty envelope
 does not pay for the extra degradation it causes.
 The curve is flat near the peak: cycling slightly less costs very little
 but extends the battery by years. At projected cycling rates (falling
-toward 1 cycle/day by 2030), warranty limits are unlikely to bind — the
+to ~1 cycle/day by 2030), warranty limits are unlikely to bind — the
 constraint is the market, not the battery.
 """)
 
@@ -1333,7 +1333,7 @@ st.markdown("""
 The first daily cycle captures the bulk of wholesale revenue; the second adds
 little; the third is negligible. As the fleet grows, cannibalisation compresses
 spreads — fewer profitable windows, and each window is shallower. Total cycling
-is falling toward 1 cycle/day by 2030. The cycle budget is a consequence of
+is falling to ~1 cycle/day by 2030. The cycle budget is a consequence of
 trading strategy, not a fixed market requirement — and the binding constraint
 is the market, not the warranty.
 """)
