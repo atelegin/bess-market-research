@@ -154,14 +154,14 @@ fleet_gw = data["fleet_gw"]
 # Q1 2026 annualised values (pre-computed from explore runs, 2h base)
 # For 1h and 4h: scaled from 2h using 2025 duration ratios from precomputed data.
 Q1_2026_GW = 4.5
-# 1h/4h estimated by applying 2025 duration ratios to 2h Q1 2026 actuals.
+# Q1 2026 dispatch results per duration (DA+ID overlay, annualised from 90 days).
 _Q1_2026_BY_DUR = {
+    1.0: {"rev": {1.0: 51, 2.0: 66, 3.0: 70, "max": 70},
+          "fec": {"1c": 329, "max": 944}, "max_cpd": 3.75},
     2.0: {"rev": {1.0: 84, 2.0: 100, 3.0: 102, "max": 102},
-          "fec": {"1c": 328, "max": 675}, "max_cpd": 1.85},
-    1.0: {"rev": {1.0: 107, 2.0: 145, 3.0: 160, "max": 165},
-          "fec": {"1c": 347, "max": 1712}, "max_cpd": 4.0},
-    4.0: {"rev": {1.0: 249, 2.0: 297, 3.0: 302, "max": 302},
-          "fec": {"1c": 345, "max": 784}, "max_cpd": 1.75},
+          "fec": {"1c": 328, "max": 675}, "max_cpd": 2.75},
+    4.0: {"rev": {1.0: 129, 2.0: 140, 3.0: 140, "max": 140},
+          "fec": {"1c": 321, "max": 444}, "max_cpd": 2.0},
 }
 
 # ── Ancillary cycling (FCR + aFRR) per year ─────────────────
