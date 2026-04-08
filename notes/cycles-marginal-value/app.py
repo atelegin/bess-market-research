@@ -453,111 +453,6 @@ bear_rev_by_year = _project_revenue(
 bull_proj_gw = [bull_buildout.get(y, bull_buildout[max(k for k in bull_buildout if k <= y)]) for y in proj_years]
 bear_proj_gw = [bear_buildout.get(y, bear_buildout[max(k for k in bear_buildout if k <= y)]) for y in proj_years]
 
-st.markdown("""
-Revenue comes from price spreads — how deep they are, not how many times
-the battery cycles. Two real days illustrate why:
-""")
-
-# ── Real-day illustration: more cycles ≠ more revenue ──────
-_hours_24 = list(range(24))
-# Day A: 28 Aug 2022 — energy crisis, one massive spread, 0.93 FEC, €1038
-_prices_a = [585.0, 491.4, 467.7, 430.0, 426.0, 409.9, 427.3, 441.9,
-             467.4, 437.6, 275.1, 256.9, 116.0, 75.8, 13.3, 62.2,
-             105.9, 336.2, 579.2, 676.4, 700.8, 646.1, 606.7, 590.0]
-_chg_a = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.94,
-          0, 0, 0, 0, 0, 0, 0, 0]
-_dis_a = [0.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0.02, 1.0, 0, 0, 0]
-# Day B: 29 May 2024 — solar duck curve, three clear windows, 2.09 FEC, €110
-_prices_b = [72.2, 57.5, 54.3, 50.6, 49.8, 45.9, 72.2, 86.4,
-             91.5, 69.1, 67.8, 62.1, 59.1, 62.2, 62.2, 69.5,
-             72.7, 89.2, 94.7, 111.4, 140.5, 143.3, 120.4, 95.5]
-_chg_b = [0, 0, 0, 0, 0.94, 1.0, 0, 0, 0, 0, 0, 0.94, 1.0, 0, 0, 0,
-          0, 0, 0, 0, 0, 0, 0, 0.75]
-_dis_b = [0.83, 0, 0, 0, 0, 0, 0, 0.67, 1.0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0, 0.67, 1.0, 0, 0]
-
-_fig_concept = make_subplots(
-    rows=1, cols=2,
-    subplot_titles=[
-        "<b>28 Aug 2022</b>  ·  0.9 FEC  ·  <b>€1 038</b>",
-        "<b>29 May 2024</b>  ·  2.1 FEC  ·  <b>€110</b>",
-    ],
-    horizontal_spacing=0.08,
-)
-# Price line + vrect highlights for charge/discharge hours
-_CHG_COLOR = "rgba(34,197,94,0.20)"   # green = buying
-_DIS_COLOR = "rgba(249,115,22,0.20)"  # orange = selling
-for col, prices, chg, dis, line_color in [
-    (1, _prices_a, _chg_a, _dis_a, "#3b82f6"),
-    (2, _prices_b, _chg_b, _dis_b, "#f87171"),
-]:
-    _fig_concept.add_trace(go.Scatter(
-        x=_hours_24, y=prices, mode="lines",
-        line=dict(color=line_color, width=2.5),
-        showlegend=False,
-    ), row=1, col=col)
-    # xref/yref for col 1 vs col 2
-    _xref = "x" if col == 1 else "x2"
-    _yref = "y" if col == 1 else "y2"
-    for h in range(24):
-        if chg[h] > 0.01:
-            _fig_concept.add_vrect(
-                x0=h - 0.5, x1=h + 0.5,
-                fillcolor=_CHG_COLOR, line_width=0,
-                xref=_xref, yref=_yref,
-            )
-        if dis[h] > 0.01:
-            _fig_concept.add_vrect(
-                x0=h - 0.5, x1=h + 0.5,
-                fillcolor=_DIS_COLOR, line_width=0,
-                xref=_xref, yref=_yref,
-            )
-# Legend entries (invisible traces, just for the legend)
-_fig_concept.add_trace(go.Scatter(
-    x=[None], y=[None], mode="markers",
-    marker=dict(size=10, color=_CHG_COLOR, symbol="square"),
-    name="Buy",
-), row=1, col=1)
-_fig_concept.add_trace(go.Scatter(
-    x=[None], y=[None], mode="markers",
-    marker=dict(size=10, color=_DIS_COLOR, symbol="square"),
-    name="Sell",
-), row=1, col=1)
-
-_fig_concept.update_layout(
-    template="plotly_white",
-    paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(0,0,0,0)",
-    height=270,
-    margin=dict(l=40, r=20, t=40, b=35),
-    legend=dict(
-        orientation="h", y=-0.15,
-        font=dict(size=10, color="#14213d"),
-        bgcolor="rgba(0,0,0,0)",
-    ),
-)
-_y_max = max(max(_prices_a), max(_prices_b)) * 1.05
-for ax in ["xaxis", "xaxis2"]:
-    _fig_concept.update_layout(**{ax: dict(
-        title="", tickfont=dict(size=9, color="#5c677d"), dtick=6,
-    )})
-_fig_concept.update_layout(
-    yaxis=dict(title="€/MWh", title_font=dict(size=10, color="#5c677d"),
-               tickfont=dict(size=9, color="#5c677d"), range=[0, _y_max]),
-    yaxis2=dict(title="", tickfont=dict(size=9, color="#5c677d"),
-                range=[0, _y_max]),
-)
-st.plotly_chart(_fig_concept, use_container_width=True, config={"displayModeBar": False})
-render_chart_caption(
-    "Real DA prices and optimal dispatch (2h battery, perfect foresight). "
-    "Green bars = charging, orange = discharging. "
-    "FEC = full equivalent cycle. "
-    "Left: one deep spread — the battery charges once and earns €1 038. "
-    "Right: a solar duck-curve day with three clear buy/sell windows — "
-    "more than twice the cycling for 10× less revenue."
-)
-
 # Project wholesale c/d for each capture % (using half-yearly fit)
 all_cpd_proj = {}        # base-case
 all_cpd_proj_bull = {}   # bull scenario (low fleet)
@@ -809,6 +704,114 @@ PV {BULL_PARAMS['pv_2040']}–{BEAR_PARAMS['pv_2040']} GW) produce wide revenue
 bands but tight cycling bands — because gas prices widen spreads but don't
 create new ones, while fleet growth eliminates windows only gradually.
 """)
+
+st.markdown("---")
+
+
+# ════════════════════════════════════════════════════════════════
+#  CONCEPT ILLUSTRATION: more cycles ≠ more revenue
+# ════════════════════════════════════════════════════════════════
+
+st.markdown("""
+Why? Because revenue comes from price spreads — how deep they are, not how
+many times the battery cycles. Two real days illustrate this:
+""")
+
+_hours_24 = list(range(24))
+# Day A: 28 Aug 2022 — energy crisis, one massive spread, 0.93 FEC, €1038
+_prices_a = [585.0, 491.4, 467.7, 430.0, 426.0, 409.9, 427.3, 441.9,
+             467.4, 437.6, 275.1, 256.9, 116.0, 75.8, 13.3, 62.2,
+             105.9, 336.2, 579.2, 676.4, 700.8, 646.1, 606.7, 590.0]
+_chg_a = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.94,
+          0, 0, 0, 0, 0, 0, 0, 0]
+_dis_a = [0.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0.02, 1.0, 0, 0, 0]
+# Day B: 29 May 2024 — solar duck curve, three clear windows, 2.09 FEC, €110
+_prices_b = [72.2, 57.5, 54.3, 50.6, 49.8, 45.9, 72.2, 86.4,
+             91.5, 69.1, 67.8, 62.1, 59.1, 62.2, 62.2, 69.5,
+             72.7, 89.2, 94.7, 111.4, 140.5, 143.3, 120.4, 95.5]
+_chg_b = [0, 0, 0, 0, 0.94, 1.0, 0, 0, 0, 0, 0, 0.94, 1.0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0.75]
+_dis_b = [0.83, 0, 0, 0, 0, 0, 0, 0.67, 1.0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0.67, 1.0, 0, 0]
+
+_fig_concept = make_subplots(
+    rows=1, cols=2,
+    subplot_titles=[
+        "<b>28 Aug 2022</b>  ·  0.9 FEC  ·  <b>€1 038</b>",
+        "<b>29 May 2024</b>  ·  2.1 FEC  ·  <b>€110</b>",
+    ],
+    horizontal_spacing=0.08,
+)
+_CHG_COLOR = "rgba(34,197,94,0.20)"
+_DIS_COLOR = "rgba(249,115,22,0.20)"
+for col, prices, chg, dis, line_color in [
+    (1, _prices_a, _chg_a, _dis_a, "#3b82f6"),
+    (2, _prices_b, _chg_b, _dis_b, "#f87171"),
+]:
+    _fig_concept.add_trace(go.Scatter(
+        x=_hours_24, y=prices, mode="lines",
+        line=dict(color=line_color, width=2.5),
+        showlegend=False,
+    ), row=1, col=col)
+    _xref = "x" if col == 1 else "x2"
+    _yref = "y" if col == 1 else "y2"
+    for h in range(24):
+        if chg[h] > 0.01:
+            _fig_concept.add_vrect(
+                x0=h - 0.5, x1=h + 0.5,
+                fillcolor=_CHG_COLOR, line_width=0,
+                xref=_xref, yref=_yref,
+            )
+        if dis[h] > 0.01:
+            _fig_concept.add_vrect(
+                x0=h - 0.5, x1=h + 0.5,
+                fillcolor=_DIS_COLOR, line_width=0,
+                xref=_xref, yref=_yref,
+            )
+_fig_concept.add_trace(go.Scatter(
+    x=[None], y=[None], mode="markers",
+    marker=dict(size=10, color=_CHG_COLOR, symbol="square"),
+    name="Buy",
+), row=1, col=1)
+_fig_concept.add_trace(go.Scatter(
+    x=[None], y=[None], mode="markers",
+    marker=dict(size=10, color=_DIS_COLOR, symbol="square"),
+    name="Sell",
+), row=1, col=1)
+
+_fig_concept.update_layout(
+    template="plotly_white",
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    height=270,
+    margin=dict(l=40, r=20, t=40, b=35),
+    legend=dict(
+        orientation="h", y=-0.15,
+        font=dict(size=10, color="#14213d"),
+        bgcolor="rgba(0,0,0,0)",
+    ),
+)
+_y_max = max(max(_prices_a), max(_prices_b)) * 1.05
+for ax in ["xaxis", "xaxis2"]:
+    _fig_concept.update_layout(**{ax: dict(
+        title="", tickfont=dict(size=9, color="#5c677d"), dtick=6,
+    )})
+_fig_concept.update_layout(
+    yaxis=dict(title="€/MWh", title_font=dict(size=10, color="#5c677d"),
+               tickfont=dict(size=9, color="#5c677d"), range=[0, _y_max]),
+    yaxis2=dict(title="", tickfont=dict(size=9, color="#5c677d"),
+                range=[0, _y_max]),
+)
+st.plotly_chart(_fig_concept, use_container_width=True, config={"displayModeBar": False})
+render_chart_caption(
+    "Real DA prices and optimal dispatch (2h battery, perfect foresight). "
+    "Green bars = charging, orange = discharging. "
+    "FEC = full equivalent cycle. "
+    "Left: one deep spread — the battery charges once and earns €1 038. "
+    "Right: a solar duck-curve day with three clear buy/sell windows — "
+    "more than twice the cycling for 10× less revenue."
+)
 
 st.markdown("---")
 
