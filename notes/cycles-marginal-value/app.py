@@ -218,7 +218,7 @@ render_standfirst(
     "\n\n"
     "This note tests that assumption against five years of German wholesale "
     "prices. The result: the link between cycling and revenue is far weaker "
-    "than the market believes. Revenue depends on spread size; cycling depends "
+    "than commonly assumed. Revenue depends on spread size; cycling depends "
     "on the number of profitable windows per day. These move independently — "
     "and the market itself caps useful cycling well below warranty limits."
 )
