@@ -1176,7 +1176,7 @@ render_chart_caption(
     f'Revenue: <a href="{NOTE1_URL}">{NOTE1_TITLE}</a> projections (to 2040, held flat beyond). '
     f"Degradation: calendar + cycling fade (faster cycling = shorter life), "
     f"augmentation at ~{_AUG_FEC:.0f} FEC, "
-    f"EOL at {_EOL_FLOOR:.0%}. Ancillary revenue (FCR + aFRR) included, independent of cycling rate."
+    f"end-of-life (EOL) at {_EOL_FLOOR:.0%}. Ancillary revenue (FCR + aFRR) included, independent of cycling rate."
 )
 
 st.markdown("")  # spacer after caption
