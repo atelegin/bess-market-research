@@ -1041,8 +1041,6 @@ def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100, frontier_re
 
 COD_YEARS = [
     (2026, "#14213d", 2.5),
-    (2030, "#6b88a4", 2.0),
-    (2035, "#a3b8c8", 1.8),
 ]
 
 _s3_dur, _s3_f, _, _, _ = _dur_pills(
@@ -1126,15 +1124,14 @@ fig_lt.update_layout(
 st.plotly_chart(fig_lt, use_container_width=True, config={"displayModeBar": False})
 
 render_chart_caption(
-    f"{int(_s3_dur)}h battery, COD {COD_YEARS[0][0]}–{COD_YEARS[-1][0]}. "
+    f"{int(_s3_dur)}h battery, COD {COD_YEARS[0][0]}. "
     f"At each cycling rate, the model asks: how much revenue does this capture "
     f"in each year of the battery's life, given projected fleet growth? "
     f"Higher cycling earns more per year but wears the battery faster. "
-    f'Revenue: <a href="{NOTE1_URL}">{NOTE1_TITLE}</a> projections. '
+    f'Revenue: <a href="{NOTE1_URL}">{NOTE1_TITLE}</a> projections (to 2040, held flat beyond). '
     f"Degradation: calendar + cycling fade (faster cycling = shorter life), "
     f"augmentation at ~{_AUG_FEC:.0f} FEC, "
-    f"EOL at {_EOL_FLOOR:.0%}. Ancillary revenue (FCR + aFRR) included, independent of cycling rate. "
-    f"Revenue beyond 2040 held at 2040 level."
+    f"EOL at {_EOL_FLOOR:.0%}. Ancillary revenue (FCR + aFRR) included, independent of cycling rate."
 )
 
 st.markdown("")  # spacer after caption
@@ -1143,10 +1140,8 @@ st.markdown(f"""
 For a COD {COD_YEARS[0][0]} battery, lifetime revenue peaks at
 **~{_peak_cpd:.1f} cycles/day** (€{_peak_rev:.1f}M) — right around typical
 warranty limits of 1.5–2 cycles/day. Cycling beyond the warranty envelope
-does not pay for the extra degradation it causes. Later COD years peak
-at lower cycling rates and lower total revenue — the fleet is larger, spreads
-are narrower, and there are fewer profitable windows to chase.
-The curves are flat near the peak: cycling slightly less costs very little
+does not pay for the extra degradation it causes.
+The curve is flat near the peak: cycling slightly less costs very little
 but extends the battery by years.
 """)
 
