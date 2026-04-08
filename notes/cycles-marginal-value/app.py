@@ -220,7 +220,7 @@ render_standfirst(
     "prices. The result: the link between cycling and revenue is far weaker "
     "than commonly assumed. Revenue depends on spread size; cycling depends "
     "on the number of profitable windows per day. These move independently — "
-    "and the market itself caps useful cycling well below warranty limits."
+    "and the market itself caps useful cycling near typical warranty limits."
 )
 
 render_footer_note(
