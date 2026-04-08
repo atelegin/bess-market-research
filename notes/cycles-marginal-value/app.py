@@ -211,18 +211,16 @@ render_header(
 )
 
 render_standfirst(
-    "A common assumption in BESS project finance: cycling and revenue go "
-    "hand in hand — more cycles means more revenue, and a higher-revenue "
-    "market must require more cycling to capture it. Traders know this "
-    "isn't quite right, but the models behind investment decisions often "
-    "treat cycle count as a proxy for earnings."
+    "More cycles means more revenue — that's the assumption behind most "
+    "BESS investment models. This note tests it against five years of "
+    "German wholesale prices."
     "\n\n"
-    "This note tests that assumption against five years of German wholesale "
-    "prices. The result: a battery needs far fewer cycles than most models "
-    "assume. The first daily cycle captures 75–90% of available revenue; "
-    "the rest adds cycling wear for diminishing returns. And as the fleet "
-    "grows, the market is offering even fewer profitable windows — the "
-    "required cycling rate is falling, not rising."
+    "The short answer: a German 2h battery today needs roughly 1.5 cycles "
+    "per day to capture 90% of available wholesale revenue. That's ~550 "
+    "FEC per year — well inside standard warranty limits. And the number "
+    "is falling: as the fleet grows, the market offers fewer profitable "
+    "windows, not more. By 2030, total cycling is projected below 1 "
+    "cycle per day."
 )
 
 st.markdown("---")
