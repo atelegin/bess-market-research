@@ -502,33 +502,45 @@ _fig_concept = make_subplots(
     ],
     horizontal_spacing=0.08,
 )
-# Price line + coloured segments for charge/discharge
-_CHG_COLOR = "rgba(34,197,94,0.25)"   # green fill = buying
-_DIS_COLOR = "rgba(249,115,22,0.25)"  # orange fill = selling
+# Price line + vrect highlights for charge/discharge hours
+_CHG_COLOR = "rgba(34,197,94,0.20)"   # green = buying
+_DIS_COLOR = "rgba(249,115,22,0.20)"  # orange = selling
 for col, prices, chg, dis, line_color in [
     (1, _prices_a, _chg_a, _dis_a, "#3b82f6"),
     (2, _prices_b, _chg_b, _dis_b, "#f87171"),
 ]:
-    # Base price line
     _fig_concept.add_trace(go.Scatter(
         x=_hours_24, y=prices, mode="lines",
         line=dict(color=line_color, width=2.5),
         showlegend=False,
     ), row=1, col=col)
-    # Highlight charge hours (green shading to zero)
-    chg_y = [p if c > 0.01 else None for p, c in zip(prices, chg)]
-    _fig_concept.add_trace(go.Scatter(
-        x=_hours_24, y=chg_y, mode="none",
-        fill="tozeroy", fillcolor=_CHG_COLOR,
-        showlegend=col == 1, name="Buy",
-    ), row=1, col=col)
-    # Highlight discharge hours (orange shading to zero)
-    dis_y = [p if d > 0.01 else None for p, d in zip(prices, dis)]
-    _fig_concept.add_trace(go.Scatter(
-        x=_hours_24, y=dis_y, mode="none",
-        fill="tozeroy", fillcolor=_DIS_COLOR,
-        showlegend=col == 1, name="Sell",
-    ), row=1, col=col)
+    # xref/yref for col 1 vs col 2
+    _xref = "x" if col == 1 else "x2"
+    _yref = "y" if col == 1 else "y2"
+    for h in range(24):
+        if chg[h] > 0.01:
+            _fig_concept.add_vrect(
+                x0=h - 0.5, x1=h + 0.5,
+                fillcolor=_CHG_COLOR, line_width=0,
+                xref=_xref, yref=_yref,
+            )
+        if dis[h] > 0.01:
+            _fig_concept.add_vrect(
+                x0=h - 0.5, x1=h + 0.5,
+                fillcolor=_DIS_COLOR, line_width=0,
+                xref=_xref, yref=_yref,
+            )
+# Legend entries (invisible traces, just for the legend)
+_fig_concept.add_trace(go.Scatter(
+    x=[None], y=[None], mode="markers",
+    marker=dict(size=10, color=_CHG_COLOR, symbol="square"),
+    name="Buy",
+), row=1, col=1)
+_fig_concept.add_trace(go.Scatter(
+    x=[None], y=[None], mode="markers",
+    marker=dict(size=10, color=_DIS_COLOR, symbol="square"),
+    name="Sell",
+), row=1, col=1)
 
 _fig_concept.update_layout(
     template="plotly_white",
