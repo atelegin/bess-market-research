@@ -477,80 +477,94 @@ create new ones, while fleet growth eliminates windows only gradually.
 
 # ── Real-day illustration: more cycles ≠ more revenue ──────
 _hours_24 = list(range(24))
-_hours_25 = list(range(25))  # SoC has 25 points (start of each hour + end)
 # Day A: 28 Aug 2022 — energy crisis, one massive spread, 0.93 FEC, €1038
 _prices_a = [585.0, 491.4, 467.7, 430.0, 426.0, 409.9, 427.3, 441.9,
              467.4, 437.6, 275.1, 256.9, 116.0, 75.8, 13.3, 62.2,
              105.9, 336.2, 579.2, 676.4, 700.8, 646.1, 606.7, 590.0]
-_soc_a = [50.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0,
-          5.0, 5.0, 5.0, 5.0, 51.4, 95.0, 95.0, 95.0, 95.0, 93.9,
-          40.0, 40.0, 40.0, 40.0]
+_chg_a = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.94,
+          0, 0, 0, 0, 0, 0, 0, 0]
+_dis_a = [0.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0.02, 1.0, 0, 0, 0]
 # Day B: 31 Oct 2024 — typical autumn day, two clear windows, 1.67 FEC, €66
 _prices_b = [105.2, 98.5, 96.6, 94.8, 98.0, 102.3, 121.2, 135.5,
              133.5, 123.3, 105.1, 98.0, 88.9, 92.6, 99.4, 111.5,
              123.2, 129.0, 128.4, 117.8, 105.8, 85.3, 80.4, 64.6]
-_soc_b = [50.0, 50.0, 50.0, 50.0, 95.0, 95.0, 95.0, 95.0, 41.1,
-          5.0, 5.0, 5.0, 5.0, 51.4, 95.0, 95.0, 95.0, 95.0, 41.1,
-          5.0, 5.0, 5.0, 5.0, 5.0, 40.0]
+_chg_b = [0, 0, 0, 0.97, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.94, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0.75]
+_dis_b = [0, 0, 0, 0, 0, 0, 0, 1.0, 0.67, 0, 0, 0, 0, 0, 0, 0,
+          0, 1.0, 0.67, 0, 0, 0, 0, 0]
 
 _fig_concept = make_subplots(
-    rows=2, cols=2,
+    rows=1, cols=2,
     subplot_titles=[
-        "<b>28 Aug 2022</b>  ·  0.9 FEC  ·  <b>€1 038</b> revenue",
-        "<b>31 Oct 2024</b>  ·  1.7 FEC  ·  <b>€66</b> revenue",
-        "", "",
+        "<b>28 Aug 2022</b>  ·  0.9 FEC  ·  <b>€1 038</b>",
+        "<b>31 Oct 2024</b>  ·  1.7 FEC  ·  <b>€66</b>",
     ],
-    row_heights=[0.55, 0.45],
-    vertical_spacing=0.08,
     horizontal_spacing=0.08,
+    specs=[[{"secondary_y": True}, {"secondary_y": True}]],
 )
-# Price traces (row 1)
-for col, prices, color in [(1, _prices_a, "#3b82f6"), (2, _prices_b, "#f87171")]:
+# Price lines + charge/discharge bars for each panel
+for col, prices, chg, dis, color in [
+    (1, _prices_a, _chg_a, _dis_a, "#3b82f6"),
+    (2, _prices_b, _chg_b, _dis_b, "#f87171"),
+]:
+    # Price line
     _fig_concept.add_trace(go.Scatter(
         x=_hours_24, y=prices, mode="lines",
-        line=dict(color=color, width=2),
-        fill="tozeroy",
-        fillcolor=f"rgba({','.join(str(int(color.lstrip('#')[i:i+2], 16)) for i in (0,2,4))}, 0.08)",
-        showlegend=False,
-    ), row=1, col=col)
-# SoC traces (row 2)
-for col, soc in [(1, _soc_a), (2, _soc_b)]:
-    _fig_concept.add_trace(go.Scatter(
-        x=_hours_25, y=soc, mode="lines",
-        line=dict(color="#14213d", width=2),
-        fill="tozeroy", fillcolor="rgba(20,33,61,0.10)",
-        showlegend=False,
-    ), row=2, col=col)
+        line=dict(color=color, width=2.5),
+        showlegend=False, name="Price",
+    ), row=1, col=col, secondary_y=False)
+    # Charge bars (green, shown as negative = buying)
+    _fig_concept.add_trace(go.Bar(
+        x=_hours_24, y=[-c for c in chg],
+        marker_color="rgba(34,197,94,0.5)", width=0.8,
+        showlegend=col == 1, name="Charge",
+    ), row=1, col=col, secondary_y=True)
+    # Discharge bars (orange, shown as positive = selling)
+    _fig_concept.add_trace(go.Bar(
+        x=_hours_24, y=dis,
+        marker_color="rgba(249,115,22,0.5)", width=0.8,
+        showlegend=col == 1, name="Discharge",
+    ), row=1, col=col, secondary_y=True)
+
 _fig_concept.update_layout(
     template="plotly_white",
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    height=380,
-    margin=dict(l=40, r=20, t=40, b=35),
-    showlegend=False,
+    height=280,
+    margin=dict(l=40, r=40, t=40, b=35),
+    barmode="relative",
+    legend=dict(
+        orientation="h", y=-0.15,
+        font=dict(size=10, color="#14213d"),
+        bgcolor="rgba(0,0,0,0)",
+    ),
 )
 _y_max = max(max(_prices_a), max(_prices_b)) * 1.05
-for ax in ["xaxis", "xaxis2", "xaxis3", "xaxis4"]:
-    _fig_concept.update_layout(**{ax: dict(
-        title="", tickfont=dict(size=9, color="#5c677d"), dtick=6,
-    )})
-_fig_concept.update_layout(
-    yaxis=dict(title="€/MWh", title_font=dict(size=10, color="#5c677d"),
-               tickfont=dict(size=9, color="#5c677d"), range=[0, _y_max]),
-    yaxis2=dict(title="", tickfont=dict(size=9, color="#5c677d"),
-                range=[0, _y_max]),
-    yaxis3=dict(title="SoC %", title_font=dict(size=10, color="#5c677d"),
-                tickfont=dict(size=9, color="#5c677d"), range=[0, 100]),
-    yaxis4=dict(title="", tickfont=dict(size=9, color="#5c677d"),
-                range=[0, 100]),
-)
+for ax_pair in [("xaxis", "yaxis", "yaxis3"), ("xaxis2", "yaxis2", "yaxis4")]:
+    x_ax, y_price, y_power = ax_pair
+    _fig_concept.update_layout(**{
+        x_ax: dict(title="", tickfont=dict(size=9, color="#5c677d"), dtick=6),
+        y_price: dict(
+            title="€/MWh" if "2" not in y_price else "",
+            title_font=dict(size=10, color="#5c677d"),
+            tickfont=dict(size=9, color="#5c677d"),
+            range=[0, _y_max],
+        ),
+        y_power: dict(
+            title="MW" if "4" in y_power else "",
+            title_font=dict(size=10, color="#5c677d"),
+            tickfont=dict(size=9, color="#5c677d"),
+            range=[-1.2, 1.2],
+            showgrid=False,
+        ),
+    })
 st.plotly_chart(_fig_concept, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
     "Real DA prices and optimal dispatch (2h battery, perfect foresight). "
-    "Left: one deep spread during the energy crisis — the battery charges once "
-    "and earns €1 038. Right: a typical autumn 2024 day — the battery works "
-    "nearly twice as hard but earns 16× less. "
-    "Revenue follows spread size, not cycling intensity."
+    "Green bars = charging, orange = discharging. "
+    "Left: one deep spread — the battery charges once and earns €1 038. "
+    "Right: two moderate spreads — nearly twice the cycling for 16× less revenue."
 )
 
 # Project wholesale c/d for each capture % (using half-yearly fit)
