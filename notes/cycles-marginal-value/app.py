@@ -253,17 +253,10 @@ def _power_law(x, a, b):
     return a * np.power(x, b)
 
 
-# ── Duration selector (inline pill toggle) ─────────────────────
-render_chart_title("Total cycling is falling — and the market, not the warranty, sets the limit")
-selected_duration = st.pills(
-    "Battery duration",
-    options=[1.0, 2.0, 4.0],
-    default=2.0,
-    format_func=lambda d: f"{int(d)}h battery",
-    label_visibility="collapsed",
-)
-if selected_duration is None:
-    selected_duration = 2.0
+# ── Duration — read from session_state (widget rendered near chart below) ──
+if "duration" not in st.session_state:
+    st.session_state["duration"] = 2.0
+selected_duration = st.session_state["duration"]
 
 f2h = frontiers[frontiers["duration_h"] == selected_duration]
 
@@ -663,6 +656,15 @@ fig_hero.update_layout(
     sliders=sliders,
 )
 
+render_chart_title("Total cycling is falling — and the market, not the warranty, sets the limit")
+st.pills(
+    "Battery duration",
+    options=[1.0, 2.0, 4.0],
+    default=selected_duration,
+    format_func=lambda d: f"{int(d)}h battery",
+    label_visibility="collapsed",
+    key="duration",
+)
 st.plotly_chart(fig_hero, use_container_width=True, config={"displayModeBar": False})
 
 render_chart_caption(
