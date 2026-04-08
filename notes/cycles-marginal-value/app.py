@@ -516,11 +516,12 @@ for ax in ["xaxis", "xaxis2"]:
         title="Hour", title_font=dict(size=10, color="#5c677d"),
         tickfont=dict(size=9, color="#5c677d"), dtick=6,
     )})
+_y_max = max(max(_prices_a), max(_prices_b)) * 1.05
 _fig_concept.update_layout(
     yaxis=dict(title="€/MWh", title_font=dict(size=10, color="#5c677d"),
-               tickfont=dict(size=9, color="#5c677d")),
+               tickfont=dict(size=9, color="#5c677d"), range=[0, _y_max]),
     yaxis2=dict(title="", title_font=dict(size=10, color="#5c677d"),
-                tickfont=dict(size=9, color="#5c677d")),
+                tickfont=dict(size=9, color="#5c677d"), range=[0, _y_max]),
 )
 st.plotly_chart(_fig_concept, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
