@@ -225,8 +225,8 @@ render_standfirst(
     "The short answer: a German battery today needs about 1.5 cycles per "
     "day to capture most of the available wholesale revenue — well inside "
     "standard warranty limits. And the cycling rate is falling: as the fleet "
-    f'grows, the market offers fewer profitable windows. By 2030, total '
-    f'cycling is <a href="{NOTE1_URL}">projected</a> below 1 cycle per day.'
+    "grows, the market offers fewer profitable windows. By 2030, total "
+    "cycling is projected below 1 cycle per day."
 )
 
 st.markdown("---")
