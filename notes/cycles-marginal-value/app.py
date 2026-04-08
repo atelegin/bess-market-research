@@ -262,14 +262,42 @@ def _power_law(x, a, b):
     return a * np.power(x, b)
 
 
-# ── Duration — read from session_state (widget rendered near chart below) ──
-if "duration" not in st.session_state:
-    st.session_state["duration"] = 2.0
-selected_duration = st.session_state["duration"]
+# ── Duration helpers — each chart gets its own pills, synced via session_state ──
+_DUR_OPTIONS = [1.0, 2.0, 4.0]
 
+if "_dur" not in st.session_state:
+    st.session_state["_dur"] = 2.0
+
+def _dur_sync(source_key):
+    """Callback: propagate the changed pills value to all other duration keys."""
+    val = st.session_state[source_key]
+    if val is None:
+        return
+    st.session_state["_dur"] = val
+    for k in ("dur_hero", "dur_stacked", "dur_lifetime"):
+        if k != source_key:
+            st.session_state[k] = val
+
+def _dur_pills(label, key):
+    """Render a duration pills widget and return (selected_duration, f2h, Q1_2026 vars)."""
+    render_chart_title(label)
+    dur = st.pills(
+        "Battery duration", options=_DUR_OPTIONS,
+        default=st.session_state.get(key, st.session_state["_dur"]),
+        format_func=lambda d: f"{int(d)}h battery",
+        label_visibility="collapsed",
+        key=key, on_change=_dur_sync, args=(key,),
+    )
+    if dur is None:
+        dur = 2.0
+    filt = frontiers[frontiers["duration_h"] == dur]
+    q = _Q1_2026_BY_DUR[dur]
+    return dur, filt, q["rev"], q["fec"], q["max_cpd"]
+
+
+# First chart needs values early for computations — read from session state
+selected_duration = st.session_state["_dur"]
 f2h = frontiers[frontiers["duration_h"] == selected_duration]
-
-# Q1 2026 values for the selected duration
 _q26 = _Q1_2026_BY_DUR[selected_duration]
 Q1_2026_REV = _q26["rev"]
 Q1_2026_FEC = _q26["fec"]
@@ -679,15 +707,7 @@ fig_hero.update_layout(
     sliders=sliders,
 )
 
-render_chart_title("Total cycling is falling — and the market, not the warranty, sets the limit")
-st.pills(
-    "Battery duration",
-    options=[1.0, 2.0, 4.0],
-    default=selected_duration,
-    format_func=lambda d: f"{int(d)}h battery",
-    label_visibility="collapsed",
-    key="duration",
-)
+_dur_pills("Total cycling is falling — and the market, not the warranty, sets the limit", "dur_hero")
 st.plotly_chart(fig_hero, use_container_width=True, config={"displayModeBar": False})
 
 render_chart_caption(
@@ -719,7 +739,8 @@ as the fleet grew through 2023–2025, and recovering in early 2026 —
 but in every year the first cycle alone captures the majority.
 """)
 
-render_chart_title("The first cycle captures 70–90% of wholesale revenue in every year")
+_s2_dur, _s2_f, _s2_rev, _s2_fec, _s2_cpd = _dur_pills(
+    "The first cycle captures 70–90% of wholesale revenue in every year", "dur_stacked")
 
 fig0 = go.Figure()
 
@@ -727,7 +748,7 @@ years_list = YEARS
 chart0_labels = [str(y) for y in years_list] + ["2026*"]
 rev_1st, rev_2nd, rev_3rd = [], [], []
 for year in years_list:
-    yf = f2h[f2h["year"] == year]
+    yf = _s2_f[_s2_f["year"] == year]
     r1 = yf[yf["max_cycles_per_day"] == 1.0].iloc[0]["annual_revenue_eur_per_mw"] / 1000
     r2 = yf[yf["max_cycles_per_day"] == 2.0].iloc[0]["annual_revenue_eur_per_mw"] / 1000
     r3 = yf[yf["max_cycles_per_day"] == 3.0].iloc[0]["annual_revenue_eur_per_mw"] / 1000
@@ -735,9 +756,9 @@ for year in years_list:
     rev_2nd.append(r2 - r1)
     rev_3rd.append(r3 - r2)
 
-rev_1st.append(Q1_2026_REV[1.0])
-rev_2nd.append(Q1_2026_REV[2.0] - Q1_2026_REV[1.0])
-rev_3rd.append(Q1_2026_REV[3.0] - Q1_2026_REV[2.0])
+rev_1st.append(_s2_rev[1.0])
+rev_2nd.append(_s2_rev[2.0] - _s2_rev[1.0])
+rev_3rd.append(_s2_rev[3.0] - _s2_rev[2.0])
 
 fig0.add_trace(go.Bar(
     x=chart0_labels, y=rev_1st,
@@ -894,7 +915,7 @@ for i, y in enumerate(proj_years):
 
 ASSET_LIFE_CAP = 25
 
-def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100):
+def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100, frontier_ref=None):
     """Sum projected revenue × capacity_fraction over asset life.
 
     For each year, the effective capture % is the minimum of:
@@ -902,9 +923,10 @@ def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100):
     - what the projected market can support at that year's fleet size
     - the operator's capture target (cap_pct)
     """
+    _fref = frontier_ref if frontier_ref is not None else _frontier_ref
     total = 0.0
     # Historical capture at this cycling rate (from 2023-2024 shape)
-    hist_pct = float(_frontier_ref[_frontier_ref["annual_fec"] <= annual_fec + 1]
+    hist_pct = float(_fref[_fref["annual_fec"] <= annual_fec + 1]
                      ["pct_of_max"].max()) if annual_fec > 0 else 0
     for yr_offset in range(ASSET_LIFE_CAP):
         cal_year = cod_year + yr_offset
@@ -929,16 +951,27 @@ CAPTURE_LEVELS = [("100% targeted", 100, "#e76f51", 2.5),
                   ("95% targeted",   95, "#f59e0b", 2.0),
                   ("90% targeted",   90, "#2a9d8f", 2.0)]
 
-render_chart_title("Lifetime revenue peaks well below maximum cycling intensity")
+_s3_dur, _s3_f, _, _, _ = _dur_pills(
+    "Lifetime revenue peaks well below maximum cycling intensity", "dur_lifetime")
+
+# Rebuild frontier ref for the lifetime chart's selected duration
+_frontier_ref_lt = _s3_f[_s3_f["year"].isin(_frontier_ref_years)].groupby(
+    "max_cycles_per_day", as_index=False
+).agg(
+    annual_revenue_eur_per_mw=("annual_revenue_eur_per_mw", "mean"),
+    annual_fec=("annual_fec", "mean"),
+    pct_of_max=("pct_of_max", "mean"),
+).sort_values("max_cycles_per_day")
 
 fig_lt = go.Figure()
 
 _peak_data = {}
 for label, cap_pct, color, width in CAPTURE_LEVELS:
     cpd_vals, lt_rev_k = [], []
-    for _, row in _frontier_ref.iterrows():
+    for _, row in _frontier_ref_lt.iterrows():
         cpd = row["annual_fec"] / 365
-        lt = _lifetime_revenue(COD, cpd, row["annual_fec"], cap_pct=cap_pct)
+        lt = _lifetime_revenue(COD, cpd, row["annual_fec"], cap_pct=cap_pct,
+                               frontier_ref=_frontier_ref_lt)
         cpd_vals.append(cpd)
         lt_rev_k.append(lt / 1000)
 
@@ -968,7 +1001,7 @@ fig_lt.update_layout(
     legend=dict(orientation="h", y=-0.15),
     margin=dict(l=55, r=25, t=25, b=70),
     xaxis=dict(title="Cycles per day",
-               range=[0, max(r["annual_fec"] / 365 for _, r in _frontier_ref.iterrows()) * 1.15]),
+               range=[0, max(r["annual_fec"] / 365 for _, r in _frontier_ref_lt.iterrows()) * 1.15]),
     yaxis=dict(
         tickprefix="€", ticksuffix="M",
         gridcolor="rgba(148,163,184,0.12)",
@@ -980,7 +1013,7 @@ st.plotly_chart(fig_lt, use_container_width=True, config={"displayModeBar": Fals
 _p100 = _peak_data[100]
 _p90 = _peak_data[90]
 render_chart_caption(
-    f"Lifetime revenue for a {int(selected_duration)}h battery, COD {COD}. "
+    f"Lifetime revenue for a {int(_s3_dur)}h battery, COD {COD}. "
     f"Capture profile: 2023–2024 historical shape, capped by projected market "
     f"capacity at each year's fleet size (power-law fit). "
     f"This means cycling at 2 c/d today may only capture ~80% in later years "
