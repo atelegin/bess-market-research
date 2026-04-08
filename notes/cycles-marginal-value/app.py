@@ -203,8 +203,8 @@ render_header(
     title="How Many Cycles Does a Battery Actually Need?",
     kicker="GERMAN BESS | CYCLING INTENSITY",
     subtitle=(
-        "The conventional wisdom: more cycles = more revenue, "
-        "and only the manufacturer sets the limit. The data says otherwise."
+        "Two market beliefs: more cycles = more revenue, and higher revenue "
+        "requires more cycling. Both are wrong."
     ),
 )
 
@@ -212,11 +212,14 @@ render_standfirst(
     "Ask a battery trader how many cycles they want and the answer is always "
     "the same: as many as the warranty allows. The assumption is that each "
     "cycle earns roughly the same, so cycling harder means earning more — "
-    "and the only constraint is cell degradation."
+    "and the only constraint is cell degradation. A related belief: if the "
+    "market offers higher revenue, it must require more cycling to capture it."
     "\n\n"
-    "This note tests that assumption against five years of German wholesale "
+    "This note tests both assumptions against five years of German wholesale "
     "prices. The result: the market itself caps useful cycling well below "
-    "warranty limits — and that ceiling is falling as the fleet grows."
+    "warranty limits — and higher revenue does not mean more cycles. "
+    "Revenue depends on spread size; cycling depends on the number of "
+    "profitable windows. These move independently."
 )
 
 render_footer_note(
