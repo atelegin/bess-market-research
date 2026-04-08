@@ -687,12 +687,12 @@ render_chart_caption(
     "Bars = wholesale revenue (perfect foresight upper bound). "
     "Line = total cycles/day (wholesale + aFRR + FCR). "
     f"Shaded band = bull / bear scenario range "
-    f"({BULL_PARAMS['bess_2040']}–{BEAR_PARAMS['bess_2040']} GW fleet by 2040, "
+    f"({BULL_PARAMS['bess_2040']}–{BEAR_PARAMS['bess_2040']} GW fleet, "
     f"gas €{BULL_PARAMS['gas_2040']}–{BEAR_PARAMS['gas_2040']}/MWh, "
     f"PV {BULL_PARAMS['pv_2040']}–{BEAR_PARAMS['pv_2040']} GW — all 2040 targets). "
     "Drag the slider from 90% toward 100%: revenue barely changes, "
     "but cycles jump. 2026* = Q1 annualised from 90 days (Jan–Mar) — "
-    "excludes summer PV surplus and winter price spikes, so treat with caution."
+    "captures winter spreads but misses summer solar surplus; likely overstates full-year revenue."
 )
 
 st.markdown("")  # spacer
@@ -827,8 +827,9 @@ st.markdown("""
 The stacked bars below break annual wholesale revenue into first, second,
 and third cycle contributions. The second cycle's value fluctuates with
 market conditions — high in the volatile years of 2021–2022, compressed
-as the fleet grew through 2023–2025, and recovering in early 2026 —
-but in every year the first cycle alone captures the majority.
+as the fleet grew through 2023–2025. The 2025 dip stands out: a mild winter
+and low gas prices flattened spreads, pushing both revenue and cycling
+below the trend. But in every year the first cycle alone captures the majority.
 """)
 
 _s2_dur, _s2_f, _s2_rev, _s2_fec, _s2_cpd = _dur_pills(
@@ -885,8 +886,7 @@ st.plotly_chart(fig0, use_container_width=True, config={"displayModeBar": False}
 render_chart_caption(
     "Perfect foresight, 100% capture — the maximum each cycle can earn. "
     f"The second cycle peaked at €{max(rev_2nd):.0f}k in 2022 (energy crisis spreads), "
-    f"fell to €{rev_2nd[4]:.0f}k in 2025 as the fleet tripled, "
-    f"and recovers to €{rev_2nd[-1]:.0f}k in early 2026. "
+    f"and fell to €{rev_2nd[4]:.0f}k in 2025 as the fleet tripled. "
     f"The third cycle never exceeds €8k in any year. "
     f"2026* = Q1 annualised ({Q1_2026_GW} GW fleet)."
 )
@@ -907,8 +907,8 @@ more revenue per year, but the battery reaches end-of-life sooner.
 
 The chart below shows **total lifetime wholesale revenue** at each cycling rate,
 using projected revenue from [{NOTE1_TITLE}]({NOTE1_URL}) and the same degradation model.
-Ancillary capacity revenue (FCR, aFRR) is included at 100% regardless of cycling
-rate — these payments reward availability, not throughput.
+Ancillary capacity revenue (FCR, aFRR) is fixed — it scales with fleet size,
+not with the wholesale cycling rate shown here.
 """)
 
 # ── Lifetime revenue using projected revenue stream ──
@@ -1040,9 +1040,9 @@ def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100, frontier_re
 
 COD_YEARS = [
     (2026, "#14213d", 2.5),
-    (2028, "#2a9d8f", 2.0),
-    (2030, "#f59e0b", 2.0),
-    (2035, "#e76f51", 1.5),
+    (2028, "#3d5a80", 2.0),
+    (2030, "#7b8fa8", 2.0),
+    (2035, "#b0bec5", 1.5),
 ]
 
 _s3_dur, _s3_f, _, _, _ = _dur_pills(
@@ -1147,12 +1147,6 @@ at lower cycling rates and lower total revenue — the fleet is larger, spreads
 are narrower, and there are fewer profitable windows to chase.
 The curves are flat near the peak: cycling slightly less costs very little
 but extends the battery by years.
-
-**Caveats that push the peak ~0.3–0.5 c/d to the right:** time value of money
-(not modelled — €1 earned today is worth more than €1 in year 15), and mid-life
-augmentation (adding cells extends effective lifetime). Both favour more
-aggressive early cycling.
-
 """)
 
 with st.expander("Degradation model assumptions"):
@@ -1187,8 +1181,7 @@ activations. Here is what drives those extra cycles.
 not market conditions. **aFRR** adds **~0.4 cycles/day** in 2024, but is declining
 as more batteries split the activation signal (down from 0.45 in 2023 to 0.31
 in 2025). Combined with wholesale (~1.1 cycles/day at 90% capture), total cycling
-is **~1.7 cycles/day** in 2024 — within standard warranty limits (~330 FEC/year)
-and shrinking as the fleet grows.
+is **~1.7 cycles/day** in 2024 — and shrinking as the fleet grows.
 
 The incremental *revenue* from aFRR energy activations is also vanishing.
 Net revenue here means the spread between what BESS earns on activated energy
@@ -1246,30 +1239,14 @@ _rev_2035 = proj_rev_by_year.get(2035, {})
 
 st.markdown("## The cycle budget is shrinking from both sides")
 
-st.markdown(f"""
+st.markdown("""
 The market offers fewer profitable cycling windows (supply side), and the first
 cycle captures an increasing share of what remains (demand side).
 
-At **{_gw_2030:.0f} GW** (~2030), total cycling is projected at
-**{_total_2030:.1f} cycles/day** — wholesale
-**€{_rev_2030.get('da', 0) + _rev_2030.get('id', 0):.0f}k/MW/yr**.
-By **{_gw_2035:.0f} GW** (~2035): **{_total_2035:.1f} cycles/day**,
-wholesale **€{_rev_2035.get('da', 0) + _rev_2035.get('id', 0):.0f}k/MW/yr**.
-Annual budget: **{_total_2030 * 365:.0f} FEC/year** at {_gw_2030:.0f} GW —
-well within standard warranty limits (5,000+ cycles / 15–20 years).
-
 **The cycle budget is a consequence of trading strategy, not a fixed market
-requirement.** SoC window, spread thresholds, and intraday timing can
-significantly reduce cycle consumption while preserving most revenue.
+requirement.**
 """)
 
-_total_today = hero_ancillary_cpd[-1] + all_cpd[90][-1]
-render_takeaway(
-    f"A German {int(selected_duration)}h BESS today needs ~{_total_today:.1f} "
-    f"cycles/day in total (~{_total_today * 365:.0f} FEC/year) — falling toward "
-    f"~{_total_2030:.1f} by 2030. The binding constraint is not the warranty — "
-    f"it is the market."
-)
 
 
 # ── Method notes ─────────────────────────────────────────────────────────
@@ -1281,8 +1258,9 @@ st.markdown("## What this model does NOT include")
 st.markdown(f"""
 - **Time value of money.** No discounting — €1 earned in year 15 counts the same as
   €1 today. This understates the value of aggressive early cycling.
-- **Real-world forecast error.** Dispatch uses perfect foresight — an upper bound.
-  Actual operators capture less, which reduces both revenue *and* required cycling.
+- **Real-world forecast error.** Dispatch uses perfect foresight — an upper bound
+  that no real operator achieves. In practice, capture rates of 70–90% are typical,
+  which reduces both revenue *and* required cycling.
 - **Co-optimisation across markets.** Wholesale, FCR, and aFRR are modelled
   independently. In practice, ancillary commitments constrain wholesale dispatch
   and vice versa.
@@ -1322,7 +1300,7 @@ with st.expander("Price data"):
 | aFRR capacity | [regelleistung.net](https://www.regelleistung.net) tender results | 4h products |
 
 Intraday prices capped at ±150 €/MWh to limit outlier sensitivity.
-**2026** values are Q1 annualised from 90 days (Jan–Mar).
+**2026** values are Q1 annualised from 90 days (Jan–Mar) — captures winter spreads but misses summer solar surplus; likely overstates full-year revenue.
 """)
 
 with st.expander("Ancillary cycling data"):
