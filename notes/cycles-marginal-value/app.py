@@ -1046,7 +1046,7 @@ def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100, frontier_re
     return total
 
 COD_YEARS = [
-    (2022, "#a3b8c8", 1.8),
+    (2023, "#a3b8c8", 1.8),
     (2024, "#6b88a4", 2.0),
     (2026, "#14213d", 2.5),
 ]
