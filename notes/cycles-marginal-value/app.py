@@ -1177,6 +1177,15 @@ fig_lt.add_hline(
     annotation_position="bottom left",
     annotation_font=dict(size=10, color="#e76f51"),
 )
+fig_lt.add_trace(go.Scatter(
+    x=[1.5], y=[_rev_at_1_5],
+    mode="markers+text",
+    marker=dict(size=8, color="#e76f51", symbol="diamond"),
+    text=["1.5"],
+    textposition="bottom center",
+    textfont=dict(size=9, color="#e76f51"),
+    showlegend=False,
+))
 
 styled_layout(fig_lt, height=400, y_title="Lifetime revenue (M€/MW)")
 fig_lt.update_layout(
