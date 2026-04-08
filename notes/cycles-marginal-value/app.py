@@ -475,23 +475,25 @@ bands but tight cycling bands — because gas prices widen spreads but don't
 create new ones, while fleet growth eliminates windows only gradually.
 """)
 
-# ── Conceptual illustration: spread size vs window count ───
-_hours = list(range(25))
-# Day A: two wide spreads (high revenue, few cycles)
-_prices_a = [45, 40, 38, 35, 33, 35, 40, 55, 80, 95, 100, 90,
-             60, 45, 40, 38, 42, 55, 75, 95, 105, 85, 60, 45, 45]
-# Day B: many small oscillations (low revenue, many cycles)
-_prices_b = [52, 48, 55, 45, 53, 47, 56, 44, 54, 46, 55, 45,
-             53, 47, 56, 44, 54, 46, 55, 45, 53, 47, 52, 48, 50]
+# ── Real-day illustration: spread size vs window count ─────
+_hours = list(range(24))
+# Day A: 29 Oct 2024 — classic duck curve, spread €188, 2 clear windows
+_prices_a = [101.3, 100.0, 98.8, 98.2, 100.0, 113.1, 127.4, 157.7,
+             151.3, 129.7, 120.7, 113.0, 105.4, 117.7, 135.9, 172.3,
+             212.7, 285.8, 257.4, 203.8, 140.6, 124.0, 118.1, 103.1]
+# Day B: 1 Dec 2024 — choppy oscillations, spread €39, many small windows
+_prices_b = [99.7, 90.0, 88.1, 85.7, 84.8, 85.3, 84.4, 90.0,
+             99.6, 94.6, 89.3, 82.4, 85.2, 83.1, 90.6, 108.6,
+             121.5, 117.8, 121.5, 110.2, 91.4, 84.4, 97.0, 85.0]
 
 _fig_concept = make_subplots(
     rows=1, cols=2,
-    subplot_titles=["<b>Fewer windows, larger spreads</b><br>"
+    subplot_titles=["<b>29 Oct 2024 — two windows, €188 spread</b><br>"
                     "<span style='font-size:11px;color:#5c677d'>"
-                    "2 cycles → high revenue</span>",
-                    "<b>More windows, smaller spreads</b><br>"
+                    "Classic duck curve: few cycles, high revenue</span>",
+                    "<b>1 Dec 2024 — many windows, €39 spread</b><br>"
                     "<span style='font-size:11px;color:#5c677d'>"
-                    "5 cycles → low revenue</span>"],
+                    "Choppy day: more cycles, low revenue</span>"],
     horizontal_spacing=0.08,
 )
 for col, prices, color in [(1, _prices_a, "#3b82f6"), (2, _prices_b, "#f87171")]:
@@ -514,19 +516,18 @@ for ax in ["xaxis", "xaxis2"]:
         title="Hour", title_font=dict(size=10, color="#5c677d"),
         tickfont=dict(size=9, color="#5c677d"), dtick=6,
     )})
-for ax in ["yaxis", "yaxis2"]:
-    _fig_concept.update_layout(**{ax: dict(
-        title="€/MWh" if ax == "yaxis" else "",
-        title_font=dict(size=10, color="#5c677d"),
-        tickfont=dict(size=9, color="#5c677d"),
-        range=[25, 115],
-    )})
+_fig_concept.update_layout(
+    yaxis=dict(title="€/MWh", title_font=dict(size=10, color="#5c677d"),
+               tickfont=dict(size=9, color="#5c677d")),
+    yaxis2=dict(title="", title_font=dict(size=10, color="#5c677d"),
+                tickfont=dict(size=9, color="#5c677d")),
+)
 st.plotly_chart(_fig_concept, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
-    "Conceptual illustration. Revenue is set by spread size (left). "
-    "Cycling is set by the number of profitable windows (right). "
-    "Gas prices widen spreads but don't create new windows. "
-    "Fleet growth eliminates windows but doesn't change their shape."
+    "Real DA prices from Energy-Charts. Revenue is set by spread size (left) — "
+    "gas prices widen spreads but don't create new windows. "
+    "Cycling is set by the number of profitable windows (right) — "
+    "fleet growth eliminates windows but doesn't change their shape."
 )
 
 # Project wholesale c/d for each capture % (using half-yearly fit)
