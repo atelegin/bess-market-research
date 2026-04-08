@@ -554,6 +554,7 @@ st.plotly_chart(_fig_concept, use_container_width=True, config={"displayModeBar"
 render_chart_caption(
     "Real DA prices and optimal dispatch (2h battery, perfect foresight). "
     "Green bars = charging, orange = discharging. "
+    "FEC = full equivalent cycle (total discharged energy ÷ nameplate capacity). "
     "Left: one deep spread — the battery charges once and earns €1 038. "
     "Right: a solar duck-curve day with three clear buy/sell windows — "
     "more than twice the cycling for 10× less revenue."
