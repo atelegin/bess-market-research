@@ -1035,12 +1035,14 @@ fig_lt.update_layout(
 st.plotly_chart(fig_lt, use_container_width=True, config={"displayModeBar": False})
 
 render_chart_caption(
-    f"Lifetime revenue for a {int(_s3_dur)}h battery, COD {COD_YEARS[0][0]}–{COD_YEARS[-1][0]}. "
-    f"Capture profile: 2023–2024 historical shape, capped by projected market "
-    f"capacity at each year's fleet size. "
-    f'Revenue stream: <a href="{NOTE1_URL}">{NOTE1_TITLE}</a> projections. Ancillary (FCR + aFRR) added in full. '
-    f"Degradation: ~1.8%/yr at 2 c/d (calendar + cycling), augmentation at "
-    f'~{_AUG_FEC:.0f} FEC, EOL at {_EOL_FLOOR:.0%} capacity — consistent with <a href="{NOTE1_URL}">{NOTE1_TITLE}</a>.'
+    f"{int(_s3_dur)}h battery, COD {COD_YEARS[0][0]}–{COD_YEARS[-1][0]}. "
+    f"At each cycling rate, the model asks: how much revenue does this capture "
+    f"in each year of the battery's life, given projected fleet growth? "
+    f"Higher cycling earns more per year but wears the battery faster. "
+    f'Revenue: <a href="{NOTE1_URL}">{NOTE1_TITLE}</a> projections. '
+    f"Degradation: calendar + cycling fade (faster cycling = shorter life), "
+    f"augmentation at ~{_AUG_FEC:.0f} FEC, "
+    f"EOL at {_EOL_FLOOR:.0%}. Ancillary (FCR + aFRR) included at 100%."
 )
 
 st.markdown(f"""
