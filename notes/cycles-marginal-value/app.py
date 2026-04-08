@@ -1140,9 +1140,18 @@ for cod_year, color, width in COD_YEARS:
 
 fig_lt.add_hline(
     y=_peak_rev, line=dict(color="#5c677d", width=1, dash="dot"),
-    annotation_text=f"€{_peak_rev:.1f}M",
+    annotation_text=f"€{_peak_rev:.1f}M at peak",
     annotation_position="top left",
     annotation_font=dict(size=10, color="#5c677d"),
+)
+
+# Revenue at 1.5 c/d reference
+_rev_at_1_5 = float(np.interp(1.5, cpd_vals, lt_rev_k))
+fig_lt.add_hline(
+    y=_rev_at_1_5, line=dict(color="#e76f51", width=1, dash="dot"),
+    annotation_text=f"€{_rev_at_1_5:.1f}M at 1.5 c/d",
+    annotation_position="bottom left",
+    annotation_font=dict(size=10, color="#e76f51"),
 )
 
 styled_layout(fig_lt, height=400, y_title="Lifetime revenue (M€/MW)")
