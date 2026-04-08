@@ -210,17 +210,24 @@ render_header(
     ),
 )
 
+st.markdown(f"""
+This is the second note in a series on German BESS merchant economics.
+The [first note]({NOTE1_URL}) projected revenue through 2040; this one asks
+how hard a battery has to work to capture it.
+""")
+
 render_standfirst(
     "Ask a battery trader how many cycles they need and the answer is "
-    "*as many as the warranty allows*. The assumption behind most BESS "
+    "<em>as many as the warranty allows</em>. The assumption behind most BESS "
     "investment models is the same: more cycles means more revenue. "
     "This note tests it against five years of German wholesale prices."
     "\n\n"
     "The short answer: a German battery today needs about 1.5 cycles per "
     "day to capture most of the available wholesale revenue — well inside "
-    "standard warranty limits. And the number is falling: as the fleet "
-    "grows, the market offers fewer profitable windows. By 2030, total "
-    "cycling is projected below 1 cycle per day."
+    "standard warranty limits (typically 1.5–2 c/d, or ~5 000 FEC over "
+    "15–20 years). And the cycling rate is falling: as the fleet "
+    f'grows, the market offers fewer profitable windows. By 2030, total '
+    f'cycling is <a href="{NOTE1_URL}">projected</a> below 1 cycle per day.'
 )
 
 st.markdown("---")
@@ -684,21 +691,21 @@ _dur_pills("Total cycling is falling — and the market, not the warranty, sets 
 st.plotly_chart(fig_hero, use_container_width=True, config={"displayModeBar": False})
 
 render_chart_caption(
-    "Bars = wholesale revenue (perfect foresight upper bound). "
-    "Line = total cycles/day (wholesale + aFRR + FCR). "
+    "Bars (left axis) = wholesale revenue (perfect foresight upper bound). "
+    "Solid line (right axis) = total cycles/day (wholesale + aFRR + FCR). "
     f"Shaded band = bull / bear scenario range "
     f"({BULL_PARAMS['bess_2040']}–{BEAR_PARAMS['bess_2040']} GW fleet, "
     f"gas €{BULL_PARAMS['gas_2040']}–{BEAR_PARAMS['gas_2040']}/MWh, "
     f"PV {BULL_PARAMS['pv_2040']}–{BEAR_PARAMS['pv_2040']} GW — all 2040 targets). "
-    "Drag the slider from 90% toward 100%: revenue barely changes, "
-    "but cycles jump. 2026* = Q1 annualised from 90 days (Jan–Mar) — "
+    "Drag the slider from 90% toward 100%: revenue gains ~10%, "
+    "but cycles jump ~30%. 2026* = Q1 annualised from 90 days (Jan–Mar) — "
     "captures winter spreads but misses summer solar surplus; likely overstates full-year revenue."
 )
 
 st.markdown("")  # spacer
 
 st.markdown(f"""
-Notice how narrow the shaded band is compared to [{NOTE1_TITLE}]({NOTE1_URL}).
+Notice how narrow the shaded band is compared to the revenue projections in [{NOTE1_TITLE}]({NOTE1_URL}).
 The same bull / bear scenarios ({BULL_PARAMS['bess_2040']} – {BEAR_PARAMS['bess_2040']} GW
 fleet by 2040, gas €{BEAR_PARAMS['gas_2040']}–{BULL_PARAMS['gas_2040']}/MWh,
 PV {BULL_PARAMS['pv_2040']}–{BEAR_PARAMS['pv_2040']} GW) produce wide revenue
@@ -806,8 +813,8 @@ _fig_concept.update_layout(
 )
 st.plotly_chart(_fig_concept, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
-    "Real DA prices and optimal dispatch (2h battery, perfect foresight). "
-    "Green bars = charging, orange = discharging. "
+    "Real DA prices (line) and optimal dispatch (2h battery, perfect foresight). "
+    "Green shading = charging hours, orange = discharging. "
     "FEC = full equivalent cycle. "
     "Left: one deep spread — the battery charges once and earns €1 038/MW. "
     "Right: a solar duck-curve day with three clear buy/sell windows — "
@@ -1149,7 +1156,9 @@ For a COD {COD_YEARS[0][0]} battery, lifetime revenue peaks at
 warranty limits of 1.5–2 cycles/day. Cycling beyond the warranty envelope
 does not pay for the extra degradation it causes.
 The curve is flat near the peak: cycling slightly less costs very little
-but extends the battery by years.
+but extends the battery by years. At projected cycling rates (falling
+toward 1 c/d by 2030), warranty limits are unlikely to bind — the
+constraint is the market, not the battery.
 """)
 
 with st.expander("Degradation model assumptions"):
@@ -1177,7 +1186,7 @@ st.markdown("---")
 st.markdown("## What about ancillary cycling?")
 
 st.markdown(f"""
-The total cycling line in the first chart already includes ancillary
+The total cycling line in the first chart above already includes ancillary
 activations. Here is what drives those extra cycles.
 
 **FCR** adds a stable **~0.25 cycles/day** — driven by grid frequency physics,
@@ -1329,8 +1338,17 @@ Partial cycles are summed pro-rata. Only the discharge side counts —
 charging losses are excluded from the cycle count.
 """)
 
-# ── Series anchor & next-note hook ────────────────────────────
+# ── Summary & series anchor ──────────────────────────────────
 st.markdown("---")
+
+st.markdown("""
+**In short:** German BESS needs far fewer cycles than most models assume.
+The first daily cycle captures the bulk of wholesale revenue; the second adds
+little; the third is negligible. As the fleet grows, the market offers fewer
+profitable windows — total cycling is falling toward 1 c/d by 2030.
+The binding constraint is the market, not the warranty.
+""")
+
 render_closing(
     "Second in a series on BESS merchant economics — "
     "from market opportunity and cycling trade-offs to degradation, "
