@@ -1290,14 +1290,11 @@ st.markdown(f"""
 - **Real-world forecast error.** Dispatch uses perfect foresight — an upper bound
   that no real operator achieves. In practice, capture rates of 70–90% are typical,
   which reduces both revenue *and* required cycling.
-- **Co-optimisation across markets.** Wholesale, FCR, and aFRR are modelled
-  independently. In practice, ancillary commitments constrain wholesale dispatch
-  and vice versa.
+- **Ancillary commitments.** FCR and aFRR capacity obligations may reduce
+  available wholesale cycling windows — the model does not capture this constraint.
 - **Cell-level degradation physics.** The model uses a simplified linear fade.
   Real degradation depends on depth of discharge, temperature, and C-rate —
   the subject of the next note.
-- **Capacity market or redispatch revenue.** Germany's capacity mechanism is
-  still under development; redispatch participation varies by project.
 """)
 
 st.markdown("---")
