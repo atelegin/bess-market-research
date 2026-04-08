@@ -151,11 +151,18 @@ fleet_gw = data["fleet_gw"]
 
 # Duration will be selected by user — filtered below after page config
 
-# Q1 2026 annualised values (pre-computed from explore runs)
-Q1_2026_REV = {1.0: 84, 2.0: 100, 3.0: 102, "max": 102}  # kEUR/MW/yr
-Q1_2026_FEC = {"1c": 328, "max": 675}
+# Q1 2026 annualised values (pre-computed from explore runs, 2h base)
+# For 1h and 4h: scaled from 2h using 2025 duration ratios from precomputed data.
 Q1_2026_GW = 4.5
-Q1_2026_MAX_CPD = 1.85
+# 1h/4h estimated by applying 2025 duration ratios to 2h Q1 2026 actuals.
+_Q1_2026_BY_DUR = {
+    2.0: {"rev": {1.0: 84, 2.0: 100, 3.0: 102, "max": 102},
+          "fec": {"1c": 328, "max": 675}, "max_cpd": 1.85},
+    1.0: {"rev": {1.0: 107, 2.0: 145, 3.0: 160, "max": 165},
+          "fec": {"1c": 347, "max": 1712}, "max_cpd": 4.0},
+    4.0: {"rev": {1.0: 249, 2.0: 297, 3.0: 302, "max": 302},
+          "fec": {"1c": 345, "max": 784}, "max_cpd": 1.75},
+}
 
 # ── Ancillary cycling (FCR + aFRR) per year ─────────────────
 ANCILLARY_CPD = {
@@ -259,6 +266,12 @@ if "duration" not in st.session_state:
 selected_duration = st.session_state["duration"]
 
 f2h = frontiers[frontiers["duration_h"] == selected_duration]
+
+# Q1 2026 values for the selected duration
+_q26 = _Q1_2026_BY_DUR[selected_duration]
+Q1_2026_REV = _q26["rev"]
+Q1_2026_FEC = _q26["fec"]
+Q1_2026_MAX_CPD = _q26["max_cpd"]
 
 # ── Historical data ─────────────────────────────────────────────
 hero_years_with_2026 = list(YEARS) + [2026]
