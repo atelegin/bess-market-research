@@ -1109,6 +1109,13 @@ for cod_year, color, width in COD_YEARS:
         showlegend=False,
     ))
 
+fig_lt.add_hline(
+    y=_peak_rev, line=dict(color="#5c677d", width=1, dash="dot"),
+    annotation_text=f"€{_peak_rev:.1f}M",
+    annotation_position="top left",
+    annotation_font=dict(size=10, color="#5c677d"),
+)
+
 styled_layout(fig_lt, height=400, y_title="Lifetime revenue (M€/MW)")
 fig_lt.update_layout(
     showlegend=True,
