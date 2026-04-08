@@ -485,20 +485,20 @@ _chg_a = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.94,
           0, 0, 0, 0, 0, 0, 0, 0]
 _dis_a = [0.83, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
           0, 0, 0, 0.02, 1.0, 0, 0, 0]
-# Day B: 31 Oct 2024 — typical autumn day, two clear windows, 1.67 FEC, €66
-_prices_b = [105.2, 98.5, 96.6, 94.8, 98.0, 102.3, 121.2, 135.5,
-             133.5, 123.3, 105.1, 98.0, 88.9, 92.6, 99.4, 111.5,
-             123.2, 129.0, 128.4, 117.8, 105.8, 85.3, 80.4, 64.6]
-_chg_b = [0, 0, 0, 0.97, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.94, 0, 0,
+# Day B: 29 May 2024 — solar duck curve, three clear windows, 2.09 FEC, €110
+_prices_b = [72.2, 57.5, 54.3, 50.6, 49.8, 45.9, 72.2, 86.4,
+             91.5, 69.1, 67.8, 62.1, 59.1, 62.2, 62.2, 69.5,
+             72.7, 89.2, 94.7, 111.4, 140.5, 143.3, 120.4, 95.5]
+_chg_b = [0, 0, 0, 0, 0.94, 1.0, 0, 0, 0, 0, 0, 0.94, 1.0, 0, 0, 0,
           0, 0, 0, 0, 0, 0, 0, 0.75]
-_dis_b = [0, 0, 0, 0, 0, 0, 0, 1.0, 0.67, 0, 0, 0, 0, 0, 0, 0,
-          0, 1.0, 0.67, 0, 0, 0, 0, 0]
+_dis_b = [0.83, 0, 0, 0, 0, 0, 0, 0.67, 1.0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0.67, 1.0, 0, 0]
 
 _fig_concept = make_subplots(
     rows=1, cols=2,
     subplot_titles=[
         "<b>28 Aug 2022</b>  ·  0.9 FEC  ·  <b>€1 038</b>",
-        "<b>31 Oct 2024</b>  ·  1.7 FEC  ·  <b>€66</b>",
+        "<b>29 May 2024</b>  ·  2.1 FEC  ·  <b>€110</b>",
     ],
     horizontal_spacing=0.08,
 )
@@ -570,7 +570,8 @@ render_chart_caption(
     "Real DA prices and optimal dispatch (2h battery, perfect foresight). "
     "Green bars = charging, orange = discharging. "
     "Left: one deep spread — the battery charges once and earns €1 038. "
-    "Right: two moderate spreads — nearly twice the cycling for 16× less revenue."
+    "Right: a solar duck-curve day with three clear buy/sell windows — "
+    "more than twice the cycling for 10× less revenue."
 )
 
 # Project wholesale c/d for each capture % (using half-yearly fit)
