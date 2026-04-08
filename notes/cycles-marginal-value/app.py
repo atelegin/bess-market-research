@@ -495,74 +495,64 @@ _dis_b = [0, 0, 0, 0, 0, 0, 0, 1.0, 0.67, 0, 0, 0, 0, 0, 0, 0,
           0, 1.0, 0.67, 0, 0, 0, 0, 0]
 
 _fig_concept = make_subplots(
-    rows=1, cols=2,
+    rows=2, cols=2,
     subplot_titles=[
         "<b>28 Aug 2022</b>  ·  0.9 FEC  ·  <b>€1 038</b>",
         "<b>31 Oct 2024</b>  ·  1.7 FEC  ·  <b>€66</b>",
+        "", "",
     ],
+    row_heights=[0.6, 0.4],
+    vertical_spacing=0.06,
     horizontal_spacing=0.08,
-    specs=[[{"secondary_y": True}, {"secondary_y": True}]],
 )
-# Price lines + charge/discharge bars for each panel
-for col, prices, chg, dis, color in [
-    (1, _prices_a, _chg_a, _dis_a, "#3b82f6"),
-    (2, _prices_b, _chg_b, _dis_b, "#f87171"),
-]:
-    # Price line
+# Row 1: price lines
+for col, prices, color in [(1, _prices_a, "#3b82f6"), (2, _prices_b, "#f87171")]:
     _fig_concept.add_trace(go.Scatter(
         x=_hours_24, y=prices, mode="lines",
         line=dict(color=color, width=2.5),
-        showlegend=False, name="Price",
-    ), row=1, col=col, secondary_y=False)
-    # Charge bars (green, shown as negative = buying)
+        showlegend=False,
+    ), row=1, col=col)
+# Row 2: charge/discharge bars
+for col, chg, dis in [(1, _chg_a, _dis_a), (2, _chg_b, _dis_b)]:
     _fig_concept.add_trace(go.Bar(
         x=_hours_24, y=[-c for c in chg],
-        marker_color="rgba(34,197,94,0.5)", width=0.8,
+        marker_color="rgba(34,197,94,0.6)", width=0.8,
         showlegend=col == 1, name="Charge",
-    ), row=1, col=col, secondary_y=True)
-    # Discharge bars (orange, shown as positive = selling)
+    ), row=2, col=col)
     _fig_concept.add_trace(go.Bar(
         x=_hours_24, y=dis,
-        marker_color="rgba(249,115,22,0.5)", width=0.8,
+        marker_color="rgba(249,115,22,0.6)", width=0.8,
         showlegend=col == 1, name="Discharge",
-    ), row=1, col=col, secondary_y=True)
+    ), row=2, col=col)
 
 _fig_concept.update_layout(
     template="plotly_white",
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    height=280,
-    margin=dict(l=40, r=40, t=40, b=35),
+    height=350,
+    margin=dict(l=40, r=20, t=40, b=35),
     barmode="relative",
     legend=dict(
-        orientation="h", y=-0.15,
+        orientation="h", y=-0.12,
         font=dict(size=10, color="#14213d"),
         bgcolor="rgba(0,0,0,0)",
     ),
 )
 _y_max = max(max(_prices_a), max(_prices_b)) * 1.05
-# With secondary_y + 2 cols: yaxis=col1 price, yaxis2=col1 power,
-# yaxis3=col2 price, yaxis4=col2 power
-for x_ax, y_price, y_power, show_title in [
-    ("xaxis", "yaxis", "yaxis2", True),
-    ("xaxis2", "yaxis3", "yaxis4", False),
-]:
-    _fig_concept.update_layout(**{
-        x_ax: dict(title="", tickfont=dict(size=9, color="#5c677d"), dtick=6),
-        y_price: dict(
-            title="€/MWh" if show_title else "",
-            title_font=dict(size=10, color="#5c677d"),
-            tickfont=dict(size=9, color="#5c677d"),
-            range=[0, _y_max],
-        ),
-        y_power: dict(
-            title="MW" if not show_title else "",
-            title_font=dict(size=10, color="#5c677d"),
-            tickfont=dict(size=9, color="#5c677d"),
-            range=[-1.2, 1.2],
-            showgrid=False,
-        ),
-    })
+for ax in ["xaxis", "xaxis2", "xaxis3", "xaxis4"]:
+    _fig_concept.update_layout(**{ax: dict(
+        title="", tickfont=dict(size=9, color="#5c677d"), dtick=6,
+    )})
+_fig_concept.update_layout(
+    yaxis=dict(title="€/MWh", title_font=dict(size=10, color="#5c677d"),
+               tickfont=dict(size=9, color="#5c677d"), range=[0, _y_max]),
+    yaxis2=dict(title="", tickfont=dict(size=9, color="#5c677d"),
+                range=[0, _y_max]),
+    yaxis3=dict(title="MW", title_font=dict(size=10, color="#5c677d"),
+                tickfont=dict(size=9, color="#5c677d"), range=[-1.2, 1.2]),
+    yaxis4=dict(title="", tickfont=dict(size=9, color="#5c677d"),
+                range=[-1.2, 1.2]),
+)
 st.plotly_chart(_fig_concept, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
     "Real DA prices and optimal dispatch (2h battery, perfect foresight). "
