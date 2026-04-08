@@ -1040,9 +1040,8 @@ def _lifetime_revenue(cod_year, target_cpd, annual_fec, cap_pct=100, frontier_re
 
 COD_YEARS = [
     (2026, "#14213d", 2.5),
-    (2028, "#3d5a80", 2.0),
-    (2030, "#7b8fa8", 2.0),
-    (2035, "#b0bec5", 1.5),
+    (2030, "#6b88a4", 2.0),
+    (2035, "#a3b8c8", 1.8),
 ]
 
 _s3_dur, _s3_f, _, _, _ = _dur_pills(
