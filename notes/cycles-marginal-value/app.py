@@ -955,7 +955,7 @@ COD_YEARS = [
 ]
 
 _s3_dur, _s3_f, _, _, _ = _dur_pills(
-    "Lifetime revenue peaks well below maximum cycling intensity", "dur_lifetime")
+    "Lifetime revenue peaks near warranty limits — pushing harder doesn't pay off", "dur_lifetime")
 
 # Rebuild frontier ref for the lifetime chart's selected duration
 _frontier_ref_lt = _s3_f[_s3_f["year"].isin(_frontier_ref_years)].groupby(
@@ -1047,10 +1047,11 @@ render_chart_caption(
 
 st.markdown(f"""
 For a COD {COD_YEARS[0][0]} battery, lifetime revenue peaks at
-**~{_peak_cpd:.1f} cycles/day** (€{_peak_rev:.1f}M). Later COD years peak
+**~{_peak_cpd:.1f} cycles/day** (€{_peak_rev:.1f}M) — right around typical
+warranty limits of 1.5–2 cycles/day. Cycling beyond the warranty envelope
+does not pay for the extra degradation it causes. Later COD years peak
 at lower cycling rates and lower total revenue — the fleet is larger, spreads
 are narrower, and there are fewer profitable windows to chase.
-Beyond each peak, extra cycles do not earn enough to offset faster degradation.
 The curves are flat near the peak: cycling slightly less costs very little
 but extends the battery by years.
 
