@@ -211,10 +211,11 @@ render_header(
 )
 
 render_standfirst(
-    "Ask a battery trader how many cycles they want and the answer is always "
-    "the same: as many as the warranty allows. The assumption is that cycling "
-    "and revenue go hand in hand — more cycles means more revenue, and a "
-    "higher-revenue market must require more cycling to capture it."
+    "A common assumption in BESS project finance: cycling and revenue go "
+    "hand in hand — more cycles means more revenue, and a higher-revenue "
+    "market must require more cycling to capture it. Traders know this "
+    "isn't quite right, but the models behind investment decisions often "
+    "treat cycle count as a proxy for earnings."
     "\n\n"
     "This note tests that assumption against five years of German wholesale "
     "prices. The result: the link between cycling and revenue is far weaker "
