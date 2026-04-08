@@ -215,8 +215,8 @@ render_standfirst(
     "this one tests how hard a battery has to work to capture it."
     "\n\n"
     "The short answer: a German battery today needs about 1.7 cycles per "
-    "day to capture most of the available wholesale revenue — well inside "
-    "standard warranty limits. And the cycling rate is falling: as the fleet "
+    "day to capture most of the available wholesale revenue. "
+    "And the cycling rate is falling: as the fleet "
     "grows, the market offers fewer profitable windows. By 2030, total "
     "cycling is projected to drop to ~1.2 cycles per day."
 )
