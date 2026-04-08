@@ -211,9 +211,10 @@ render_header(
 )
 
 render_standfirst(
-    "More cycles means more revenue — that's the assumption behind most "
-    "BESS investment models. This note tests it against five years of "
-    "German wholesale prices."
+    "Ask a battery trader how many cycles they need and the answer is "
+    "*as many as the warranty allows*. The assumption behind most BESS "
+    "investment models is the same: more cycles means more revenue. "
+    "This note tests it against five years of German wholesale prices."
     "\n\n"
     "The short answer: a German battery today needs about 1.5 cycles per "
     "day to capture most of the available wholesale revenue — well inside "
