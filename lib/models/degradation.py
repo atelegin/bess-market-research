@@ -92,6 +92,13 @@ class CellPreset:
     z_cyc: float                  # FEC exponent (Wang)
     Ea_cyc_eV: float              # activation energy, cycle channel
     c_rate_exponent: float        # C-rate stress exponent (1.0 = Wang linear)
+    # Self-heating: T_cell = T_amb + coeff · C_rate². Default 0.0 — callers
+    # pass cell-internal temperature directly. Set >0 (typical prismatic LFP
+    # ~2.0 °C/C² at 2C → +8 °C rise) when the caller is passing ambient and
+    # the duty has meaningful C-rate. Only applied to the cycle channel —
+    # active-cycling fraction of wall-clock year is small (<20% even for
+    # arbitrage) so calendar integration uses the storage temperature.
+    self_heating_coeff_C_per_C2: float
     # Naumann 2018 calendar term
     k_cal: float                  # base calendar pre-factor
     beta_cal: float               # time exponent (Naumann)
@@ -163,6 +170,7 @@ _LFP_DEFAULTS = dict(
     z_cyc=1.00,
     Ea_cyc_eV=0.30,
     c_rate_exponent=1.00,   # Wang linear-C default; overridden for multi-C-anchor presets
+    self_heating_coeff_C_per_C2=0.00,  # off by default; callers pass cell-internal T
     beta_cal=0.50,
     Ea_cal_eV=0.55,
     k_cyc_cov=0.08,

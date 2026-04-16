@@ -312,7 +312,13 @@ class LFPGraphiteWangNaumann(ChemistryAgingKernel):
                 f"C-rate {c_rate:.2f} exceeds preset range {hi:.2f}; cycle loss is conservative overestimate.",
                 stacklevel=2,
             )
-        arr = _arrhenius(temp_C, preset.Ea_cyc_eV)
+        # Self-heating raises cell-internal temperature during active cycling.
+        # Default coefficient 0 reproduces legacy behaviour (caller passes
+        # cell-internal T directly). When set, Arrhenius for cycle channel
+        # runs at T_amb + coeff · C² — so hot-climate + high-C compounds the
+        # way it does in real packs, instead of linearly summing via ambient.
+        temp_cell_C = temp_C + preset.self_heating_coeff_C_per_C2 * (c_eff ** 2)
+        arr = _arrhenius(temp_cell_C, preset.Ea_cyc_eV)
         stress = fec * max(dod, 1e-6)
         c_factor = c_eff ** (preset.c_rate_exponent * preset.z_cyc)
         return float(

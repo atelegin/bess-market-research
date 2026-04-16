@@ -108,6 +108,33 @@ def test_duty_from_timeseries_roundtrip():
     assert abs(duty.total_hours - 8760.0) < 1e-6
 
 
+def test_self_heating_off_by_default_noop():
+    """Every shipped preset has self_heating_coeff_C_per_C2=0; output must be
+    identical with and without explicit passthrough. Guards against a caller
+    accidentally enabling it via a stale preset."""
+    for name, p in PRESETS.items():
+        assert p.self_heating_coeff_C_per_C2 == 0.0, (name, p.self_heating_coeff_C_per_C2)
+
+
+def test_self_heating_accelerates_hot_high_c_duty():
+    """Enable self-heating on an EVE clone and verify cycle loss grows with C²
+    at fixed ambient T. Also verify that at C=0.1 the effect is negligible
+    (0.01 °C bump at coeff=2 → Arrhenius shift ~0.05%)."""
+    from dataclasses import replace
+    base = PRESETS["eve_lf280k"]
+    hot = replace(base, self_heating_coeff_C_per_C2=2.0)
+    duty_2c = DutyCycle.from_mean(fec_per_year=730, mean_dod=0.80, mean_soc=0.55, mean_crate=2.0, mean_temp_C=30.0)
+    duty_01c = DutyCycle.from_mean(fec_per_year=730, mean_dod=0.80, mean_soc=0.55, mean_crate=0.1, mean_temp_C=30.0)
+    # 2C → T_cell = 38 °C vs ambient 30 °C — material Arrhenius shift.
+    soh_base = cell_soh_detailed(duty_2c, years=10.0, preset=base, n_mc=1)
+    soh_hot = cell_soh_detailed(duty_2c, years=10.0, preset=hot, n_mc=1)
+    assert soh_hot < soh_base - 0.01, (soh_hot, soh_base)
+    # 0.1C → T_cell = 30.02 °C — negligible.
+    soh_cold_base = cell_soh_detailed(duty_01c, years=10.0, preset=base, n_mc=1)
+    soh_cold_hot = cell_soh_detailed(duty_01c, years=10.0, preset=hot, n_mc=1)
+    assert abs(soh_cold_hot - soh_cold_base) < 0.001
+
+
 def test_mc_noise_survives_zero_cycle_duty():
     """Calendar-dominated duty (zero FEC, high-SoC storage) must still produce
     non-zero cell-to-cell spread. The original sigma formula scaled with cycle
