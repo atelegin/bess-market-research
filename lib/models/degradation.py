@@ -96,8 +96,14 @@ class CellPreset:
     k_cal: float                  # base calendar pre-factor
     beta_cal: float               # time exponent (Naumann)
     Ea_cal_eV: float              # activation energy, calendar channel
-    # Cell-to-cell spread (Severson 2019 default)
+    # Cell-to-cell spread (Severson 2019 cycling default).
+    # ``k_cyc_cov`` applies to the cycle channel; ``k_cal_cov`` to calendar.
+    # Separable so future calibration work (e.g. Lam 2024 K2 cell-to-cell
+    # spread) can tighten one without touching the other. Default both to
+    # Severson's 8% — the cleanest single published LFP number — pending a
+    # matched calendar-aging spread study.
     k_cyc_cov: float
+    k_cal_cov: float
     # EOL convention
     eol_capacity_fraction: float
     # Ranges where the model is considered valid
@@ -160,6 +166,7 @@ _LFP_DEFAULTS = dict(
     beta_cal=0.50,
     Ea_cal_eV=0.55,
     k_cyc_cov=0.08,
+    k_cal_cov=0.08,
     eol_capacity_fraction=0.70,
     temp_range_C=(15.0, 60.0),
     c_rate_range=(0.0, 2.0),

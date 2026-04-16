@@ -404,7 +404,15 @@ def cell_soh_detailed(
         return float(max(soh_base, 0.0))
 
     rng = rng if rng is not None else np.random.default_rng(0)
-    sigma = preset.k_cyc * preset.k_cyc_cov * max(duty.fec_per_year * years, 1.0) ** preset.z_cyc
+    # Noise scales with actually-accumulated loss in each channel. The old
+    # formulation tied sigma only to cycle stress (``k_cyc · CoV · FEC^z``),
+    # which meant a cell stored at high SoC with zero FEC had zero Monte
+    # Carlo spread — wrong whenever calendar dominates (FCR-narrow duty,
+    # storage-heavy cases, post-retirement estimates). Channels assumed
+    # independent; noise sources combine in quadrature.
+    sigma_cyc = preset.k_cyc_cov * abs(q_cyc)
+    sigma_cal = preset.k_cal_cov * abs(q_cal)
+    sigma = float(np.sqrt(sigma_cyc ** 2 + sigma_cal ** 2))
     eps = rng.normal(0.0, sigma, size=n_mc)
     return np.clip(soh_base - eps, 0.0, 1.0)
 

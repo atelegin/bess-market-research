@@ -108,6 +108,21 @@ def test_duty_from_timeseries_roundtrip():
     assert abs(duty.total_hours - 8760.0) < 1e-6
 
 
+def test_mc_noise_survives_zero_cycle_duty():
+    """Calendar-dominated duty (zero FEC, high-SoC storage) must still produce
+    non-zero cell-to-cell spread. The original sigma formula scaled with cycle
+    stress only, so a stored cell had a degenerate p10=p50=p90 band — wrong
+    for FCR-narrow, warranty/valuation, and second-life scenarios.
+    """
+    preset = PRESETS["eve_lf280k"]
+    duty = DutyCycle.from_mean(
+        fec_per_year=0.0, mean_dod=0.0, mean_soc=0.85,
+        mean_crate=0.25, mean_temp_C=25.0,
+    )
+    samples = cell_soh_detailed(duty, years=10.0, preset=preset, n_mc=500, rng=np.random.default_rng(0))
+    assert np.std(samples) > 1e-4, f"calendar-dominated duty has degenerate MC spread: std={np.std(samples):.6f}"
+
+
 def test_from_mean_soc_continuous_no_branch_aliasing():
     """mean_soc=0.75 and mean_soc=0.80 must produce distinguishable calendar
     load. Under the legacy branch allocation both fell into the same third
