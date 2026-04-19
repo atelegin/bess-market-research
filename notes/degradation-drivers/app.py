@@ -379,11 +379,11 @@ Three things jump out.
 
 **Rest SoC is the invisible lever.** The pack sits idle most of the day. Where it sits decides how fast it ages, with zero extra cycles on the counter and zero extra MWh moved — so every year of life rest SoC costs lands straight on the €/MWh bill. An arbitrage pack charged up to 85% waiting for the morning peak carries a markedly higher per-MWh cost than an FCR pack resting near 50%. No cycle counter shows it; the chart does.
 
-**Cycles per day — nearly flat on cost, but floored from below.** Running the pack twice as hard (1 → 2.5 c/d) cuts life roughly in half but pushes ~2.5× more MWh per year, so the €/MWh number drifts only modestly. Going the other way — below ~1 c/d — the curve bends **up**: calendar aging runs on wall-clock time, so a pack that cycles rarely still ages, and CAPEX spreads across fewer MWh. The industry's headline metric is an accounting artefact on the cost side, especially in the *more-is-better* direction.
+**Cycles per day — not what the counter suggests.** Running the pack harder (2 → 2.5 c/d) drifts the €/MWh bill slightly *below* baseline; running it lighter (2 → 1 c/d) pushes the bill *up* by ~€10. Calendar aging runs on wall-clock time, so a pack that cycles rarely still ages, and CAPEX ends up spread across fewer MWh. The industry's headline metric misranks the lever in the "gentle is cheaper" direction.
 
 **Temperature and C-rate do the heavy lifting.** Both panels bend sharply: a 10 °C lift or a doubling of C-rate each move the bill by more than rest SoC and FEC combined. These are the two knobs that actually decide whether a pack makes its warranty or not.
 
-**Duration hides inside C-rate.** 1h vs 2h vs 4h isn't its own axis on the chart — it enters through C-rate. A 1h battery discharging a full cycle runs at 1C; a 4h battery at 0.25C. For the same daily dispatch, the short-duration pack sits higher on the C-rate axis, and the C-rate panel is where that shows up. A 2h pack run like a typical arbitrage schedule (0.5C average) is the baseline here; a 1h pack running the same revenue would roughly double C-rate and land on the steep part of the C-rate curve.
+Duration doesn't appear as its own panel but hides inside C-rate. 1h vs 2h vs 4h isn't its own axis on the chart — it enters through C-rate. A 1h battery discharging a full cycle runs at 1C; a 4h battery at 0.25C. For the same daily dispatch, the short-duration pack sits higher on the C-rate axis, and the C-rate panel is where that shows up. A 2h pack run like a typical arbitrage schedule (0.5C average) is the baseline here; a 1h pack running the same revenue would roughly double C-rate and land on the steep part of the C-rate curve.
 """
 )
 
