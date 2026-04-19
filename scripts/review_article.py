@@ -59,11 +59,39 @@ self-contained and headings informative? Is there an intro before data?
 Is there a clear boundary between data and interpretation?
 5. **conciseness** — Is every paragraph earning its place? Any filler, \
 repetition, or over-qualification?
+6. **rhythm** — Does the text read at a steady pace, or do specific \
+sentences/paragraphs make the reader stumble? Rhythm breaks are local \
+tripwires distinct from structure (which is about ordering): hunt for \
+the patterns below. These are the fixes a rhythm-focused editor would \
+make on a first read — imagine reading aloud and note every place the \
+flow stalls.
 
-List EVERY specific issue you see across all five dimensions — do not cap \
-the count, do not filter by score, do not merge related issues into one. \
-Keep each suggestion under 40 words. Err on the side of including more \
-comments rather than fewer — the reader will triage.
+Rhythm-break patterns to flag (every instance; do NOT merge):
+- **Parenthetical/em-dash definition buried inside an impact sentence.** \
+If the bold takeaway also carries a side-definition ("X — the Y-per-Z \
+bill — dominates"), the sentence has two jobs and hits weakly. Split: \
+define first, hit second.
+- **Speed-bump caveats right after a list or right before a chart.** Two \
+"one caveat…" / "one exception…" paragraphs stacked before the visual \
+kill momentum. Push caveats into methodology or fold into the caption.
+- **Inconsistent parallelism in numbered findings.** If the text \
+announces "three things jump out" and then items 1–2 are findings but \
+item 3 is a FAQ, sidebar, or definition, the rhythm breaks. Either \
+restore parallelism or move the odd item out of the list.
+- **Forward spoilers.** A finding that deflates the next section's \
+reveal ("like DoD" just before the DoD section opens). Remove the tell.
+- **Reopened cases after a conclusion.** A section that re-explains the \
+claim before giving the mechanism ("this is counterintuitive…", "many \
+people think…", "but actually…") pads the top. Start with the mechanism.
+- **Redundant bridge sentences before a heading.** "And then there's X \
+— which deserves its own section." The heading is the bridge.
+- **Filler adverbs and meta-commentary.** "So", "really", "actually", \
+"it's worth noting that" — cut unless they carry load.
+
+List EVERY specific issue you see across all six dimensions — do not \
+cap the count, do not filter by score, do not merge related issues into \
+one. Keep each suggestion under 40 words. Err on the side of including \
+more comments rather than fewer — the reader will triage.
 
 Rules for suggestions (read carefully — prior reviews had a high false-\
 positive rate on these):
@@ -149,6 +177,7 @@ JSON_SCHEMA = {
         "structure": {"type": "integer", "minimum": 1, "maximum": 10},
         "rigour": {"type": "integer", "minimum": 1, "maximum": 10},
         "conciseness": {"type": "integer", "minimum": 1, "maximum": 10},
+        "rhythm": {"type": "integer", "minimum": 1, "maximum": 10},
         "suggestions": {
             "type": "array",
             "items": {
@@ -163,7 +192,7 @@ JSON_SCHEMA = {
             },
         },
     },
-    "required": ["clarity", "engagement", "structure", "rigour", "conciseness", "suggestions"],
+    "required": ["clarity", "engagement", "structure", "rigour", "conciseness", "rhythm", "suggestions"],
 }
 
 
@@ -337,7 +366,7 @@ def format_review(filepath: Path, review: dict) -> tuple[str, bool]:
     if not review:
         return f"  {filepath.name}: review skipped (CLI unavailable)\n", True
 
-    dims = ["clarity", "engagement", "structure", "rigour", "conciseness"]
+    dims = ["clarity", "engagement", "structure", "rigour", "conciseness", "rhythm"]
     scores = {d: review.get(d, 0) for d in dims}
     avg = sum(scores.values()) / len(scores)
     passed = all(s >= THRESHOLD for s in scores.values())
