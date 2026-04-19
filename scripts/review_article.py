@@ -316,8 +316,9 @@ def review_with_claude(text: str) -> dict:
         "-p",
         "--output-format", "json",
         "--json-schema", json.dumps(JSON_SCHEMA),
-        "--max-turns", "3",
+        "--max-turns", "6",
         "--model", "opus",
+        "--tools", "",
     ]
 
     try:
@@ -326,7 +327,7 @@ def review_with_claude(text: str) -> dict:
             input=prompt,
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=300,
         )
     except subprocess.TimeoutExpired:
         print("\n  Review timed out — skipping (won't block commit)", file=sys.stderr)
