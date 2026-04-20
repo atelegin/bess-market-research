@@ -743,6 +743,8 @@ with col_b:
 
 st.caption(
     "€/MWh throughput = replacement cost (\\~180 €/kWh) divided across lifetime discharge MWh. "
+    "**€ per cycle** is the same number scaled to plant size: multiply €/MWh by the MWh one cycle "
+    "delivers (DoD × plant capacity). For an 80 % DoD cycle on a 100 MWh plant, that's €/MWh × 80. "
     "Schimpe 2018 benchmarked \\~13 €/MWh at 2018-era CAPEX (\\~€80/kWh); at today's €180/kWh the "
     "same arithmetic gives \\~€30/MWh."
 )
