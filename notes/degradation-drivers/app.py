@@ -704,6 +704,20 @@ with st.expander("Where this model stops working"):
 - **C-rate.** 0C–2C. Below 0.5C the cycle term extrapolates linearly;
   above 2C the estimate is a conservative overestimate. Grid-scale LFP
   stationary operation rarely exits this window.
+- **C-rate summarisation.** The kernel consumes a scalar `mean_crate`,
+  not a current-distribution. Two datasets frame the gap: Xu et al.
+  2025 (Frontiers) cycled BYD 220 Ah LFP modules under peak-shaving
+  and frequency-regulation duties at matched throughput and found
+  1.8–1.9× aging divergence at the same mean C; a directional check
+  against Heydarzadeh et al. 2025 (randomized 0.5–5 C, peak/mean ≈ 3.6)
+  shows our presets ~3 pp low on loss after 450 FEC at `mean_crate = |I|`.
+  The two sit on opposite sides: low-amplitude oscillation with rest
+  ages *slower* than the mean-C prediction (model over-estimates loss);
+  high-amplitude pulses age *faster* (model under-estimates). For
+  aFRR/FCR duty with peak/mean ≳ 3, treat SoH forecasts here as
+  slightly optimistic. Calibrating this out needs a time-series
+  C-rate input and, honestly, more than the n = 2 LFP cells publicly
+  available today.
 - **SoC representation.** Bucketed hours per year — transition
   dynamics, partial cycles, and calendar/cycle coupling inside a cycle
   are not modelled. For stationary LFP the bucketing approximation
@@ -901,6 +915,8 @@ with st.expander("Literature table"):
 | Preger et al. 2020 — *[Degradation of Commercial Lithium-Ion Cells as a Function of Chemistry and Cycling Conditions](https://www.batteryarchive.org/snl_study.html)* (Sandia / batteryarchive.org) | SNL 18650 LFP cycling dataset |
 | Lam et al. 2024 — *[Stanford Long-Term Calendar Aging Dataset](https://osf.io/ju325/)* (Joule / OSF) | K2 18650 LFP calendar dataset |
 | Humiston, Cetin, de Queiroz 2026 — *[Evaluating Battery Degradation Models in Rolling-Horizon BESS Arbitrage Optimization](https://www.mdpi.com/1996-1073/19/4/1056)* (Energies) | Model-choice sensitivity in BESS valuation |
+| Xu, Li, Hua, Wang 2025 — *[Experimental investigation of grid storage modes effect on aging of LiFePO4 battery modules](https://doi.org/10.3389/fenrg.2025.1528691)* (Frontiers in Energy Research) | Peak-shaving vs frequency-regulation aging at matched throughput — duty shape bias |
+| Heydarzadeh, Toivola, Vega-Garita, Immonen 2025 — *[Dataset of lithium-ion cell degradation under randomized current profiles](https://doi.org/10.1016/j.dib.2025.111531)* (Data in Brief 60:111531) | LFP randomized-current directional check — peak-to-mean C-rate bias |
 """
     )
 
