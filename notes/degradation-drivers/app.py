@@ -77,12 +77,12 @@ st.markdown(
     """
 ### Why years-to-EOL misses lifetime revenue
 
-Here is what the horizon-vs-unit-economics gap looks like in a chart. Three cycling intensities, same cell, same CAPEX. The battery's annual throughput falls with SoH, so the area under each curve is the plant's lifetime MWh delivered — and CAPEX divided by that area is the €/MWh throughput bill.
+Here is what the horizon-vs-unit-economics gap looks like in a chart. Three cycling intensities, same cell, same CAPEX. The battery's annual throughput falls with SoH, so the area under each curve is the plant's lifetime MWh delivered — and CAPEX divided by that area is the €/MWh wear bill.
 """
 )
 
 # Declining MWh-per-year curves with area = lifetime MWh.
-# Point: long life → small area → worst €/MWh throughput.
+# Point: long life → small area → worst €/MWh wear.
 _INTRO_DOD = 0.80
 _INTRO_CAPEX_EUR_PER_MWH = 180_000.0   # €180/kWh pack replacement, matches the interactive below
 _INTRO_EOL = 0.70
@@ -146,7 +146,7 @@ for _s in _intro_scenarios:
         text=f"<b style='color:{_s['color']}'>{_s['label']}</b> "
              f"<span style='color:#888;font-size:11px'>{_s['sub']} · {_s['years']:.1f} yr</span><br>"
              f"<span style='color:#444;font-size:12px'>"
-             f"<b>{_s['lifetime_mwh']:,.0f} MWh · €{_s['eur_per_mwh_cost']:,.1f}/MWh</b> throughput</span>",
+             f"<b>{_s['lifetime_mwh']:,.0f} MWh delivered · €{_s['eur_per_mwh_cost']:,.1f}/MWh wear</b></span>",
         showarrow=False, xanchor="left", yanchor="middle", xshift=14, align="left",
         font=dict(size=13),
     )
@@ -174,7 +174,7 @@ st.caption(
     f"Illustrative: CAPEX €{_INTRO_CAPEX_EUR_PER_MWH/1000:,.0f}k per MWh installed, "
     f"80 % DoD, SoH fading to 70 % by the stated year along a sub-linear curve. "
     "MWh per year falls with SoH, so the curve shape is the SoH decay. "
-    "Area under each curve = lifetime MWh delivered; CAPEX ÷ area = €/MWh throughput."
+    "Area under each curve = lifetime MWh delivered; CAPEX ÷ area = €/MWh wear."
 )
 
 st.markdown(
@@ -201,7 +201,7 @@ Five parameters set the fade rate of a stationary LFP battery. The trader contro
 - **Cycling rate** — full-equivalent cycles per day.
 - **Temperature** — cell-internal average over the year.
 
-Below, each lever varies across its full range while the other four stay at baseline (2 c/d, 80 % DoD, 55 % rest SoC, 0.5C, 25 °C). Switch the y-axis between **€/MWh throughput**, **years until 70 % SoH**, and **€ per cycle** (plug in your plant size) — the lever ranking changes depending on which view you select. The dashed horizontal line in each panel marks the baseline value.
+Below, each lever varies across its full range while the other four stay at baseline (2 c/d, 80 % DoD, 55 % rest SoC, 0.5C, 25 °C). Switch the y-axis between **€/MWh wear**, **years until 70 % SoH**, and **€ per cycle** (plug in your plant size) — the lever ranking changes depending on which view you select. The dashed horizontal line in each panel marks the baseline value.
 """
 )
 
@@ -211,7 +211,7 @@ render_chart_title("How each driver moves the number")
 st.markdown(
     "<div style='color:#6b6b6b;font-size:0.95em;margin-bottom:0.5em'>"
     "Each panel varies one driver across its full operating range, with the other four held at the baseline point (dashed line). "
-    "Switch the axis between <b>€/MWh throughput</b>, <b>years until 70 % SoH</b>, and <b>€ per cycle</b>. "
+    "Switch the axis between <b>€/MWh wear</b>, <b>years until 70 % SoH</b>, and <b>€ per cycle</b>. "
     "Read it as: <i>\"if average cell temperature rises from 25 °C to 35 °C, the €/MWh bill jumps by ~€38 — and ~5 years of life disappear with it.\"</i>"
     "</div>",
     unsafe_allow_html=True,
@@ -321,7 +321,7 @@ def _fmt_delta_yr(v: float) -> str:
 
 
 _view_labels = {
-    "€/MWh throughput": {
+    "€/MWh wear": {
         "series_key": "costs_delta",
         "y_label": "Δ €/MWh vs baseline",
         "y_range": _pad_range(_all_costs_delta),
@@ -723,7 +723,7 @@ with col_a:
     st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False})
 with col_b:
     st.metric(
-        "€ per MWh throughput",
+        "€ per MWh wear",
         f"{eur_per_mwh_cycle:.1f}" if not np.isnan(eur_per_mwh_cycle) else "—",
     )
     if not np.isnan(eur_per_cycle_metric):
@@ -742,7 +742,7 @@ with col_b:
         st.warning("C-rate above calibration range (>2C).")
 
 st.caption(
-    "€/MWh throughput = replacement cost (\\~180 €/kWh) divided across lifetime discharge MWh. "
+    "€/MWh wear = replacement cost (\\~180 €/kWh) divided across lifetime discharge MWh. "
     "**€ per cycle** is the same number scaled to plant size: multiply €/MWh by the MWh one cycle "
     "delivers (DoD × plant capacity). For an 80 % DoD cycle on a 100 MWh plant, that's €/MWh × 80. "
     "Schimpe 2018 benchmarked \\~13 €/MWh at 2018-era CAPEX (\\~€80/kWh); at today's €180/kWh the "
