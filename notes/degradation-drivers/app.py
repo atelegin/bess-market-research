@@ -57,13 +57,15 @@ data = load_precomputed()
 # ── Intro ────────────────────────────────────────────────────
 st.markdown(
     """
-Most investor-side BESS models start from a shortcut: pick a number of cycles per year, multiply by a fade rate, call it degradation. That is how lifetime revenue gets projected, how warranty calls get argued, how augmentation gets sized. The number of cycles is *the* input.
+Most investor-side BESS models collapse degradation to a two-step shortcut: pick a number of cycles per year, multiply by a fade rate, read off the year the pack hits its warranty floor. Cycle count goes in; years-to-EOL comes out — and that year is what lands in the warranty schedule, the IC memo, the augmentation plan. One number stands in for "degradation".
 
-It is the wrong input. Two plants that log an identical 730 cycles in a year can land years apart at end of life — one at year 10, the other at year 14 — purely because of what happened *between* those cycles. Where it rested. How warm the cell got. How deep each cycle went. Cycle count catches none of it.
+Both ends of the chain are wrong.
 
-I rebuilt the model to price these factors explicitly. This note moves each driver — depth of discharge, rest state, how fast it cycles, how many cycles it runs, and how warm it sits — across its full operating range and ranks them by how many years of life each one buys or burns.
+**Cycle count is a bad input.** Two plants that log an identical 730 cycles in a year can land years apart at end of life — one at year 10, the other at year 14 — purely because of what happened *between* those cycles. Where it rested. How warm the cell got. How deep each cycle went. Cycle count catches none of it.
 
-€/MWh throughput is the per-MWh "wear bill" the battery runs up over its lifetime. The ranking uses that basis.
+**Years-to-EOL is a bad output.** It answers a horizon question — *when does the pack hit its warranty floor?* — not a unit-economics question — *how many MWh does the plant deliver over its life, and what does each MWh cost me in wear?* The two questions rank operator choices differently — sometimes in opposite directions. A plant that lasts the longest often delivers the fewest MWh, and carries the highest cost per MWh it sells.
+
+I rebuilt the model to price these factors explicitly. This note moves each driver — depth of discharge, rest state, how fast it cycles, how many cycles it runs, and how warm it sits — across its full operating range and ranks them by the per-MWh wear bill they carry. €/MWh throughput is that bill.
 
 **The short version: temperature and C-rate dominate everything else.** Rest SoC and cycles per day each move the bill by half as much. Depth of discharge barely moves it at all, because the years of life it burns are cancelled almost exactly by the extra MWh per cycle it delivers. Which cell you buy sets the ceiling; how you run the battery decides where you land inside it.
 """
@@ -73,11 +75,9 @@ I rebuilt the model to price these factors explicitly. This note moves each driv
 st.markdown("---")
 st.markdown(
     """
-### Why years-to-EOL is a bad metric for lifetime revenue
+### Why years-to-EOL misses lifetime revenue
 
-The industry runs on years-to-EOL. It sits in the warranty schedule, the IC memo, the augmentation plan — the single number the market treats as "degradation". But years-to-EOL answers a horizon question — *when does the battery hit its warranty floor?* — not a unit-economics question — *how many MWh does this plant actually deliver over its life, and what does each one cost me in wear?* The two questions rank operator choices differently — sometimes in opposite directions.
-
-Three cycling intensities, same cell, same CAPEX. The battery's annual throughput falls with SoH, so the area under each curve is the plant's lifetime MWh — and divided by CAPEX, it's the €/MWh throughput bill.
+Here is what the horizon-vs-unit-economics gap looks like in a chart. Three cycling intensities, same cell, same CAPEX. The battery's annual throughput falls with SoH, so the area under each curve is the plant's lifetime MWh — and divided by CAPEX, it's the €/MWh throughput bill.
 """
 )
 
