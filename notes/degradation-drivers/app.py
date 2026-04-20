@@ -460,7 +460,7 @@ Three things jump out.
 
 **Rest SoC is the invisible lever.** The battery sits idle most of the day; where it rests decides how fast it ages. Zero extra cycles, zero extra MWh — every year of life rest SoC costs lands straight on the €/MWh bill. An arbitrage battery parked at 85% waiting for the morning peak carries a higher per-MWh cost than an FCR battery resting near 50%. No cycle counter shows it; the chart does.
 
-**Cycles per day — not what the counter suggests.** Running the battery harder (2 → 2.5 c/d) pushes the €/MWh bill slightly *below* baseline; running it lighter (2 → 1 c/d) pushes it *up* by ~€10. Calendar aging runs on wall-clock time: a battery that cycles rarely still ages, spreading CAPEX across fewer MWh. The industry's headline metric misranks the lever — implying gentle is cheaper when it isn't.
+**Cycles per day — not what the counter suggests.** Running the battery harder (2 → 2.5 c/d) pushes the €/MWh bill slightly *below* baseline; running it lighter (2 → 1 c/d) pushes it *up* by ~€10. Calendar aging runs on wall-clock time: a battery that cycles rarely still ages, spreading CAPEX across fewer MWh. Concretely: at 1 c/d the battery lasts a bit longer (~12 years vs 9.8), but delivers half the MWh per year. Fewer lifetime MWh, same CAPEX → higher €/MWh. The industry's headline metric misranks the lever — implying gentle is cheaper when it isn't.
 
 **Temperature and C-rate dominate.** Both curves bend sharply: +10 °C or a doubling of C-rate each move the bill by more than rest SoC and cycles/day combined. These are the two levers that decide whether the battery makes warranty.
 
