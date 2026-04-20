@@ -84,7 +84,7 @@ Here is what the horizon-vs-unit-economics gap looks like in a chart. Three cycl
 # Declining MWh-per-year curves with area = lifetime MWh.
 # Point: long life → small area → worst €/MWh throughput.
 _INTRO_DOD = 0.80
-_INTRO_CAPEX_EUR_PER_MWH = 200_000.0   # €200/kWh installed, illustrative
+_INTRO_CAPEX_EUR_PER_MWH = 180_000.0   # €180/kWh pack replacement, matches the interactive below
 _INTRO_EOL = 0.70
 _INTRO_BETA = 0.85
 _INTRO_SOH_AREA_FRAC = 1 - (1 - _INTRO_EOL) / (_INTRO_BETA + 1)  # ≈ 0.838
@@ -179,7 +179,7 @@ st.caption(
 
 st.markdown(
     """
-Read the chart as three lifetime budgets, not three calendars. Light duty's battery survives the longest — 15 years vs 8.5 for Hard duty. But despite living 6.5 years longer, it delivers less energy in total: 3,670 MWh per MWh of installed capacity, vs 5,202 for Hard duty — about 1,500 MWh less. Same cell, same CAPEX, different dispatch intensity. The long-lived plant ends up costing ~€55 per MWh delivered; the short-lived one, ~€38. Running gently doesn't save money — it stretches the bill across fewer MWh.
+What matters here isn't how long each battery lives, but how much energy it delivers in total — the area under its curve. Light duty's battery survives the longest (15 years vs 8.5 for Hard duty), but despite living 6.5 years longer, it delivers less total energy: 3,670 MWh per MWh of installed capacity, vs 5,202 for Hard duty — about 1,500 MWh less. Same cell, same CAPEX, different dispatch intensity. The long-lived plant ends up costing ~€49 per MWh delivered; the short-lived one, ~€35. Running gently doesn't save money — it stretches the bill across fewer MWh.
 
 Moving from Hard to Light adds 6.5 years but subtracts lifetime revenue. That's what years-to-EOL hides: it mixes *how fast each MWh wears the battery* with *how many MWh the plant actually delivers*, and the second effect dominates here. Fewer cycles × more calendar time means fewer MWh to absorb the same CAPEX, so the gentle schedule is the most expensive per MWh delivered.
 
