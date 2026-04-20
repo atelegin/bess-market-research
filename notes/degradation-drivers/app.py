@@ -69,120 +69,120 @@ I rebuilt the model to price these factors explicitly. This note moves each driv
 """
 )
 
-# ── Why €/MWh, not years-to-EOL ─────────────────────────────
+# ── Why years-to-EOL is a bad metric for lifetime revenue ──
 st.markdown("---")
 st.markdown(
     """
-### Why €/MWh throughput, not years-to-EOL
+### Why years-to-EOL is a bad metric for lifetime revenue
 
-The industry runs on years-to-EOL. It sits in the warranty schedule, the IC memo, the augmentation plan — the single number the market treats as "degradation". But years-to-EOL answers a horizon question — *when does the battery hit its warranty floor?* — not a unit-economics question — *what does each MWh sold actually cost me in wear?* These aren't the same question, and they don't rank operator choices the same way.
+The industry runs on years-to-EOL. It sits in the warranty schedule, the IC memo, the augmentation plan — the single number the market treats as "degradation". But years-to-EOL answers a horizon question — *when does the battery hit its warranty floor?* — not a unit-economics question — *how many MWh does this plant actually deliver over its life, and what does each one cost me in wear?* The two questions rank operator choices differently — sometimes in opposite directions.
 
-Look at what happens when you rank three cycling intensities by each metric.
+Three cycling intensities, same cell, same CAPEX. The battery's annual throughput falls with SoH, so the area under each curve is the plant's lifetime MWh — and divided by CAPEX, it's the €/MWh throughput bill.
 """
 )
 
-# Slope chart: three cycles-per-day scenarios ranked by both metrics.
-# Uses the cycles-per-day sweep already in precomputed data.
-_fec_driver = next(d for d in data["response_curves"]["drivers"] if d["key"] == "fec")
-_fec_xy = [(p["x"], p["years"]) for p in _fec_driver["years_to_70_mid"] if p["years"] is not None]
-_fec_xs_intro = [p[0] for p in _fec_xy]
-_fec_ys_intro = [p[1] for p in _fec_xy]
+# Declining MWh-per-year curves with area = lifetime MWh.
+# Point: long life → small area → worst €/MWh throughput.
+_INTRO_DOD = 0.80
+_INTRO_CAPEX_EUR_PER_MWH = 200_000.0   # €200/kWh installed, illustrative
+_INTRO_EOL = 0.70
+_INTRO_BETA = 0.85
+_INTRO_SOH_AREA_FRAC = 1 - (1 - _INTRO_EOL) / (_INTRO_BETA + 1)  # ≈ 0.838
 
-_CAPEX_EUR_PER_KWH_INTRO = 180.0
-
-
-def _years_at_fec(fec_val: float) -> float:
-    return float(np.interp(fec_val, _fec_xs_intro, _fec_ys_intro))
-
-
-def _cost_at_fec(fec_val: float) -> float:
-    y = _years_at_fec(fec_val)
-    return _CAPEX_EUR_PER_KWH_INTRO * 1000.0 / (y * fec_val * 0.80)
-
-
-_cross_scenarios = [
-    {"label": "Light duty",  "sub": "1 c/d",   "fec": 365.0, "color": "#d35f5f"},
-    {"label": "Baseline",    "sub": "2 c/d",   "fec": 730.0, "color": "#0b5fff"},
-    {"label": "Hard duty",   "sub": "2.5 c/d", "fec": 913.0, "color": "#1aa179"},
+_intro_scenarios = [
+    {"label": "Light duty", "sub": "1 c/d",   "fec": 365, "years": 15.0, "color": "#C76B5E"},
+    {"label": "Baseline",   "sub": "2 c/d",   "fec": 730, "years":  9.8, "color": "#355C91"},
+    {"label": "Hard duty",  "sub": "2.5 c/d", "fec": 913, "years":  8.5, "color": "#3E7C5F"},
 ]
-for _s in _cross_scenarios:
-    _s["years"] = _years_at_fec(_s["fec"])
-    _s["cost"]  = _cost_at_fec(_s["fec"])
+for _s in _intro_scenarios:
+    _s["initial_annual_mwh"] = _s["fec"] * _INTRO_DOD
+    _s["lifetime_mwh"]       = _s["initial_annual_mwh"] * _s["years"] * _INTRO_SOH_AREA_FRAC
+    _s["eur_per_mwh_cost"]   = _INTRO_CAPEX_EUR_PER_MWH / _s["lifetime_mwh"]
 
-_by_years = sorted(_cross_scenarios, key=lambda s: -s["years"])  # longer first
-_by_cost  = sorted(_cross_scenarios, key=lambda s: s["cost"])    # cheaper first
-_rank_y = {s["label"]: _by_years.index(s) for s in _cross_scenarios}
-_rank_c = {s["label"]: _by_cost.index(s) for s in _cross_scenarios}
+_INTRO_MAX_YEARS = max(s["years"] for s in _intro_scenarios)
+_INTRO_MAX_RATE  = max(s["initial_annual_mwh"] for s in _intro_scenarios)
 
-fig_cross = go.Figure()
 
-fig_cross.add_annotation(
-    x=0.0, y=0.75, xref="x", yref="y",
-    text="<b>Ranked by years to 70% SoH</b><br>"
-         "<span style='color:#888;font-size:11px'>longer = better</span>",
-    showarrow=False, xanchor="center", align="center",
-    font=dict(size=13, color="#222"),
-)
-fig_cross.add_annotation(
-    x=1.0, y=0.75, xref="x", yref="y",
-    text="<b>Ranked by €/MWh throughput</b><br>"
-         "<span style='color:#888;font-size:11px'>lower = better</span>",
-    showarrow=False, xanchor="center", align="center",
-    font=dict(size=13, color="#222"),
-)
+def _intro_soh(t, T, beta=_INTRO_BETA):
+    tt = np.clip(np.asarray(t) / T, 0, 1)
+    return 1.0 - (1.0 - _INTRO_EOL) * (tt ** beta)
 
-for _rank_idx in range(len(_cross_scenarios)):
-    fig_cross.add_annotation(
-        x=0.5, y=-_rank_idx, xref="x", yref="y",
-        text=f"#{_rank_idx + 1}",
-        showarrow=False, font=dict(size=11, color="#bbb"),
-    )
 
-for _s in _cross_scenarios:
-    _yr = -_rank_y[_s["label"]]
-    _cr = -_rank_c[_s["label"]]
-    fig_cross.add_trace(
+def _intro_rgba(hex_: str, a: float) -> str:
+    r, g, b = int(hex_[1:3], 16), int(hex_[3:5], 16), int(hex_[5:7], 16)
+    return f"rgba({r},{g},{b},{a})"
+
+
+fig_intro = go.Figure()
+
+# Declining MWh curves with fills, drawn back-to-front by area size.
+_intro_by_area = sorted(_intro_scenarios, key=lambda s: -s["lifetime_mwh"])
+for _s in _intro_by_area:
+    xs = np.linspace(0.0, _s["years"], 120)
+    mwh_rate = _s["initial_annual_mwh"] * _intro_soh(xs, _s["years"])
+    poly_x = np.concatenate([[0.0], xs, [_s["years"], 0.0]])
+    poly_y = np.concatenate([[0.0], mwh_rate, [0.0, 0.0]])
+    fig_intro.add_trace(
         go.Scatter(
-            x=[0.0, 1.0], y=[_yr, _cr],
-            mode="lines+markers",
-            line=dict(color=_s["color"], width=3, shape="spline"),
-            marker=dict(size=13, color=_s["color"]),
-            hoverinfo="skip", showlegend=False,
+            x=poly_x, y=poly_y, mode="lines", fill="toself",
+            fillcolor=_intro_rgba(_s["color"], 0.30),
+            line=dict(color=_s["color"], width=2.5),
+            showlegend=False, hoverinfo="skip",
         )
     )
-    fig_cross.add_annotation(
-        x=-0.04, y=_yr, xref="x", yref="y",
-        text=f"<b>{_s['label']}</b> <span style='color:#888'>({_s['sub']})</span><br>"
-             f"<span style='color:#555;font-size:12px'>{_s['years']:.1f} years</span>",
-        showarrow=False, xanchor="right", align="right",
-        font=dict(size=13, color=_s["color"]),
+
+# Endpoint markers + labels
+for _s in _intro_scenarios:
+    end_rate = _s["initial_annual_mwh"] * _INTRO_EOL
+    fig_intro.add_trace(
+        go.Scatter(
+            x=[_s["years"]], y=[end_rate], mode="markers",
+            marker=dict(size=10, color=_s["color"], line=dict(color="#fff", width=2)),
+            showlegend=False, hoverinfo="skip",
+        )
     )
-    fig_cross.add_annotation(
-        x=1.04, y=_cr, xref="x", yref="y",
-        text=f"<b>{_s['label']}</b> <span style='color:#888'>({_s['sub']})</span><br>"
-             f"<span style='color:#555;font-size:12px'>€{_s['cost']:.0f}/MWh</span>",
-        showarrow=False, xanchor="left", align="left",
-        font=dict(size=13, color=_s["color"]),
+    fig_intro.add_annotation(
+        x=_s["years"], y=end_rate,
+        text=f"<b style='color:{_s['color']}'>{_s['label']}</b> "
+             f"<span style='color:#888;font-size:11px'>{_s['sub']} · {_s['years']:.1f} yr</span><br>"
+             f"<span style='color:#444;font-size:12px'>"
+             f"lifetime throughput: <b>{_s['lifetime_mwh']:,.0f} MWh</b><br>"
+             f"<b>€{_s['eur_per_mwh_cost']:,.1f}/MWh throughput</b></span>",
+        showarrow=False, xanchor="left", yanchor="middle", xshift=14, align="left",
+        font=dict(size=13),
     )
 
-fig_cross.update_xaxes(range=[-0.7, 1.7], visible=False)
-fig_cross.update_yaxes(
-    range=[-(len(_cross_scenarios) - 1) - 0.5, 1.2], visible=False,
-)
-fig_cross.update_layout(
-    height=280,
-    margin=dict(l=10, r=10, t=10, b=10),
-    plot_bgcolor="rgba(0,0,0,0)",
-    paper_bgcolor="rgba(0,0,0,0)",
+fig_intro.update_layout(
+    height=500,
+    margin=dict(l=90, r=40, t=30, b=60),
+    plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
     showlegend=False,
+    xaxis=dict(
+        range=[0, _INTRO_MAX_YEARS + 6],
+        title=dict(text="Years in operation", font=dict(size=12, color="#666")),
+        showgrid=True, gridcolor="#eee", tickvals=[0, 5, 10, 15],
+        zeroline=True, zerolinecolor="#888",
+    ),
+    yaxis=dict(
+        title=dict(text="MWh per year, per MWh capacity  (area = lifetime MWh)",
+                   font=dict(size=12, color="#666")),
+        range=[0, _INTRO_MAX_RATE * 1.15],
+        showgrid=True, gridcolor="#eee", zeroline=True, zerolinecolor="#888",
+    ),
 )
-st.plotly_chart(fig_cross, use_container_width=True, config={"displayModeBar": False})
+st.plotly_chart(fig_intro, use_container_width=True, config={"displayModeBar": False})
+st.caption(
+    f"Illustrative: CAPEX €{_INTRO_CAPEX_EUR_PER_MWH/1000:,.0f}k per MWh installed, "
+    f"80 % DoD, SoH fade to 70 % by the stated year with β = {_INTRO_BETA}. "
+    "MWh per year falls with SoH, so the curve shape is the SoH decay. "
+    "Area under each curve = lifetime MWh delivered; CAPEX ÷ area = €/MWh throughput."
+)
 
 st.markdown(
     """
-The rankings invert. Light duty wins on years-to-EOL and loses on €/MWh. Hard duty does the opposite. A cycle counter or a years-to-EOL chart looking at these three would tell you to run gently; a €/MWh chart tells you the gentle plant is the most expensive per MWh it sells.
+The rankings invert. Light duty lasts longest — and delivers the fewest lifetime MWh. Hard duty lasts shortest — and delivers the most. A years-to-EOL chart would rank these three gentle → hard; a €/MWh throughput chart ranks them hard → gentle. A cycle counter or a warranty memo looking at these three would tell you to run gently; the €/MWh column says the gentle plant is the most expensive per MWh it sells.
 
-Years-to-EOL confounds two things: how much wear each MWh carries, and how many MWh the plant actually delivers. Light duty stretches the calendar budget but doesn't stretch the throughput budget — fewer cycles means fewer MWh to absorb the same CAPEX. Same cost, less output, higher €/MWh.
+Years-to-EOL confounds two things: how fast each MWh wears the battery, and how many MWh the plant actually delivers. Light duty stretches the calendar budget but doesn't stretch the throughput budget — fewer cycles means fewer MWh to absorb the same CAPEX. Same cost, less output, higher €/MWh.
 
 Both views have their place. **Years-to-EOL** is the *constraint* — warranty, debt tenor, augmentation timing. **€/MWh throughput** is the *objective* — unit economics of plant output, the basis a dispatch decision has to price against. **€ per cycle** scales the same picture to plant size. Years-to-EOL tells you when to worry; €/MWh tells you what to bid.
 """
