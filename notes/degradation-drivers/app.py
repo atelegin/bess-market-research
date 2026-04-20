@@ -63,7 +63,7 @@ Both ends of the chain are wrong.
 
 **Cycle count is a bad input.** Two plants that log an identical 730 cycles in a year can land years apart at end of life — one at year 10, the other at year 14 — purely because of what happened *between* those cycles. Where it rested. How warm the cell got. How deep each cycle went. Cycle count catches none of it.
 
-**Years-to-EOL is a bad output.** It answers a horizon question — *when does the battery drop to the warranty floor?* — not a unit-economics question — *how many MWh does the plant deliver over its life, and how much wear does each MWh cause?* The two questions point to different operator choices — sometimes opposite ones. A plant that lasts the longest often delivers the fewest MWh, and carries the highest cost per MWh it sells.
+**Years-to-EOL is a bad output.** It answers a horizon question — *when does the battery drop to the warranty floor?* — not a unit-economics question — *how many MWh does the plant deliver over its life, and how much wear does each MWh cause?* The two questions point to different dispatch choices — sometimes opposite ones. A plant that lasts the longest often delivers the fewest MWh, and carries the highest cost per MWh it sells.
 
 This note prices these factors explicitly. It moves each driver — depth of discharge, rest state, how fast it cycles, how many cycles it runs, and how warm it sits — across its full operating range and ranks them by the per-MWh wear bill they carry.
 
