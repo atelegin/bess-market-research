@@ -724,6 +724,16 @@ with col_a:
     )
     st.plotly_chart(f, use_container_width=True, config={"displayModeBar": False})
 with col_b:
+    if not np.isnan(lifetime_mwh_plant):
+        _mwh_disp = (
+            f"{lifetime_mwh_plant/1000:,.1f}k"
+            if lifetime_mwh_plant >= 1000
+            else f"{lifetime_mwh_plant:,.0f}"
+        )
+    else:
+        _mwh_disp = "—"
+    st.metric(f"Lifetime MWh delivered ({_plant_capacity_mwh:.0f} MWh plant)", _mwh_disp)
+    st.metric("Years to EOL (median cell)",  f"{years_to_eol:.1f}" if not np.isnan(years_to_eol) else "> 20")
     st.metric(
         "€ per MWh wear",
         f"{eur_per_mwh_cycle:.1f}" if not np.isnan(eur_per_mwh_cycle) else "—",
@@ -737,16 +747,6 @@ with col_b:
     else:
         _cyc_disp = "—"
     st.metric(f"€ per cycle ({_plant_capacity_mwh:.0f} MWh plant)", _cyc_disp)
-    if not np.isnan(lifetime_mwh_plant):
-        _mwh_disp = (
-            f"{lifetime_mwh_plant/1000:,.1f}k"
-            if lifetime_mwh_plant >= 1000
-            else f"{lifetime_mwh_plant:,.0f}"
-        )
-    else:
-        _mwh_disp = "—"
-    st.metric(f"Lifetime MWh delivered ({_plant_capacity_mwh:.0f} MWh plant)", _mwh_disp)
-    st.metric("Years to EOL (median cell)",  f"{years_to_eol:.1f}" if not np.isnan(years_to_eol) else "> 20")
     if not (preset.temp_range_C[0] <= temp <= preset.temp_range_C[1]):
         st.warning(f"Temperature outside preset range {preset.temp_range_C}.")
     if c_rate > 2.0:
