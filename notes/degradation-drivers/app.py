@@ -57,13 +57,13 @@ data = load_precomputed()
 # ── Intro ────────────────────────────────────────────────────
 st.markdown(
     """
-Most investor-side BESS models reduce degradation to a two-step shortcut: pick a number of cycles per year, multiply by a fade rate, and get the year the battery's capacity drops below the warranty floor (typically 70 %). Cycle count goes in; years-to-end-of-life (years-to-EOL) comes out — and that year is what lands in the warranty schedule and the augmentation plan. One number stands in for "degradation".
+Most investor-side BESS models reduce degradation to a two-step shortcut: take a number of cycles per year, multiply by a fade rate, and get the year in which capacity drops below the warranty floor (typically 70 %). Cycle count goes in; years-to-EOL comes out — and that year is what lands in the warranty schedule and the augmentation plan. A single number stands in for "degradation".
 
-Both ends of the chain are wrong.
+Both ends of that chain are over-simplified.
 
-**Cycle count is a bad input.** Two plants that log an identical 730 cycles in a year can land years apart at end of life — one at year 10, the other at year 14 — purely because of what happened *between* those cycles. Where it rested. How warm the cell got. How deep each cycle went. Cycle count catches none of it.
+**Cycle count is an incomplete input.** Two plants that log an identical 730 cycles in a year can land years apart at end of life — one at year 10, the other at year 14 — because of what happens *between* the cycles: where the battery rests, how warm the cell gets, how deep each cycle goes. Cycle count captures none of it.
 
-**Years-to-EOL is a bad output.** It answers a horizon question — *when does the battery drop to the warranty floor?* — not a unit-economics question — *how many MWh does the plant deliver over its life, and how much wear does each MWh cause?* The two questions point to different dispatch choices — sometimes opposite ones. A plant that lasts the longest often delivers the fewest MWh, and carries the highest cost per MWh it sells.
+**Years-to-EOL answers the wrong question.** It tells you *when* the battery drops to the warranty floor, not *how many MWh the plant delivers over its life, and how much wear each MWh causes*. Those two questions point to different dispatch choices — sometimes opposite ones. The plant that lasts longest often delivers the fewest MWh, and carries the highest cost per MWh sold.
 
 This note prices these factors explicitly. It moves each driver — depth of discharge, rest state, how fast it cycles, how many cycles it runs, and how warm it sits — across its full operating range and ranks them by the per-MWh wear bill they carry.
 
@@ -195,10 +195,10 @@ st.markdown(
 
 Five parameters set the fade rate of a stationary LFP battery. The trader controls four of them through dispatch; site design fixes the fifth (temperature).
 
-- **Depth of discharge (DoD)** — how far each cycle moves.
-- **Rest SoC** — where the battery sits when idle.
-- **C-rate** — how fast power moves in and out of the battery.
-- **Cycling rate** — full-equivalent cycles per day.
+- **Depth of discharge (DoD).**
+- **Rest SoC** — the state of charge the battery holds between trades.
+- **C-rate** — charge/discharge power divided by energy capacity. A 1-hour battery cycling fully runs at 1C; a 2-hour battery at 0.5C; a 4-hour battery at 0.25C.
+- **Cycling rate** — full-equivalent cycles per day (c/d).
 - **Temperature** — cell-internal average over the year.
 
 Below, each lever varies across its full range while the other four stay at baseline (2 c/d, 80 % DoD, 55 % rest SoC, 0.5C, 25 °C). Switch the y-axis between **€/MWh wear**, **years until 70 % SoH**, and **€ per cycle** (plug in your plant size) — the lever ranking changes depending on which view you select. The dashed horizontal line in each panel marks the baseline value.
@@ -331,7 +331,7 @@ _view_labels = {
         "abs_anchor": _canonical_b_cost,
         "abs_fmt": lambda v: f"€{v:.0f}/MWh",
     },
-    "Years to end of life": {
+    "Years to EOL": {
         "series_key": "years_delta",
         "y_label": "Δ years vs baseline",
         "y_range": _pad_range(_all_years_delta),
@@ -509,7 +509,7 @@ for i, k in enumerate(_order):
 fig1.update_layout(
     height=340, margin=dict(l=60, r=15, t=75, b=20),
     plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-    showlegend=False,
+    showlegend=False, dragmode=False,
 )
 st.markdown(
     """
@@ -560,8 +560,7 @@ render_chart_caption(
     "~4 yr; cycles/day behaves similarly. Rest SoC moves both. Temperature "
     "here is <b>cell-internal</b>, so the C-rate panel already includes "
     "self-heating; at fixed ambient the two aren't fully independent. "
-    "Duration sits inside the C-rate panel — a 1h battery cycling fully "
-    "runs at 1C, a 4h at 0.25C; the baseline 0.5C assumes a 2h battery."
+    "The baseline 0.5C assumes a 2-hour battery."
 )
 render_takeaway(
     "Temperature and C-rate dominate the €/MWh bill. Rest SoC shifts it "
