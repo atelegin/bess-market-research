@@ -652,7 +652,7 @@ with _cols[2]:
 with _cols[3]:
     c_rate = st.slider("C-rate", 0.10, 1.00, step=0.05, key="ddr_c_rate")
 with _cols[4]:
-    temp = st.slider("Cell T (°C)", 10, 40, step=1, key="ddr_temp")
+    temp = st.slider("Cell T (°C)", 15, 40, step=1, key="ddr_temp")
 
 duty = DutyCycle.from_mean(
     fec_per_year=float(fec),
@@ -715,6 +715,29 @@ with col_a:
         )
     )
     f.add_hline(y=eol, line_dash="dot", line_color="#888", annotation_text=f"EOL {int(eol*100)}%")
+    if not np.isnan(years_to_eol):
+        f.add_shape(
+            type="line",
+            x0=years_to_eol, x1=years_to_eol,
+            y0=0.5, y1=eol,
+            line=dict(color="#888", dash="dot", width=1),
+        )
+        f.add_annotation(
+            x=years_to_eol, y=0.5,
+            text=f"{years_to_eol:.1f} yr",
+            showarrow=False,
+            yshift=12, xshift=22,
+            font=dict(color="#555", size=12),
+        )
+        f.add_trace(
+            go.Scatter(
+                x=[years_to_eol], y=[eol],
+                mode="markers",
+                marker=dict(color="#0b5fff", size=8, symbol="circle"),
+                showlegend=False,
+                hovertemplate=f"EOL crossing: {years_to_eol:.1f} yr<extra></extra>",
+            )
+        )
     f.update_layout(
         xaxis_title="years",
         yaxis_title="SoH",
