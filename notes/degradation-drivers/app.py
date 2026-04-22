@@ -845,16 +845,17 @@ with st.expander("Where this model stops working"):
 with st.expander("Why this kernel"):
     st.markdown(
         """
-Where this sits in the literature: on the **empirical** side of the
-model-based / data-driven split in [Hu et al. 2020 (Joule)](https://doi.org/10.1016/j.joule.2019.11.018) —
-physics-motivated Arrhenius and power-law forms, coefficients fit to
-cell data rather than derived from a P2D electrochemical solver (see
-[O'Kane et al. 2022 (PCCP)](https://doi.org/10.1039/D2CP00417H) for
-that line). [Naumann et al. 2018](https://doi.org/10.1016/j.est.2018.01.019) —
-the calendar anchor — self-describes as semi-empirical, and that is
-how the kernel is used here: two channels (cycle + calendar) with
-Arrhenius gating and power-law FEC/DoD/C-rate dependence, fit end-to-end
-without solving the underlying ODEs.
+Where this sits in the literature: a **semi-empirical** lifetime
+kernel — physics-motivated functional forms (Arrhenius temperature
+gating, power-law FEC/DoD/C-rate dependence, cubic k_cal(SoC)) with
+coefficients fit to cell data, rather than a physics-based
+electrochemical solver that integrates mass and charge transport from
+first principles ([O'Kane et al. 2022 (PCCP)](https://doi.org/10.1039/D2CP00417H)
+for the physics-based line; [Naumann et al. 2018](https://doi.org/10.1016/j.est.2018.01.019),
+the calendar anchor used here, self-describes in this class). Two
+channels — cycle + calendar — are kept independent and summed, rather
+than collapsed into a single pseudo-cycle counter or solved from
+coupled ODEs.
 
 [Humiston, Cetin, de Queiroz (Energies 2026)](https://www.mdpi.com/1996-1073/19/4/1056) ran the same BESS project
 through three degradation formulations — linear-calendar (LC),
