@@ -845,6 +845,17 @@ with st.expander("Where this model stops working"):
 with st.expander("Why this kernel"):
     st.markdown(
         """
+Where this sits in the literature: on the **empirical** side of the
+model-based / data-driven split in [Hu et al. 2020 (Joule)](https://doi.org/10.1016/j.joule.2019.11.018) —
+physics-motivated Arrhenius and power-law forms, coefficients fit to
+cell data rather than derived from a P2D electrochemical solver (see
+[O'Kane et al. 2022 (PCCP)](https://doi.org/10.1039/D2CP00417H) for
+that line). [Naumann et al. 2018](https://doi.org/10.1016/j.est.2018.01.019) —
+the calendar anchor — self-describes as semi-empirical, and that is
+how the kernel is used here: two channels (cycle + calendar) with
+Arrhenius gating and power-law FEC/DoD/C-rate dependence, fit end-to-end
+without solving the underlying ODEs.
+
 [Humiston, Cetin, de Queiroz (Energies 2026)](https://www.mdpi.com/1996-1073/19/4/1056) ran the same BESS project
 through three degradation formulations — linear-calendar (LC),
 energy-throughput (ET), and cycle-based rainflow (CB) — on 2024 ERCOT
