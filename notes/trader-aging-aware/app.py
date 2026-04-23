@@ -83,6 +83,8 @@ data = load_precomputed()
 results = data["results"]
 diagnostics = data["diagnostics"]
 n_years = data["n_years"]
+diag_intraday = diagnostics.get("adp_intraday")
+diag_naive = diagnostics.get("naive")
 
 
 # ── KPI row ─────────────────────────────────────────────────
@@ -220,6 +222,119 @@ with col_soh:
     st.plotly_chart(fig_soh, use_container_width=True, config={"displayModeBar": False})
 
 
+# ── Week-zoom: what the policies actually do ────────────────
+st.markdown("---")
+st.markdown("## What do the policies actually do in a volatile week?")
+st.markdown("""
+Annual totals hide the mechanics. The chart below zooms into seven
+consecutive days from Year 1 of the simulation, picking the week with
+the widest daily spreads. Each panel shows the same underlying DE
+day-ahead price curve, but the *dispatch* traces diverge sharply.
+The intraday-ADP trader discharges only at the highest peaks and
+skips the shoulder hours; the naive trader chases every trade.
+""")
+
+
+def _find_volatile_week(days):
+    """Return the 7 consecutive days with widest mean p95-p5 spread."""
+    if not days or len(days) < 7:
+        return days
+    spreads = np.array([
+        np.percentile(d.prices_da, 95) - np.percentile(d.prices_da, 5)
+        for d in days
+    ])
+    # Rolling 7-day mean of spread
+    window = 7
+    best_start = 0
+    best_mean = -np.inf
+    for i in range(len(days) - window + 1):
+        m = spreads[i:i + window].mean()
+        if m > best_mean:
+            best_mean = m
+            best_start = i
+    return days[best_start:best_start + window]
+
+
+if diag_naive is not None and diag_intraday is not None:
+    naive_days = results["naive"].diagnostic_days or []
+    intra_days = results["adp_intraday"].diagnostic_days or []
+    # Align to the same calendar week using naive's spread ordering
+    week = _find_volatile_week(naive_days)
+    if week:
+        week_dates = {d.date for d in week}
+        intra_week = [d for d in intra_days if d.date in week_dates]
+        # Concatenate 96 × 7 = 672 intervals
+        n_total = len(week) * 96
+        ts = np.arange(n_total) / 4.0  # hours from start of week
+
+        prices = np.concatenate([d.prices_da for d in week])
+        naive_power = np.concatenate([d.power_mw_signed for d in week])
+        intra_power = np.concatenate([d.power_mw_signed for d in intra_week]) if intra_week else np.zeros(n_total)
+        naive_soc = np.concatenate([d.soc_mwh / max(d.energy_mwh, 1e-6) for d in week])
+        intra_soc = np.concatenate([d.soc_mwh / max(d.energy_mwh, 1e-6) for d in intra_week]) if intra_week else np.zeros(n_total)
+
+        render_chart_title(
+            f"One week: {week[0].date.isoformat()} → {week[-1].date.isoformat()}"
+        )
+
+        from plotly.subplots import make_subplots
+        fig = make_subplots(
+            rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.06,
+            row_heights=[0.35, 0.35, 0.30],
+            subplot_titles=(
+                "Day-ahead price (EUR/MWh)",
+                "Net dispatch power (MW) — positive = discharge",
+                "State of charge (fraction of usable)",
+            ),
+        )
+        fig.add_trace(go.Scatter(
+            x=ts, y=prices, mode="lines",
+            line=dict(color="#2b2b2b", width=1.2),
+            name="DA price",
+        ), row=1, col=1)
+        fig.add_trace(go.Scatter(
+            x=ts, y=naive_power, mode="lines",
+            line=dict(color=POLICY_COLORS["naive"], width=1.0),
+            name=POLICY_LABELS["naive"],
+        ), row=2, col=1)
+        fig.add_trace(go.Scatter(
+            x=ts, y=intra_power, mode="lines",
+            line=dict(color=POLICY_COLORS["adp_intraday"], width=1.4),
+            name=POLICY_LABELS["adp_intraday"],
+        ), row=2, col=1)
+        fig.add_trace(go.Scatter(
+            x=ts, y=naive_soc, mode="lines",
+            line=dict(color=POLICY_COLORS["naive"], width=1.0),
+            showlegend=False,
+        ), row=3, col=1)
+        fig.add_trace(go.Scatter(
+            x=ts, y=intra_soc, mode="lines",
+            line=dict(color=POLICY_COLORS["adp_intraday"], width=1.4),
+            showlegend=False,
+        ), row=3, col=1)
+        # Day boundaries
+        for d_i in range(1, len(week)):
+            fig.add_vline(x=d_i * 24, line_dash="dot", line_color="#ccc",
+                          line_width=0.5, opacity=0.5)
+        fig.update_layout(
+            template="plotly_white",
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            height=620, margin=dict(l=50, r=20, t=50, b=40),
+            xaxis3=dict(title="Hours from start of week"),
+            legend=dict(orientation="h", y=-0.08, font=dict(size=10)),
+        )
+        st.plotly_chart(fig, use_container_width=True,
+                        config={"displayModeBar": False})
+        render_chart_caption(
+            f"Week spanning {week[0].date.isoformat()} to {week[-1].date.isoformat()} — "
+            "the most volatile 7-day stretch in the 2023 dispatch year. "
+            "Intraday-ADP (green): clean, selective cycles at evening peaks; "
+            "idle at midday. Naive (gray): near-continuous cycling at whatever "
+            "spread clears variable cost. SoC panel shows intraday-ADP parks "
+            "at mid-bands; naive bounces between extremes."
+        )
+
+
 # ── Executive summary ────────────────────────────────────────
 st.markdown("""
 ### Executive summary
@@ -250,9 +365,6 @@ Each one compares the intraday-ADP ("genuine aging-aware") policy against
 the naive baseline — patterns in your own data that look like the naive
 panel are the tell.
 """)
-
-diag_intraday = diagnostics.get("adp_intraday")
-diag_naive = diagnostics.get("naive")
 
 _NAIVE_COLOR = POLICY_COLORS["naive"]
 _INTRA_COLOR = POLICY_COLORS["adp_intraday"]
