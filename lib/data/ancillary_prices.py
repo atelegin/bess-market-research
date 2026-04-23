@@ -121,6 +121,56 @@ def fetch_fcr_annual_revenue(year: int) -> float | None:
         return None
 
 
+def fetch_afrr_cap_prices_daily(year: int) -> pd.DataFrame | None:
+    """
+    Fetch aFRR capacity-market clearing prices per 4h block per direction.
+
+    Source: regelleistung.net ``RESULT_OVERVIEW_CAPACITY_MARKET_aFRR_{year}.xlsx``.
+    Rows per day: 6 blocks × 2 directions = 12. PRODUCT strings like
+    ``POS_00_04``, ``NEG_16_20``.
+
+    Returns a DataFrame in long format with columns::
+
+        date           (datetime.date)
+        block_start_h  (int in 0..20, step 4)
+        direction      ("POS" or "NEG")
+        eur_mw_h       (GERMANY_AVERAGE_CAPACITY_PRICE per block)
+    """
+    cache_path = CACHE_DIR / f"afrr_cap_daily_{year}.parquet"
+    if cache_path.exists():
+        return pd.read_parquet(cache_path)
+
+    url = f"{BASE_URL}/RESULT_OVERVIEW_CAPACITY_MARKET_aFRR_{year}-01-01_{year}-12-31.xlsx"
+    try:
+        r = requests.get(url, timeout=120)
+        if r.status_code != 200:
+            logger.warning(f"aFRR cap daily {year}: HTTP {r.status_code}")
+            return None
+        raw = pd.read_excel(io.BytesIO(r.content))
+    except Exception as e:
+        logger.warning(f"aFRR cap daily {year} fetch failed: {e}")
+        return None
+
+    # PRODUCT format: "{DIR}_{START}_{END}" — e.g. "POS_00_04"
+    parts = raw["PRODUCT"].astype(str).str.split("_", expand=True)
+    raw["direction"] = parts[0]
+    raw["block_start_h"] = pd.to_numeric(parts[1], errors="coerce").astype("Int64")
+    raw = raw.dropna(subset=["block_start_h"])
+
+    raw["date"] = pd.to_datetime(raw["DATE_FROM"]).dt.date
+    avg_col = "GERMANY_AVERAGE_CAPACITY_PRICE_[(EUR/MW)/h]"
+    raw["eur_mw_h"] = pd.to_numeric(raw[avg_col], errors="coerce")
+
+    out = raw[["date", "block_start_h", "direction", "eur_mw_h"]].copy()
+    out = out.dropna(subset=["eur_mw_h"])
+    out["block_start_h"] = out["block_start_h"].astype(int)
+    out = out.sort_values(["date", "block_start_h", "direction"]).reset_index(drop=True)
+
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    out.to_parquet(cache_path)
+    return out
+
+
 def fetch_afrr_energy_prices(year: int) -> pd.DataFrame | None:
     """
     Fetch aFRR activation (energy) market clearing prices per 15-min product.
