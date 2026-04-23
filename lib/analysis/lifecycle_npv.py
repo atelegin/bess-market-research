@@ -66,6 +66,9 @@ class LifecycleResult:
     days_skipped: int
     lifetime_npv_eur: float              # discounted to present, EUR/MW
     years_to_floor: Optional[int] = None  # first year SoH hit floor; None if never
+    # Optional dispatch logs for diagnostics. Populated only when
+    # ``collect_diagnostics_year`` passed to simulate_lifecycle.
+    diagnostic_days: Optional[list] = None  # list[DayDiagnosticData] — first collected year
 
     def revenue_by_year_keur(self) -> np.ndarray:
         return self.annual_revenue_eur / 1000.0
@@ -94,6 +97,7 @@ def simulate_lifecycle(
     calendar_fade_per_day: float = 2e-5,
     max_days_per_year: Optional[int] = None,
     prefetched_frames: Optional[dict[int, dict]] = None,
+    collect_diagnostics_year: Optional[int] = None,
 ) -> LifecycleResult:
     """
     Simulate lifetime revenue under a shadow-cost policy.
@@ -123,6 +127,10 @@ def simulate_lifecycle(
             dicts instead of re-fetching. Keyed by ``template_year``.
             Multi-policy comparisons should pass the same dict to all
             calls for speed + identical inputs.
+        collect_diagnostics_year: 0-based year index whose dispatch
+            days should be retained on the result for diagnostic
+            signal computation. Memory-cheap: one year × 96 floats × 4
+            arrays × ~365 days ≈ 5 MB.
 
     Returns:
         :class:`LifecycleResult` with per-year revenue, SoH trajectory,
@@ -136,6 +144,7 @@ def simulate_lifecycle(
     years_to_floor: Optional[int] = None
 
     current_soh = float(initial_soh)
+    diagnostic_days: list = []
 
     # Prefetch frames per template year once.
     frames_by_year: dict[int, dict] = dict(prefetched_frames) if prefetched_frames else {}
@@ -206,6 +215,19 @@ def simulate_lifecycle(
             year_fec += day_out.full_equivalent_cycles
             days_solved += 1
 
+            # Collect diagnostic-day record if this is the target year.
+            if collect_diagnostics_year is not None and y_idx == collect_diagnostics_year:
+                from lib.analysis.aging_aware_diagnostics import (
+                    day_diagnostic_from_stacked,
+                )
+                diagnostic_days.append(
+                    day_diagnostic_from_stacked(
+                        day_result=day_out, inputs=inputs,
+                        target_date=current, power_mw=power_mw,
+                        energy_mwh=usable_energy_mwh,
+                    )
+                )
+
             # Degrade SoH for today's throughput
             delta = degradation_per_day(
                 intensity=day_out.full_equivalent_cycles,
@@ -245,6 +267,7 @@ def simulate_lifecycle(
         days_skipped=days_skipped,
         lifetime_npv_eur=lifetime_npv,
         years_to_floor=years_to_floor,
+        diagnostic_days=diagnostic_days if diagnostic_days else None,
     )
 
 
