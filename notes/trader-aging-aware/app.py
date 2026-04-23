@@ -254,43 +254,72 @@ panel are the tell.
 diag_intraday = diagnostics.get("adp_intraday")
 diag_naive = diagnostics.get("naive")
 
+_NAIVE_COLOR = POLICY_COLORS["naive"]
+_INTRA_COLOR = POLICY_COLORS["adp_intraday"]
 
-def _side_by_side(title: str, caption: str, key: str):
-    """Render side-by-side dataframes (or charts) for naive vs intraday."""
+
+def _grouped_bar_chart(
+    title: str, caption: str, attr: str, x_col: str, y_col: str,
+    x_label: str, y_label: str,
+):
+    """Render grouped bar comparison (naive vs intraday-ADP) for one signal."""
     st.markdown(f"**{title}**")
     st.caption(caption)
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.markdown("**Naive trader**")
-        if diag_naive is not None:
-            df = getattr(diag_naive, key)
-            st.dataframe(df, use_container_width=True, hide_index=True)
-    with col_b:
-        st.markdown("**Intraday-ADP trader**")
-        if diag_intraday is not None:
-            df = getattr(diag_intraday, key)
-            st.dataframe(df, use_container_width=True, hide_index=True)
+    fig = go.Figure()
+    if diag_naive is not None:
+        df_n = getattr(diag_naive, attr)
+        fig.add_trace(go.Bar(
+            x=df_n[x_col], y=df_n[y_col],
+            name="Naive",
+            marker_color=_NAIVE_COLOR,
+        ))
+    if diag_intraday is not None:
+        df_i = getattr(diag_intraday, attr)
+        fig.add_trace(go.Bar(
+            x=df_i[x_col], y=df_i[y_col],
+            name="Intraday-ADP",
+            marker_color=_INTRA_COLOR,
+        ))
+    fig.update_layout(
+        barmode="group",
+        template="plotly_white",
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        height=320, margin=dict(l=40, r=20, t=10, b=40),
+        xaxis=dict(title=x_label),
+        yaxis=dict(title=y_label),
+        legend=dict(orientation="h", y=-0.20, font=dict(size=11)),
+    )
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
-_side_by_side(
-    "1. DoD by spread decile",
+_grouped_bar_chart(
+    "1. Depth-of-discharge by spread decile",
     "Aging-aware cycles deeper only on high-spread days; naive keeps DoD roughly flat regardless of day quality.",
-    "dod_vs_spread",
+    attr="dod_vs_spread", x_col="spread_decile", y_col="mean_dod",
+    x_label="Daily-spread decile (0=calm → 9=volatile)",
+    y_label="Mean DoD (fraction of capacity)",
 )
-_side_by_side(
+_grouped_bar_chart(
     "2. SoC-hours distribution",
     "Aging-aware parks at 40–60% when the market is quiet; naive sits at whatever SoC the last trade left.",
-    "soc_hours",
+    attr="soc_hours", x_col="soc_bin_pct", y_col="hours",
+    x_label="SoC band (% of usable energy)",
+    y_label="Hours in band (pooled across year)",
 )
-_side_by_side(
-    "3. EUR per cycle by spread quartile",
+_grouped_bar_chart(
+    "3. Revenue per FEC by spread quartile",
     "Aging-aware earns high EUR/FEC on weak-spread days because it skipped the marginal cycles; naive is dragged down.",
-    "revenue_per_cycle_quartile",
+    attr="revenue_per_cycle_quartile",
+    x_col="spread_quartile", y_col="eur_per_fec",
+    x_label="Daily-spread quartile (0=bottom)",
+    y_label="Mean EUR per FEC",
 )
-_side_by_side(
+_grouped_bar_chart(
     "4. C-rate distribution",
     "Aging-aware holds back on marginal cycles (low-C mass); naive piles at P-max whenever the trade clears.",
-    "crate_hist",
+    attr="crate_hist", x_col="crate_bin", y_col="hours",
+    x_label="C-rate band",
+    y_label="Hours in band (pooled across year)",
 )
 
 
