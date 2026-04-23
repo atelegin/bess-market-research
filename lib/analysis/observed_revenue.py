@@ -133,6 +133,12 @@ def observed_total_revenue(
         )
         return None
 
+    # NOTE: this function's AS↔wholesale conjugate coupling is *not*
+    # captured. For a coupling-aware number use
+    # ``observed_total_revenue_stacked`` below — that runs the joint
+    # stacked-market LP which properly models aFRR reservation and
+    # activation against wholesale arbitrage.
+
     da = _wholesale_da_revenue_keur_per_mw(year, duration_h, rte, max_cycles)
     if da is None:
         return None
@@ -163,3 +169,66 @@ def observed_total_revenue(
         "afrr_energy": round(afrr_energy_scaled, 1),
         "total": round(total, 1),
     }
+
+
+def observed_total_revenue_stacked(
+    year: int,
+    duration_h: float = 2.0,
+    max_cycles: float = 1.5,
+    rte: float = DEFAULT_RTE,
+    afrr_reserve_duration_hours: float = 0.25,
+    power_mw: float = 1.0,
+) -> Optional[dict[str, float]]:
+    """
+    Stacked-market LP-optimal per-MW annual revenue (Note 4 A2.3).
+
+    Runs the joint DA + ID + aFRR cap + aFRR energy LP day-by-day over
+    the year. Unlike ``observed_total_revenue`` this routes aFRR
+    reservation and activation *through the same LP* as wholesale, so
+    the aFRR↔wholesale conjugate coupling is captured correctly.
+
+    Interpretation of the output
+    ----------------------------
+    The returned ``total`` is an **optimistic upper bound** — the
+    revenue an LP-optimal BESS would earn given
+      * full-year market participation,
+      * aggressive aFRR reservation (LP maxes r_pos most blocks),
+      * MOL-proportional activation (operator gets average bid price).
+
+    Real-world observed benchmarks (CH, LCP, enspired, suena, RWTH) land
+    materially below this — the gap is the **optimizer gap**: how much
+    revenue average operators leave on the table by not stacking
+    markets optimally. For Note 4 the gap is the central narrative
+    ("most traders aren't doing this, and here's why it matters").
+
+    Requires complete regelleistung + netztransparenz + EnergyCharts
+    data for the year. Returns ``None`` if the runner solves zero days.
+    """
+    from lib.analysis.stacked_year_runner import run_stacked_year
+
+    if year not in HISTORICAL_YEARS_WITH_MEASURED_DATA:
+        logger.warning(
+            f"observed_total_revenue_stacked({year}): year not in "
+            f"HISTORICAL_YEARS_WITH_MEASURED_DATA"
+        )
+        return None
+
+    result = run_stacked_year(
+        year=year, duration_h=duration_h, max_cycles=max_cycles,
+        power_mw=power_mw, rte=rte,
+        afrr_reserve_duration_hours=afrr_reserve_duration_hours,
+    )
+    if result.days_solved == 0:
+        return None
+
+    out = result.revenue_by_stream_annual()
+    out.update({
+        "year": year,
+        "duration_h": duration_h,
+        "days_solved": result.days_solved,
+        "days_skipped": result.days_skipped,
+        "annual_fec": round(result.annual_fec, 1),
+        "mean_r_pos_mw": round(result.mean_r_pos_mw, 3),
+        "mean_r_neg_mw": round(result.mean_r_neg_mw, 3),
+    })
+    return out
