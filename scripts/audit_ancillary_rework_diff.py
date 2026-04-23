@@ -16,6 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from lib.config import DEFAULT_BESS_BUILDOUT
+from lib.data.clean_horizon import annual_average
 from lib.models.ancillary import ancillary_revenue
 from lib.models.degradation import PRESETS, fleet_average_capacity
 from lib.models.projection import project_full_stack, project_wholesale
@@ -28,7 +29,9 @@ def legacy_full_stack(
     duration_h: float = 2.0,
     **wholesale_kwargs,
 ) -> list[dict]:
-    """Replica of the pre-rework additive-stacking projection."""
+    """Replica of the pre-rework additive-stacking projection. Disables the
+    historical override so the saturation model runs for all years (that's
+    what the legacy pipeline did)."""
     results = []
     proj_buildout = {y: v for y, v in bess_buildout.items() if y >= min(years)}
     for year in years:
@@ -39,7 +42,10 @@ def legacy_full_stack(
             year=year, historical_da_annual=historical_da_keur, bess_gw=bess_gw,
             **wholesale_kwargs,
         )
-        anc = ancillary_revenue(year=year, bess_gw=bess_gw, duration_h=duration_h)
+        anc = ancillary_revenue(
+            year=year, bess_gw=bess_gw, duration_h=duration_h,
+            use_historical_if_available=False,
+        )
         deg = fleet_average_capacity(
             year=year, buildout=proj_buildout, preset=PRESETS["baseline_fleet"],
         )
@@ -53,7 +59,7 @@ def legacy_full_stack(
 
 
 def main() -> None:
-    years = list(range(2026, 2041))
+    years = list(range(2023, 2041))
     historical_da = 90.0  # representative 2023–2025 DA anchor
 
     legacy = legacy_full_stack(years, historical_da, DEFAULT_BESS_BUILDOUT, duration_h=2.0)
@@ -66,16 +72,17 @@ def main() -> None:
 
     legacy_by = {r["year"]: r for r in legacy}
     new_by = {r["year"]: r for r in new}
+    ch = annual_average(2.0)
 
     print("# Note 1 audit diff — AS/wholesale equilibrium rework")
     print()
     print(f"Baseline DA: {historical_da} kEUR/MW/yr | Duration: 2h | Default buildout")
     print()
     print(
-        "| year | bess_gw | old total | new total | Δ | Δ% | eq_type | f_on_as |"
+        "| year | bess_gw | old total | new total | Δ | Δ% | CH ref | eq_type | f_on_as |"
     )
     print(
-        "|---:|---:|---:|---:|---:|---:|:---|---:|"
+        "|---:|---:|---:|---:|---:|---:|---:|:---|---:|"
     )
     for year in years:
         bess_gw = DEFAULT_BESS_BUILDOUT.get(
@@ -88,9 +95,11 @@ def main() -> None:
         pct = (delta / old_t * 100) if old_t else 0.0
         eq = new_by[year]["equilibrium_type"]
         f = new_by[year]["f_on_as"]
+        ch_val = ch.get(year)
+        ch_s = f"{ch_val:.0f}" if ch_val is not None else "—"
         print(
             f"| {year} | {bess_gw:.1f} | {old_t:.1f} | {new_t:.1f} | "
-            f"{delta:+.1f} | {pct:+.1f}% | {eq} | {f:.2f} |"
+            f"{delta:+.1f} | {pct:+.1f}% | {ch_s} | {eq} | {f:.2f} |"
         )
 
     print()
@@ -103,6 +112,18 @@ def main() -> None:
           f"({r_2026_old:.0f} → {r_2030_old:.0f})")
     print(f"2026 → 2030 drawdown (new): {r_2030_new/r_2026_new:.2f}× "
           f"({r_2026_new:.0f} → {r_2030_new:.0f})")
+    print()
+    print("## Historical years (2023-2025) interpretation note")
+    print()
+    print("The 'new total' for historical years under-predicts CH because the")
+    print("equilibrium model splits fleet mutually-exclusively between AS and")
+    print("wholesale (f=1 means zero WH contribution). In reality BESS operators")
+    print("do both simultaneously on the same MW, with aFRR reservation costing")
+    print("only a fraction of arbitrage potential. This simplification is")
+    print("acceptable because Note 1 displays historical years from `hist_bars`")
+    print("(direct CH ingestion), not from project_full_stack. The rework's")
+    print("purpose is to fix projection (2026+), where the simplification is a")
+    print("better approximation of deliberate operator trade-offs.")
 
 
 if __name__ == "__main__":

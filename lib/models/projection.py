@@ -13,7 +13,10 @@ from lib.config import (
     PV_GW_2026, PV_GW_2040, PV_SPREAD_SENSITIVITY,
     GAS_SPREAD_ELASTICITY,
 )
-from lib.models.ancillary import ancillary_revenue
+from lib.models.ancillary import (
+    HISTORICAL_YEARS_WITH_MEASURED_DATA,
+    ancillary_revenue,
+)
 from lib.models.degradation import PRESETS, fleet_average_capacity
 
 
@@ -150,6 +153,11 @@ def solve_as_wholesale_allocation(
       * ``f = f_cap = min(1, as_demand_gw / bess_gw_total)`` — AS demand
         saturated; remaining fleet on wholesale.
       * interior — bisection on ``f`` in ``[0, f_cap]``.
+      * historical override — for years in ``HISTORICAL_YEARS_WITH_MEASURED_DATA``
+        the equilibrium concept does not apply (operators already acted).
+        Returns observed AS revenue alongside projected wholesale at the
+        implied fleet-on-wh split ``gw_on_wh = bess_gw_total × (1 − f_cap)``,
+        and flags ``equilibrium_type = "historical_override"``.
 
     Returns dict with:
       f                  — equilibrium AS fraction of fleet (0..f_cap)
@@ -157,10 +165,33 @@ def solve_as_wholesale_allocation(
       gw_on_wh           — (1 - f) * bess_gw_total
       p_as               — kEUR/MW-on-AS/yr at equilibrium
       p_wh               — kEUR/MW-on-WH/yr at equilibrium
-      equilibrium_type   — "all_on_wh", "interior", "as_capacity_capped"
+      equilibrium_type   — "all_on_wh", "interior", "as_capacity_capped",
+                           or "historical_override"
     """
     # Avoid numerical degeneracies at gw = 0 by floating a tiny epsilon.
     _eps = max(1e-3, bess_gw_total * 1e-4)
+
+    # Historical override: short-circuit equilibrium for years where we have
+    # measured ancillary-revenue data. We still compute the "would-be" f_cap
+    # split (the AS-demand-constrained upper bound) so downstream consumers
+    # have a consistent interpretation for gw_on_as / gw_on_wh.
+    if year in HISTORICAL_YEARS_WITH_MEASURED_DATA:
+        f_hist = min(1.0, as_demand_gw / bess_gw_total) if bess_gw_total > 0 else 1.0
+        return {
+            "f": f_hist,
+            "gw_on_as": f_hist * bess_gw_total,
+            "gw_on_wh": (1.0 - f_hist) * bess_gw_total,
+            "p_as": ancillary_revenue(
+                year=year, bess_gw=max(f_hist * bess_gw_total, _eps),
+                duration_h=duration_h,
+            )["total"],
+            "p_wh": project_wholesale(
+                year=year, historical_da_annual=historical_da_keur,
+                bess_gw=max((1.0 - f_hist) * bess_gw_total, _eps),
+                **wholesale_kwargs,
+            )["wholesale_total"],
+            "equilibrium_type": "historical_override",
+        }
 
     def p_as_of(gw_on_as: float) -> float:
         return ancillary_revenue(

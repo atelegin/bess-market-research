@@ -4,11 +4,65 @@ Ancillary revenue model — FCR + aFRR saturation.
 Models revenue collapse as BESS fleet outgrows ancillary market depth.
 """
 
+import logging
+
 import numpy as np
 from lib.config import (
     FCR_DEMAND_MW, AFRR_DEPTH_MW, ANCILLARY_COMBINED_GW,
     DEFAULT_BESS_BUILDOUT,
 )
+
+logger = logging.getLogger(__name__)
+
+# Historical years with measured FCR + aFRR cap + aFRR energy data from
+# regelleistung.net + netztransparenz.de. For these years ``ancillary_revenue``
+# bypasses the saturation model and returns the observed values directly.
+HISTORICAL_YEARS_WITH_MEASURED_DATA: tuple[int, ...] = (2023, 2024, 2025)
+
+
+def _measured_historical_components(
+    year: int, duration_h: float = 2.0
+) -> dict[str, float] | None:
+    """
+    Return measured ancillary components for a historical year.
+
+    Aggregates regelleistung.net FCR + aFRR capacity auctions and the real
+    netztransparenz.de aFRR activation-energy revenue (see
+    ``lib/data/ancillary_prices.py``). Returns kEUR/MW-on-AS/yr per component,
+    scaled by duration participation factor (1h batteries participate ~50 %
+    in 4h AS blocks, 2h+ participate fully).
+
+    Participation factors are baked into the underlying loaders
+    (``fetch_fcr_annual_revenue`` at 0.35; ``fetch_afrr_annual_revenue`` at
+    0.40) — they are calibrated for 2h BESS, so this function applies the
+    duration scaling on top.
+
+    Returns ``None`` if any component fails to fetch; caller should fall
+    back to the saturation model.
+    """
+    # Import locally to avoid a heavy import at module load time and to
+    # isolate a potential (not actual today) circular dep risk.
+    from lib.data.ancillary_prices import (
+        fetch_afrr_annual_revenue,
+        fetch_fcr_annual_revenue,
+    )
+
+    fcr = fetch_fcr_annual_revenue(year)
+    afrr = fetch_afrr_annual_revenue(year, use_real_energy=True)
+    if fcr is None or afrr is None:
+        logger.warning(
+            f"measured_historical_components({year}): data fetch failed — "
+            "will fall back to saturation model"
+        )
+        return None
+
+    dur_scale = min(duration_h / 2.0, 1.0)
+    return {
+        "fcr": float(fcr) * dur_scale,
+        "afrr_cap": float(afrr["afrr_cap"]) * dur_scale,
+        "afrr_energy": float(afrr["afrr_energy"]) * dur_scale,
+        "total": float(fcr + afrr["afrr_cap"] + afrr["afrr_energy"]) * dur_scale,
+    }
 
 
 def ancillary_revenue(
@@ -25,6 +79,7 @@ def ancillary_revenue(
     r_anc_2030: float = 13.0,      # kEUR/MW-on-AS at 17 GW competing for AS demand
     r_anc_floor: float = 2.0,      # residual floor: minimum participation revenue
     ancillary_depth_gw: float = ANCILLARY_COMBINED_GW,
+    use_historical_if_available: bool = True,
 ) -> dict[str, float]:
     """
     Ancillary revenue per MW-on-AS under supply saturation.
@@ -47,7 +102,19 @@ def ancillary_revenue(
     batteries can participate fully.
 
     Returns dict with fcr, afrr_cap, afrr_energy, total (all kEUR/MW-on-AS/yr).
+
+    Historical override (2023-2025, 2026-04 rework per ROADMAP note
+    ``trader-aging-aware`` A1.2): for years with full-year measured data
+    from regelleistung.net + netztransparenz.de, the saturation model is
+    bypassed and observed values are returned. Set
+    ``use_historical_if_available=False`` to force the saturation model
+    (useful for sensitivity analysis or testing).
     """
+    if use_historical_if_available and year in HISTORICAL_YEARS_WITH_MEASURED_DATA:
+        measured = _measured_historical_components(year, duration_h=duration_h)
+        if measured is not None:
+            return measured
+
     # Duration scaling: 1h=50%, 2h+=100% participation in 4h ancillary blocks
     dur_scale = min(duration_h / 2.0, 1.0)
     bess_2026 = DEFAULT_BESS_BUILDOUT.get(2026, 5.0)

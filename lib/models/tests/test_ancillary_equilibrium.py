@@ -126,6 +126,64 @@ def test_full_stack_no_collapse_narrative():
     assert total_2030 / total_2026 > 0.5
 
 
+def test_historical_override_activates_for_2023_2025():
+    """2023-2025 have complete regelleistung + netztransparenz data. The
+    equilibrium solver must short-circuit to the measured values."""
+    for year in (2023, 2024, 2025):
+        alloc = solve_as_wholesale_allocation(
+            year=year, bess_gw_total=2.5, historical_da_keur=90.0,
+        )
+        assert alloc["equilibrium_type"] == "historical_override"
+        # At 2.5 GW fleet with AS demand = 4.5 GW, all fleet fits on AS (f=1.0)
+        assert alloc["f"] == pytest.approx(1.0, rel=1e-3)
+        # p_as must come from measured data, not from saturation extrapolation
+        # (which at gw_on_as=2.5 would give ~200 via the uncalibrated curve)
+        assert 40.0 <= alloc["p_as"] <= 220.0  # measured plausibility band
+
+
+def test_historical_override_can_be_disabled():
+    """Passing use_historical_if_available=False must fall through to the
+    saturation model even for 2023-2025."""
+    r_measured = ancillary_revenue(2024, bess_gw=2.5, duration_h=2.0)
+    r_model = ancillary_revenue(
+        2024, bess_gw=2.5, duration_h=2.0, use_historical_if_available=False,
+    )
+    # Numerics must diverge — measured 2024 total is ~154, saturation at 2.5 GW
+    # extrapolates high (no 1.5-2.5 GW anchor in the original calibration).
+    assert abs(r_measured["total"] - r_model["total"]) > 20.0
+
+
+def test_future_years_still_use_saturation_model():
+    """2026 and onwards must continue using the saturation model — the
+    historical override only applies to calibrated historical years."""
+    alloc_2026 = solve_as_wholesale_allocation(
+        year=2026, bess_gw_total=5.0, historical_da_keur=90.0,
+    )
+    alloc_2030 = solve_as_wholesale_allocation(
+        year=2030, bess_gw_total=17.0, historical_da_keur=90.0,
+    )
+    assert alloc_2026["equilibrium_type"] != "historical_override"
+    assert alloc_2030["equilibrium_type"] != "historical_override"
+
+
+def test_project_full_stack_mixed_historical_and_projection():
+    """project_full_stack over a span that straddles the historical cutoff
+    must produce sensible values for both sides — observed for 2023-2025,
+    equilibrium-solved for 2026+."""
+    rows = project_full_stack(
+        years=[2023, 2024, 2025, 2026, 2028, 2030],
+        historical_da_keur=90.0,
+        duration_h=2.0,
+    )
+    by_year = {r["year"]: r for r in rows}
+    # Historical rows flag the override
+    for y in (2023, 2024, 2025):
+        assert by_year[y]["equilibrium_type"] == "historical_override"
+    # Projection rows do not
+    assert by_year[2026]["equilibrium_type"] != "historical_override"
+    assert by_year[2030]["equilibrium_type"] != "historical_override"
+
+
 def test_1h_battery_lower_as_share():
     """1h batteries only participate ~50% of the time in 4h AS blocks.
     Their equilibrium per-MW revenue must be lower than the 2h case."""
