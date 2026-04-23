@@ -286,6 +286,78 @@ class ADPPolicy(ShadowCostPolicy):
         return np.full(periods_per_day, scalar)
 
 
+class ADPPolicyIntraday(ShadowCostPolicy):
+    """Hour-varying shadow cost from intraday ADP (Holtorf-Shin style).
+
+    Wraps an :class:`lib.models.adp_solver_intraday.IntradayADPResult`.
+    At online-lookup time, snaps (SoH, regime) to grid, returns 24-hour
+    shadow cost vector expanded to 96 × 15-min intervals.
+
+    The hour-varying signal is what the simplified-state DP cannot
+    produce: same shadow cost at peak vs trough, same at fresh vs aged.
+    This policy is the principled Holtorf-Shin reference and the
+    empirical answer to "do we need full intraday DP for Note 4?".
+    """
+
+    name: str = "adp_intraday"
+
+    def __init__(
+        self,
+        intraday_result,
+        grids,
+        regime_classification,
+        year_start: Optional[_dt.date] = None,
+        regime_override: Optional[int] = None,
+    ) -> None:
+        self._result = intraday_result
+        self._grids = grids
+        self._regime = regime_classification
+        self._regime_override = regime_override
+        if year_start is None:
+            first_label_date = next(iter(regime_classification.regime_labels.index))
+            if isinstance(first_label_date, _dt.date):
+                year_start = first_label_date
+            else:
+                year_start = _dt.date(first_label_date.year, 1, 1)
+        self._year_start = year_start
+
+    def _soh_idx(self, soh_current: float) -> int:
+        grid = self._grids.soh_grid
+        if soh_current <= grid[0]:
+            return 0
+        if soh_current >= grid[-1]:
+            return len(grid) - 1
+        idx = int(np.searchsorted(grid, soh_current, side="right")) - 1
+        return max(0, idx)
+
+    def _regime_for_day(self, day_of_year: int) -> int:
+        if self._regime_override is not None:
+            return int(self._regime_override)
+        target = self._year_start + _dt.timedelta(days=int(day_of_year) - 1)
+        labels = self._regime.regime_labels
+        if target in labels.index:
+            return int(labels.loc[target])
+        return int(np.argmax(self._regime.stationary))
+
+    def wear_cost(
+        self,
+        soh_current: float,
+        day_of_year: int = 1,
+        periods_per_day: int = 96,
+        duration_h: float = 2.0,
+    ) -> np.ndarray:
+        soh_idx = self._soh_idx(soh_current)
+        reg_idx = self._regime_for_day(day_of_year)
+        hourly = self._result.shadow_cost[soh_idx, reg_idx]  # (24,)
+        # Expand to periods_per_day by repeating each hour's value
+        intervals_per_hour = periods_per_day // 24
+        remainder = periods_per_day - 24 * intervals_per_hour
+        vector = np.repeat(hourly, intervals_per_hour)
+        if remainder > 0:
+            vector = np.concatenate([vector, np.full(remainder, hourly[-1])])
+        return vector
+
+
 # Convenience factory for Note 4 policy comparisons.
 def default_policies_for_comparison(
     capex_eur_per_mwh: float = 100_000.0,

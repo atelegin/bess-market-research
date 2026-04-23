@@ -31,6 +31,7 @@ from lib.analysis.stacked_year_runner import _prefetch_year_frames
 from lib.data.day_ahead_prices import fetch_day_ahead_prices
 from lib.models.adp_shadow_cost import (
     ADPPolicy,
+    ADPPolicyIntraday,
     AgingAwareDepreciationPolicy,
     DepreciationProxyPolicy,
     NaivePolicy,
@@ -40,6 +41,10 @@ from lib.models.adp_solver import (
     ADPSolver,
     default_grids,
     empirical_daily_revenue_curve,
+)
+from lib.models.adp_solver_intraday import (
+    IntradayADPSolver,
+    fit_hourly_price_profiles,
 )
 from lib.models.price_regime import fit_regimes
 
@@ -69,8 +74,25 @@ def build_adp_policy() -> ADPPolicy:
     )
 
 
+def build_adp_intraday_policy() -> ADPPolicyIntraday:
+    """Fit regimes and hourly price profiles on 2024 DA, solve the
+    intraday DP, and wrap as a policy."""
+    da = fetch_day_ahead_prices(start="2024-01-01", end="2024-12-31")
+    rc = fit_regimes(da["price_eur_mwh"], n_regimes=3)
+    profiles = fit_hourly_price_profiles(da["price_eur_mwh"], rc)
+    grids = default_grids()
+    solver = IntradayADPSolver(
+        regime_classification=rc, hourly_price_profiles=profiles,
+        grids=grids, energy_mwh=2.0, power_mw=1.0,
+    )
+    result = solver.solve()
+    return ADPPolicyIntraday(
+        intraday_result=result, grids=grids, regime_classification=rc,
+    )
+
+
 def main(n_years: int = 10, max_days_per_year: int | None = None) -> None:
-    print(f"Building 4 policies…")
+    print(f"Building 5 policies (including intraday ADP)…")
     base = 100_000.0 / 6_000.0
     policies = {
         "naive": NaivePolicy(),
@@ -80,10 +102,11 @@ def main(n_years: int = 10, max_days_per_year: int | None = None) -> None:
         "aging_aware_depreciation": AgingAwareDepreciationPolicy(
             base_eur_per_mwh=base, warranty_floor=0.80,
         ),
-        "adp": build_adp_policy(),
+        "adp_simplified": build_adp_policy(),
+        "adp_intraday": build_adp_intraday_policy(),
     }
     print()
-    print(f"Simulating {n_years}y × 4 policies on 2023↔2025 rotating data…")
+    print(f"Simulating {n_years}y × 5 policies on 2023↔2025 rotating data…")
     print(f"(max_days_per_year={max_days_per_year or 'full'})")
     t0 = time.time()
     results = compare_policies(
