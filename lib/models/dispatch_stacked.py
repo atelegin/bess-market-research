@@ -143,6 +143,7 @@ def optimize_day_stacked(
     dt_hours: float = DT_HOURS_DEFAULT,
     afrr_reserve_duration_hours: float = 0.25,
     wear_cost_eur_per_mwh: np.ndarray | None = None,
+    max_afrr_participation: float = 1.0,
 ) -> StackedDispatchResult:
     """
     Joint LP across DA + ID + aFRR cap + aFRR activation for one day.
@@ -354,10 +355,16 @@ def optimize_day_stacked(
     A_ub = np.asarray(A_rows)
     b_ub = np.asarray(b_rows)
 
-    # Bounds: all variables ≥ 0. Power vars ≤ power_mw, r ≤ power_mw too.
+    # Bounds: all variables ≥ 0. Power vars ≤ power_mw. aFRR reservation
+    # capped at ``max_afrr_participation × P_max`` — reflects real-world
+    # bid-win rates, risk-averse placement, and operational withholding
+    # that keep operators below the LP-unconstrained optimum. Default 1.0
+    # gives the unconstrained upper bound; 0.5 approximates typical
+    # German 2023-2025 bid competition (demand/offered ≈ 0.55).
+    r_cap = min(power_mw, max_afrr_participation * power_mw)
     bounds = (
         [(0.0, power_mw)] * (4 * T)
-        + [(0.0, power_mw)] * (2 * B)
+        + [(0.0, r_cap)] * (2 * B)
     )
 
     result = linprog(c=c, A_ub=A_ub, b_ub=b_ub, bounds=bounds, method="highs")

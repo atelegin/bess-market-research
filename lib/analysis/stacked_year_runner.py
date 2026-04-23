@@ -122,6 +122,7 @@ def run_stacked_year(
     pool_pos_mw: float = DEFAULT_POOL_POS_MW,
     pool_neg_mw: float = DEFAULT_POOL_NEG_MW,
     wear_cost_eur_per_mwh: np.ndarray | None = None,
+    max_afrr_participation: float = 1.0,
     max_days: int | None = None,
 ) -> StackedYearResult:
     """
@@ -173,6 +174,7 @@ def run_stacked_year(
             max_cycles=max_cycles,
             afrr_reserve_duration_hours=afrr_reserve_duration_hours,
             wear_cost_eur_per_mwh=wear_cost_eur_per_mwh,
+            max_afrr_participation=max_afrr_participation,
         )
         if not day.success:
             days_skipped += 1

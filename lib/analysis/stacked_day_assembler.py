@@ -114,6 +114,7 @@ def assemble_day_inputs(
     afrr_cap_frame: pd.DataFrame | None = None,
     afrr_energy_frame: pd.DataFrame | None = None,
     activations_frame: pd.DataFrame | None = None,
+    use_aep_for_id: bool = False,
 ) -> Optional[StackedDayInputs]:
     """
     Build the 8 input arrays for the stacked-market LP for one day.
@@ -150,25 +151,35 @@ def assemble_day_inputs(
         )
         return None
 
-    # -- ID AEP (15-min) --
-    if id_frame is None:
-        try:
-            id_frame = fetch_id_aep(
-                start=f"{year}-01-01", end=f"{year}-12-31",
+    # -- Intraday prices --
+    # WARNING on AEP: netztransparenz's AEP (Ausgleichsenergiepreis) is the
+    # TSO's *imbalance settlement price*, not a tradable ID market price.
+    # Using AEP directly lets the LP exploit extreme imbalance prints that
+    # no real BESS trader can capture (not a market). We therefore default
+    # to prices_id == prices_da (DA-proxy); LP treats DA and ID as separate
+    # variables but identical prices → no phantom revenue. Real intraday
+    # continuous/auction data would be a later substitution; they are not
+    # in the repo yet. Set ``use_aep_for_id=True`` to intentionally exploit
+    # AEP (not recommended for published analyses).
+    prices_id = None
+    if use_aep_for_id:
+        if id_frame is None:
+            try:
+                id_frame = fetch_id_aep(
+                    start=f"{year}-01-01", end=f"{year}-12-31",
+                )
+            except Exception as e:
+                logger.warning(
+                    f"assemble_day_inputs({target_date}): ID AEP fetch failed: {e}"
+                )
+                id_frame = None
+        if id_frame is not None and not id_frame.empty:
+            id_col = next(
+                (c for c in id_frame.columns if "price" in c.lower() or "aep" in c.lower()),
+                id_frame.columns[0],
             )
-        except Exception as e:
-            logger.warning(f"assemble_day_inputs({target_date}): ID fetch failed: {e}")
-            id_frame = None
-    # Pick first numeric column regardless of name (ID loader column name varies)
-    if id_frame is not None and not id_frame.empty:
-        id_col = next((c for c in id_frame.columns if "price" in c.lower() or "aep" in c.lower()),
-                      id_frame.columns[0])
-        prices_id = _extract_day_slice(id_frame, target_date, id_col, PERIODS_PER_DAY)
-    else:
-        prices_id = None
+            prices_id = _extract_day_slice(id_frame, target_date, id_col, PERIODS_PER_DAY)
     if prices_id is None:
-        # Fallback: reuse DA for ID when intraday is unavailable.
-        logger.info(f"assemble_day_inputs({target_date}): ID unavailable, reusing DA")
         prices_id = prices_da.copy()
 
     # -- aFRR capacity per block --

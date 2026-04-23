@@ -178,28 +178,50 @@ def observed_total_revenue_stacked(
     rte: float = DEFAULT_RTE,
     afrr_reserve_duration_hours: float = 0.25,
     power_mw: float = 1.0,
+    max_afrr_participation: float = 0.40,
 ) -> Optional[dict[str, float]]:
     """
-    Stacked-market LP-optimal per-MW annual revenue (Note 4 A2.3).
+    Coupling-aware Tier 2 per-MW annual revenue via joint LP (Note 4 A2.3).
 
     Runs the joint DA + ID + aFRR cap + aFRR energy LP day-by-day over
     the year. Unlike ``observed_total_revenue`` this routes aFRR
     reservation and activation *through the same LP* as wholesale, so
-    the aFRR↔wholesale conjugate coupling is captured correctly.
+    the aFRR↔wholesale conjugate coupling is captured correctly — the
+    "free charge from NEG activations" feeds the LP's SoC budget and
+    gets priced against the wholesale resale opportunity.
 
-    Interpretation of the output
-    ----------------------------
-    The returned ``total`` is an **optimistic upper bound** — the
-    revenue an LP-optimal BESS would earn given
-      * full-year market participation,
-      * aggressive aFRR reservation (LP maxes r_pos most blocks),
-      * MOL-proportional activation (operator gets average bid price).
+    Calibration to match realistic operator (default)
+    -------------------------------------------------
+    At full participation (``max_afrr_participation=1.0``) the LP
+    reserves ~90 % of nameplate for aFRR and the annual number lands
+    2.2× above published benchmarks (CH, LCP, enspired, suena, RWTH).
+    Five independent benchmarks converging at the same level strongly
+    suggests our full-participation LP is *wrong* for the typical
+    operator — not that every trader leaves millions on the table.
 
-    Real-world observed benchmarks (CH, LCP, enspired, suena, RWTH) land
-    materially below this — the gap is the **optimizer gap**: how much
-    revenue average operators leave on the table by not stacking
-    markets optimally. For Note 4 the gap is the central narrative
-    ("most traders aren't doing this, and here's why it matters").
+    The gap is closed by a participation cap that encodes real-world
+    frictions the LP doesn't model:
+      * day-ahead bid competition (offered/demand ≈ 0.55 in 2024)
+      * risk-averse bid placement (avoiding deep scarcity activations)
+      * maintenance and operational withholding
+      * imperfect intraday/activation forecasts
+      * market-design limits (can't bid every block of the year)
+
+    Empirically calibrated to CH: at ``max_afrr_participation = 0.40``
+    the LP matches 2023 (~245 vs CH 230, +6 %) and 2025 (~257 vs CH 236,
+    +9 %) within benchmark fan tolerance. 0.40 also matches the
+    historical participation factor ROADMAP Note 1 calibration quoted
+    (40 % on aFRR capacity auctions). This is the honest realistic
+    default. Raise toward 1.0 for the "LP-optimal upper bound" used in
+    Note 4's optimizer-gap narrative (~2.2× uplift at full
+    participation).
+
+    Note: ID prices default to DA-proxy — netztransparenz AEP is TSO's
+    imbalance settlement price, not a tradable ID market, so using it
+    as an ID price lets the LP exploit non-tradable volatility. Real
+    intraday market data (EPEX ID1/ID3, XBID) is not ingested yet;
+    adding it would lift the calibrated participation level (since
+    genuine intraday trades real-world operators DO capture).
 
     Requires complete regelleistung + netztransparenz + EnergyCharts
     data for the year. Returns ``None`` if the runner solves zero days.
@@ -217,6 +239,7 @@ def observed_total_revenue_stacked(
         year=year, duration_h=duration_h, max_cycles=max_cycles,
         power_mw=power_mw, rte=rte,
         afrr_reserve_duration_hours=afrr_reserve_duration_hours,
+        max_afrr_participation=max_afrr_participation,
     )
     if result.days_solved == 0:
         return None
