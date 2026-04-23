@@ -41,18 +41,23 @@ HIST_YEARS = [2023, 2024, 2025]
 PROJ_YEARS = [2026, 2027, 2028, 2029, 2030, 2032, 2035, 2040]
 ALL_YEARS = HIST_YEARS + PROJ_YEARS
 
-LABELS = ["da", "id", "fcr", "afrr_cap", "afrr_energy"]
+LABELS = ["da", "id", "fcr", "afrr"]
 COLORS = {
-    "da": "#93c5fd",        # light blue
-    "id": "#3b82f6",        # blue
-    "fcr": "#fbbf24",       # yellow
-    "afrr_cap": "#f87171",  # light red
-    "afrr_energy": "#dc2626",  # red
+    "da": "#93c5fd",     # light blue
+    "id": "#3b82f6",     # blue
+    "fcr": "#fbbf24",    # yellow
+    "afrr": "#ef4444",   # red — combined cap + activation energy
 }
 PRETTY = {
     "da": "Day-Ahead", "id": "Intraday",
-    "fcr": "FCR", "afrr_cap": "aFRR capacity", "afrr_energy": "aFRR energy",
+    "fcr": "FCR", "afrr": "aFRR (cap + energy)",
 }
+
+
+def _combine_afrr(row: dict) -> dict:
+    row = dict(row)
+    row["afrr"] = row.get("afrr_cap", 0) + row.get("afrr_energy", 0)
+    return row
 
 
 def _historical_dispatch_da(year: int, duration_h: float) -> float:
@@ -138,16 +143,16 @@ def build_old_new_rows(duration_h: float = 2.0) -> tuple[dict, dict]:
     old = {}
     new = {}
     for y in HIST_YEARS:
-        old[y] = _historical_bars_for(y, duration_h, use_real_energy=False)
-        new[y] = _historical_bars_for(y, duration_h, use_real_energy=True)
+        old[y] = _combine_afrr(_historical_bars_for(y, duration_h, use_real_energy=False))
+        new[y] = _combine_afrr(_historical_bars_for(y, duration_h, use_real_energy=True))
     proj_new = {
         r["year"]: r for r in project_full_stack(
             years=PROJ_YEARS, historical_da_keur=historical_da, duration_h=duration_h,
         )
     }
     for y in PROJ_YEARS:
-        old[y] = _legacy_projection_row(y, duration_h, historical_da)
-        new[y] = {k: proj_new[y].get(k, 0.0) for k in LABELS + ["total"]}
+        old[y] = _combine_afrr(_legacy_projection_row(y, duration_h, historical_da))
+        new[y] = _combine_afrr(proj_new[y])
     return old, new
 
 

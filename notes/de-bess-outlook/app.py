@@ -145,15 +145,40 @@ proj_df = pd.DataFrame(proj)
 if not hist_bars_df.empty:
     proj_df = pd.concat([hist_bars_df, proj_df], ignore_index=True)
 
+
+def _add_afrr_combined(df: pd.DataFrame) -> pd.DataFrame:
+    """Adds `afrr = afrr_cap + afrr_energy` column — see STACK_KEYS comment
+    below for why we combine the two at the chart layer."""
+    if df.empty or "afrr" in df.columns:
+        return df
+    out = df.copy()
+    if "afrr_cap" in out.columns:
+        out["afrr"] = out["afrr_cap"].fillna(0) + out.get("afrr_energy", 0).fillna(0) \
+            if "afrr_energy" in out.columns else out["afrr_cap"].fillna(0)
+    return out
+
+
+proj_df = _add_afrr_combined(proj_df)
+
 # ── Chart setup ──────────────────────────────────────────────
-STACK_KEYS = ["da", "id", "fcr", "afrr_cap", "afrr_energy"]
+# aFRR capacity and aFRR energy are combined into one `afrr` bar. In years
+# when wholesale spreads justified paying for NEG-activation charge (e.g.
+# 2023), aFRR energy alone is NET NEGATIVE because operators pay TSO more
+# than they earn from POS discharge — the absorbed energy is then
+# recaptured through DA/ID peak-hour resale (the aFRR↔wholesale conjugate
+# coupling). Displaying aFRR energy as a negative stack bar alongside
+# positive components confuses readers and is clipped by the axis range
+# anyway. Combining gives the economically correct net aFRR contribution
+# per MW, at the cost of hiding the cap-vs-energy split (retained in
+# methodology copy and tooltips).
+STACK_KEYS = ["da", "id", "fcr", "afrr"]
 LABELS = {
     "da": "Day-Ahead", "id": "Intraday",
-    "fcr": "FCR", "afrr_cap": "aFRR capacity", "afrr_energy": "aFRR energy",
+    "fcr": "FCR", "afrr": "aFRR (cap + energy)",
 }
 COLORS = {
     "da": "#93c5fd", "id": "#3b82f6",
-    "fcr": "#fbbf24", "afrr_cap": "#f87171", "afrr_energy": "#dc2626",
+    "fcr": "#fbbf24", "afrr": "#ef4444",
 }
 hist_year_set = set(hist_rev.keys()) if hist_rev else set()
 
@@ -459,8 +484,10 @@ The model projects a floor of **~€{r_floor['total']:.0f}k/MW/year** around {fl
 growth fully compensates.
 
 For context:
-- A 2h BESS at current CAPEX of ~€200k/MW needs roughly **€50–60k/MW/year** to
-  cover debt service and return on equity over a 15-year life.
+- A 2h BESS at current installed CAPEX of **~€180–230k/MW** (BNEF 2H2024 LCOES
+  and Lazard LCOS v17 for Europe) needs roughly **€50–60k/MW/year** to cover
+  debt service and return on equity over a 15-year life. The range accommodates
+  regional and supplier variance; DE merchant projects cluster near the middle.
 - At €{r_floor['total']:.0f}k, there is {"a comfortable margin" if r_floor['total'] >= 80 else "a margin, but it's thin" if r_floor['total'] >= 60 else "a challenging outlook"}. Projects banking on
   ancillary revenue post-2030 face significant downside risk.
 - **Duration matters**: use the sidebar to switch between 1h, 2h, and 4h systems
@@ -1048,7 +1075,7 @@ By 2040, the fleet-average capacity factor is ~89%, meaning revenue per nameplat
 is ~11% lower than per effective MW. This is applied to both wholesale and ancillary
 revenue in the projection.
 
-See `config.py: fleet_degradation_factor()` for implementation.
+See `lib.models.degradation.fleet_average_capacity()` for implementation.
 """)
 
 with st.expander("Full data source table"):
