@@ -6,6 +6,7 @@ Uses reduced-form growth factors calibrated to industry consensus anchors.
 
 import numpy as np
 from lib.config import (
+    ANCILLARY_COMBINED_GW,
     DEFAULT_BESS_BUILDOUT,
     DEMAND_2026, DEMAND_2040,
     TTF_2026, TTF_2040,
@@ -117,6 +118,115 @@ def project_wholesale(
     }
 
 
+def solve_as_wholesale_allocation(
+    year: int,
+    bess_gw_total: float,
+    historical_da_keur: float,
+    duration_h: float = 2.0,
+    as_demand_gw: float = ANCILLARY_COMBINED_GW,
+    tol: float = 1e-4,
+    max_iter: int = 60,
+    **wholesale_kwargs,
+) -> dict[str, float | str]:
+    """
+    Equilibrium split of BESS fleet between ancillary services and wholesale
+    arbitrage (Simon / Schäfer correction, 2026-04).
+
+    Each rational operator chooses a fraction ``f`` of capacity to bid into
+    AS. Marginal condition at interior equilibrium:
+
+        p_AS(f · bess_gw)  ==  p_WH((1-f) · bess_gw)
+
+    where ``p_AS(gw_on_as)`` is the AS clearing price with ``gw_on_as`` MW
+    competing for the fixed AS demand (~4.5 GW), and ``p_WH(gw_on_wh)`` is
+    the wholesale spread revenue with ``gw_on_wh`` MW cannibalising spreads.
+
+    Simplification (Schäfer, 2026-04): wholesale is not perturbed by AS
+    volume shifts — AS depth (~4.5 GW) is small vs wholesale throughput.
+
+    Corner cases:
+      * ``f = 0``  — AS clearing at tiny supply already below wholesale
+        (all fleet arbitrages).
+      * ``f = f_cap = min(1, as_demand_gw / bess_gw_total)`` — AS demand
+        saturated; remaining fleet on wholesale.
+      * interior — bisection on ``f`` in ``[0, f_cap]``.
+
+    Returns dict with:
+      f                  — equilibrium AS fraction of fleet (0..f_cap)
+      gw_on_as           — f * bess_gw_total
+      gw_on_wh           — (1 - f) * bess_gw_total
+      p_as               — kEUR/MW-on-AS/yr at equilibrium
+      p_wh               — kEUR/MW-on-WH/yr at equilibrium
+      equilibrium_type   — "all_on_wh", "interior", "as_capacity_capped"
+    """
+    # Avoid numerical degeneracies at gw = 0 by floating a tiny epsilon.
+    _eps = max(1e-3, bess_gw_total * 1e-4)
+
+    def p_as_of(gw_on_as: float) -> float:
+        return ancillary_revenue(
+            year=year,
+            bess_gw=max(gw_on_as, _eps),
+            duration_h=duration_h,
+        )["total"]
+
+    def p_wh_of(gw_on_wh: float) -> float:
+        return project_wholesale(
+            year=year,
+            historical_da_annual=historical_da_keur,
+            bess_gw=max(gw_on_wh, _eps),
+            **wholesale_kwargs,
+        )["wholesale_total"]
+
+    f_cap = min(1.0, as_demand_gw / bess_gw_total) if bess_gw_total > 0 else 1.0
+
+    # Corner: at tiny AS supply, is AS already worth less than wholesale?
+    if p_as_of(_eps) <= p_wh_of(bess_gw_total):
+        f = 0.0
+        return {
+            "f": 0.0,
+            "gw_on_as": 0.0,
+            "gw_on_wh": bess_gw_total,
+            "p_as": p_as_of(_eps),
+            "p_wh": p_wh_of(bess_gw_total),
+            "equilibrium_type": "all_on_wh",
+        }
+
+    # Corner: at f_cap, is AS still more attractive than wholesale?
+    p_as_at_cap = p_as_of(f_cap * bess_gw_total)
+    p_wh_at_cap = p_wh_of((1.0 - f_cap) * bess_gw_total)
+    if p_as_at_cap >= p_wh_at_cap:
+        return {
+            "f": f_cap,
+            "gw_on_as": f_cap * bess_gw_total,
+            "gw_on_wh": (1.0 - f_cap) * bess_gw_total,
+            "p_as": p_as_at_cap,
+            "p_wh": p_wh_at_cap,
+            "equilibrium_type": "as_capacity_capped",
+        }
+
+    # Interior: bisect on f where g(f) = p_AS(f·B) − p_WH((1−f)·B) transitions
+    # from positive (at f=0) to negative (at f=f_cap).
+    lo, hi = 0.0, f_cap
+    for _ in range(max_iter):
+        mid = 0.5 * (lo + hi)
+        diff = p_as_of(mid * bess_gw_total) - p_wh_of((1.0 - mid) * bess_gw_total)
+        if diff > 0:
+            lo = mid
+        else:
+            hi = mid
+        if (hi - lo) < tol:
+            break
+    f = 0.5 * (lo + hi)
+    return {
+        "f": f,
+        "gw_on_as": f * bess_gw_total,
+        "gw_on_wh": (1.0 - f) * bess_gw_total,
+        "p_as": p_as_of(f * bess_gw_total),
+        "p_wh": p_wh_of((1.0 - f) * bess_gw_total),
+        "equilibrium_type": "interior",
+    }
+
+
 def project_full_stack(
     years: list[int],
     historical_da_keur: float,
@@ -127,32 +237,62 @@ def project_full_stack(
     **wholesale_kwargs,
 ) -> list[dict]:
     """
-    Generate full revenue stack for each year.
+    Generate full revenue stack for each year under the AS/wholesale
+    equilibrium allocation (Simon / Schäfer correction, 2026-04).
 
-    Returns list of dicts with keys: year, da, id, fcr, afrr_cap, afrr_energy, total.
-    All values in kEUR/MW/yr.
+    Per-MW-of-fleet revenue = f · p_AS + (1 − f) · p_WH where ``f`` is the
+    equilibrium AS participation share from ``solve_as_wholesale_allocation``.
+    At interior equilibrium this equals ``p_AS = p_WH``.
+
+    Returns list of dicts with keys: year, da, id, fcr, afrr_cap, afrr_energy,
+    total, f_on_as, equilibrium_type. All revenue values in kEUR/MW/yr of
+    fleet nameplate.
     """
     if bess_buildout is None:
         bess_buildout = DEFAULT_BESS_BUILDOUT
 
     results = []
+    proj_buildout = {y: v for y, v in bess_buildout.items() if y >= min(years)}
     for year in years:
         bess_gw = bess_buildout.get(year, bess_buildout[max(k for k in bess_buildout if k <= year)])
 
-        wh = project_wholesale(
+        alloc = solve_as_wholesale_allocation(
             year=year,
-            historical_da_annual=historical_da_keur,
-            bess_gw=bess_gw,
+            bess_gw_total=bess_gw,
+            historical_da_keur=historical_da_keur,
+            duration_h=duration_h,
             gas_2040=gas_2040,
             pv_2040_gw=pv_2040_gw,
             **wholesale_kwargs,
         )
+        f = alloc["f"]
 
-        anc = ancillary_revenue(year=year, bess_gw=bess_gw, duration_h=duration_h)
+        # Wholesale component at reduced competition (gw_on_wh MW cannibalise)
+        _eps = max(1e-3, bess_gw * 1e-4)
+        wh = project_wholesale(
+            year=year,
+            historical_da_annual=historical_da_keur,
+            bess_gw=max(alloc["gw_on_wh"], _eps),
+            gas_2040=gas_2040,
+            pv_2040_gw=pv_2040_gw,
+            **wholesale_kwargs,
+        )
+        # AS component at reduced supply (gw_on_as MW competing for AS demand)
+        anc = ancillary_revenue(
+            year=year,
+            bess_gw=max(alloc["gw_on_as"], _eps),
+            duration_h=duration_h,
+        )
+
+        # Scale each side by the fleet fraction to get per-MW-of-fleet revenue.
+        r_da = (1.0 - f) * wh["da"]
+        r_id = (1.0 - f) * wh["id"]
+        r_fcr = f * anc["fcr"]
+        r_afrr_cap = f * anc["afrr_cap"]
+        r_afrr_energy = f * anc["afrr_energy"]
 
         # Degradation: fleet-average across projection-era cohorts only
         # (pre-2026 fleet is already captured in the historical baseline)
-        proj_buildout = {y: v for y, v in bess_buildout.items() if y >= min(years)}
         deg = fleet_average_capacity(
             year=year,
             buildout=proj_buildout,
@@ -161,12 +301,14 @@ def project_full_stack(
 
         results.append({
             "year": year,
-            "da": round(wh["da"] * deg, 1),
-            "id": round(wh["id"] * deg, 1),
-            "fcr": round(anc["fcr"] * deg, 1),
-            "afrr_cap": round(anc["afrr_cap"] * deg, 1),
-            "afrr_energy": round(anc["afrr_energy"] * deg, 1),
-            "total": round((wh["wholesale_total"] + anc["total"]) * deg, 1),
+            "da": round(r_da * deg, 1),
+            "id": round(r_id * deg, 1),
+            "fcr": round(r_fcr * deg, 1),
+            "afrr_cap": round(r_afrr_cap * deg, 1),
+            "afrr_energy": round(r_afrr_energy * deg, 1),
+            "total": round((r_da + r_id + r_fcr + r_afrr_cap + r_afrr_energy) * deg, 1),
+            "f_on_as": round(f, 3),
+            "equilibrium_type": alloc["equilibrium_type"],
         })
 
     return results

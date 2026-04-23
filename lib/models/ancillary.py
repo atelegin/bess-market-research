@@ -21,21 +21,32 @@ def ancillary_revenue(
     # (FCR 35% participation, aFRR 40% participation on regelleistung prices).
     # At 5 GW (slightly above 4.5 GW combined depth), prices start to compress → 135 kEUR.
     # At 17 GW (3.8x depth), bid competition has largely collapsed prices → 13 kEUR.
-    r_anc_2026: float = 135.0,     # kEUR/MW total ancillary at 5 GW
-    r_anc_2030: float = 13.0,      # kEUR/MW total ancillary at 17 GW
+    r_anc_2026: float = 135.0,     # kEUR/MW-on-AS at 5 GW competing for AS demand
+    r_anc_2030: float = 13.0,      # kEUR/MW-on-AS at 17 GW competing for AS demand
     r_anc_floor: float = 2.0,      # residual floor: minimum participation revenue
     ancillary_depth_gw: float = ANCILLARY_COMBINED_GW,
 ) -> dict[str, float]:
     """
-    Compute ancillary revenue per MW using saturation model.
+    Ancillary revenue per MW-on-AS under supply saturation.
 
-    R_anc(t) = floor + amplitude / (1 + (bess_gw / depth)^alpha)
+    R_anc(gw_on_as) = floor + amplitude / (1 + (gw_on_as / depth)^alpha)
 
-    Calibrated for 2h battery. Duration scaling: FCR/aFRR are auctioned
-    in 4h blocks — a 1h battery can only participate ~50% of the time
-    (must reserve energy), while 2h+ batteries can participate fully.
+    **Semantics (2026-04-23 rework for Schäfer dynamic floor):** ``bess_gw``
+    denotes the volume of BESS capacity *actively bidding into ancillary
+    services*, not the total fleet. In an equilibrium allocation between AS
+    and wholesale arbitrage (``projection.solve_as_wholesale_allocation``),
+    this is ``f * bess_gw_fleet`` where ``f`` is the AS-participation share.
 
-    Returns dict with fcr, afrr_cap, afrr_energy, total (all kEUR/MW/yr).
+    Calibrated for 2h battery. The historical anchors (5 GW → 135 kEUR/MW-on-AS;
+    17 GW → 13 kEUR/MW-on-AS) reflect the regimes 2026 and 2030 where
+    essentially the whole fleet bids AS — so ``gw_on_as ≈ gw_fleet`` and the
+    anchors remain valid.
+
+    Duration scaling: FCR/aFRR are auctioned in 4h blocks — a 1h battery can
+    only participate ~50 % of the time (must reserve energy), while 2h+
+    batteries can participate fully.
+
+    Returns dict with fcr, afrr_cap, afrr_energy, total (all kEUR/MW-on-AS/yr).
     """
     # Duration scaling: 1h=50%, 2h+=100% participation in 4h ancillary blocks
     dur_scale = min(duration_h / 2.0, 1.0)
