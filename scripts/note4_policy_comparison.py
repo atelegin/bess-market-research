@@ -91,7 +91,11 @@ def build_adp_intraday_policy() -> ADPPolicyIntraday:
     )
 
 
-def main(n_years: int = 10, max_days_per_year: int | None = None) -> None:
+def main(
+    n_years: int = 10,
+    max_days_per_year: int | None = None,
+    temperature_c: float = 25.0,
+) -> None:
     print(f"Building 5 policies (including intraday ADP)…")
     base = 100_000.0 / 6_000.0
     policies = {
@@ -120,7 +124,7 @@ def main(n_years: int = 10, max_days_per_year: int | None = None) -> None:
         max_afrr_participation=0.40,
         use_physics_degradation=True,
         physics_preset_name="eve_lf280k",
-        physics_temperature_c=25.0,
+        physics_temperature_c=temperature_c,
         max_days_per_year=max_days_per_year,
     )
     dt = time.time() - t0
@@ -176,5 +180,8 @@ if __name__ == "__main__":
     p.add_argument("--years", type=int, default=10)
     p.add_argument("--max-days", type=int, default=None,
                    help="Cap days per simulated year (smoke test).")
+    p.add_argument("--temperature", type=float, default=25.0,
+                   help="Cell temperature in °C for physics degradation kernel.")
     args = p.parse_args()
-    main(n_years=args.years, max_days_per_year=args.max_days)
+    main(n_years=args.years, max_days_per_year=args.max_days,
+         temperature_c=args.temperature)
