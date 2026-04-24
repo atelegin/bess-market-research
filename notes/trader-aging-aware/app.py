@@ -73,10 +73,12 @@ ranging from no cycle pricing at all to a full Holtorf-Shin opportunity-cost
 optimiser — on the same German market data and asks a simple question:
 over a ten-year life, what does pricing cycles correctly actually earn?
 
-The gap is bigger than the published benchmarks suggest. A well-priced
-optimiser delivers **3.4× the lifetime revenue** of a naive one — not because
-it cycles more, but because it cycles **less, at the right hours, and the
-battery lasts years longer**.
+The gap is smaller than some academic papers suggest, but structural.
+A properly priced optimiser delivers **about 27 % more lifetime revenue**
+than a naive one — and gets there with **3.5× less cycling**. Half the
+gain comes from a simple depreciation-style shadow cost; the other half
+requires state-dependent opportunity-cost optimisation — genuine
+aging-awareness, not its imitation.
 """)
 
 data = load_precomputed()
@@ -119,7 +121,7 @@ with col3:
 # ── Main chart: lifetime NPV by policy ──────────────────────
 render_chart_title(
     "Over ten years, the policy decides the outcome. "
-    "Pricing cycles correctly is worth +239% of revenue."
+    "Pricing cycles correctly is worth ~27 % of lifetime revenue."
 )
 
 npv_rows = []
@@ -339,20 +341,28 @@ if diag_naive is not None and diag_intraday is not None:
 st.markdown("""
 ### Executive summary
 
-**Naive dispatch (no cycle pricing)** maxes out cycling, earns peak annual
-revenue in Year 1 (€244k/MW), but degrades the cell to the warranty floor
-inside two years. Over ten years the battery earns €361k/MW cumulatively.
+**Naive dispatch (no cycle pricing)** maxes throughput, earns €245k/MW
+in year 1 and survives about five years before hitting the warranty
+floor. Lifetime NPV: ~€926k/MW.
 
-**The "flat depreciation proxy"** (CAPEX divided by lifetime throughput —
-the Kumtepeli/Howey 2024 "poor proxy") earns +84% over naive. It suppresses
-cycling uniformly, extending life to four years. Better, but still uniform
-— it doesn't know that cycling at the morning shoulder costs the same as
-cycling at the evening peak, which is not how real BESS economics work.
+**Flat depreciation proxy and closed-form aging-aware formula** both
+earn about **+13 %** over naive. They suppress cycling by about a
+third (≈1,226 FEC vs naive's 1,959) and gain a sixth year of life.
+Their near-identical scores are a real finding: once the shadow-cost
+magnitude is economically calibrated (CAPEX divided by lifetime
+throughput), whether you also scale by current-SoH scarcity barely
+matters at mid-life. The Kumtepeli/Howey 2024 "poor proxy" critique
+turns out to be about the *shape* of the shadow cost — flat versus
+hour-varying — not the magnitude.
 
-**The intraday opportunity-cost optimiser** (Holtorf-Shin style) earns **+239%**.
-It doesn't cycle more — it cycles *less* (591 FEC vs naive's 761). It
-cycles at the right hours: full at the 18:00 peak, nothing at the
-14:00 solar trough. The battery lasts eight years at a stable ~€220k/yr.
+**The intraday opportunity-cost optimiser** (Holtorf-Shin style) earns
+**+27 %**. It cycles just 557 FEC — 3.5× less than naive — and the
+battery lasts seven years at stable ~€220k/yr. Revenue per cycle is
+significantly higher because those 557 FEC land on the highest-spread
+hours: evening peaks, scarcity events captured in intraday, passing
+on the 14:00 solar trough. Half of its advantage (13 pp) is the same
+as the closed-form proxies; the other 14 pp is what only state-
+dependent hour-by-hour shadow cost can extract.
 """)
 
 
