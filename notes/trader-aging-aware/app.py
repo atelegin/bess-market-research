@@ -461,11 +461,14 @@ with st.expander("Methodology & where this model stops working"):
 in Note 3 — *What Actually Drives Degradation*). Warranty floor 0.80;
 initial SoH 1.0.
 
-**Markets**: DE day-ahead + intraday (DA-proxy — no free historical ID
-data; documented in roadmap); aFRR capacity + real activation-energy
-revenue from regelleistung.net + netztransparenz.de; FCR explicitly
-dropped (the BESS fleet has grown past FCR demand — the market is
-past its moment for a 2h battery).
+**Markets**: DE day-ahead (EnergyCharts); intraday via **netztransparenz
+Spotmarktpreis** (EEG §3 Nr. 42a volume-weighted spot across EPEX +
+EXAA day-ahead and intraday auctions — captures intraday-only scarcity
+events such as 2024-06-26 when intraday cleared at +2097 €/MWh while
+DA sat at +107); aFRR capacity + real activation-energy revenue from
+regelleistung.net + netztransparenz.de; FCR explicitly dropped (the
+BESS fleet has grown past FCR demand — the market is past its moment
+for a 2h battery).
 
 **Dispatch LP**: joint DA + ID + aFRR cap + aFRR energy solved as a
 stacked-market LP per day (see `lib.models.dispatch_stacked`).
@@ -477,10 +480,14 @@ roadmap `benchmark-reconciliation` for why this is a reduced-form catch-all).
 across all policies; the only differentiation is the wear cost vector
 each policy emits.
 
-**Degradation**: simple linear-in-FEC + calendar fade + mild age
-acceleration (`fade_per_fec_at_soh_1 = 3.3e-5`, calendar `2e-5/day`).
-Physics-grade replacement with `project_capacity_detailed` from Note 3
-is a refinement planned for the warranty follow-up.
+**Degradation**: Note 3 physics kernel (`project_capacity_detailed` with
+the calibrated Wang + Naumann two-channel model) called daily with the
+day's DutyCycle (mean DoD, SoC band, mean C-rate, temperature 25 °C).
+Kernel evaluated at `years=1.0` (its calibration horizon), divided by
+365 for today's contribution; `×(1 + 2.5·(1−SoH))` age scaling mirrors
+the simple-model scarcity factor. DoD sensitivity is mild (Note 3
+finding); total-FEC and C-rate dominate. Linear fallback retained for
+debugging (`use_physics_degradation=False`).
 
 **ADP**: backward-induction DP with state `(SoC, SoH, regime, hour-of-day)`.
 Simplifications: deterministic hourly price means per regime (no

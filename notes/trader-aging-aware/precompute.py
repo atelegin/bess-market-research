@@ -111,6 +111,9 @@ def main() -> None:
         discount_rate=0.07,
         power_mw=1.0, duration_h=2.0,
         max_cycles=2.0, max_afrr_participation=0.40,
+        use_physics_degradation=True,          # Note 3 physics kernel
+        physics_preset_name="eve_lf280k",
+        physics_temperature_c=25.0,
         collect_diagnostics_year=0,  # year 1 = 2023 template
     )
     print(f"Lifecycle runs done in {time.time() - t0:.1f}s\n")
