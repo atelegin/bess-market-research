@@ -98,7 +98,7 @@ class IntradayADPSolver:
         rte: float = 0.85,
         energy_mwh: float = 2.0,
         power_mw: float = 1.0,
-        fade_per_fec_at_soh_1: float = 2e-4,
+        fade_per_fec_at_soh_1: float = 3.3e-5,
         calendar_fade_per_day: float = 2e-5,
         n_soc_buckets: int = 11,
         n_actions: int = 11,     # discharge -P to +P in odd number of steps

@@ -207,7 +207,7 @@ class ADPSolver:
         regime_classification: RegimeClassification,
         revenue_curve: np.ndarray,       # (n_regimes, n_actions) daily EUR
         grids: ADPGrids,
-        fade_per_fec_at_soh_1: float = 2e-4,
+        fade_per_fec_at_soh_1: float = 3.3e-5,
         calendar_fade_per_day: float = 2e-5,
         discount_per_year: float = 0.98,
         warranty_breach_penalty_eur: float = 50_000.0,

@@ -478,7 +478,7 @@ across all policies; the only differentiation is the wear cost vector
 each policy emits.
 
 **Degradation**: simple linear-in-FEC + calendar fade + mild age
-acceleration (`fade_per_fec_at_soh_1 = 2e-4`, calendar `2e-5/day`).
+acceleration (`fade_per_fec_at_soh_1 = 3.3e-5`, calendar `2e-5/day`).
 Physics-grade replacement with `project_capacity_detailed` from Note 3
 is a refinement planned for the warranty follow-up.
 

@@ -65,7 +65,7 @@ def build_adp_policy() -> ADPPolicy:
     curve = np.outer(ref_rev_per_regime, grid.action_grid / 1.5)
     solver = ADPSolver(
         regime_classification=rc, revenue_curve=curve, grids=grid,
-        fade_per_fec_at_soh_1=2e-4, calendar_fade_per_day=2e-5,
+        fade_per_fec_at_soh_1=3.3e-5, calendar_fade_per_day=2e-5,
         discount_per_year=0.98, warranty_breach_penalty_eur=200_000,
     )
     result = solver.solve(tol=1e-2, max_iter=1500)

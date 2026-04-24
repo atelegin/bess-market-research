@@ -93,7 +93,7 @@ def simulate_lifecycle(
     afrr_reserve_duration_hours: float = 0.25,
     pool_pos_mw: float = DEFAULT_POOL_POS_MW,
     pool_neg_mw: float = DEFAULT_POOL_NEG_MW,
-    fade_per_fec_at_soh_1: float = 2e-4,
+    fade_per_fec_at_soh_1: float = 3.3e-5,
     calendar_fade_per_day: float = 2e-5,
     max_days_per_year: Optional[int] = None,
     prefetched_frames: Optional[dict[int, dict]] = None,
