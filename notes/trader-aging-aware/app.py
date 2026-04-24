@@ -505,6 +505,14 @@ stochastic transitions within a day), cyclic SoC boundary, SoH-constant
 within a day. Full stochastic Holtorf-Shin would add real price
 uncertainty — a further refinement.
 
+**Temperature sensitivity (sanity check)**: re-running the full 10y × 5
+policy lifecycle at 35 °C instead of 25 °C compresses all absolute NPVs
+by ~46 % (batteries die faster) but leaves the **relative intraday-ADP
+premium at exactly +27 %** — same as the cool case. Closed-form policies
+gain marginally more at hot (+17–18 % vs +13 %) because more-rapid fade
+rewards any cycle-suppression. Intraday ADP's advantage is structural
+(hour-varying shadow cost) and doesn't depend on fade-rate magnitude.
+
 **Where this model stops working**:
 - **The naive policy is a strawman.** It assumes zero cycle pricing AND
   zero DoD ceiling — so the LP cycles from 5 % to 95 % SoC every trade
