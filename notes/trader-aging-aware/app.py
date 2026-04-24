@@ -421,10 +421,16 @@ SoH = 1.0.
         })
     anchor_df = pd.DataFrame(rows)
 
-    # Pull CH index for context (hardcoded — would wire through pickle
-    # later but simple enough to inline).
-    CH_FEB_2026_2H = 110.0
-    CH_LABEL = f"Clean Horizon {month_name} {anchor_run.year} (2h)"
+    # Pull CH index for context from the ingested cache.
+    try:
+        from lib.data.clean_horizon import load_index
+        ch_df = load_index(duration_h=2.0)
+        ch_match = ch_df[
+            (ch_df["year"] == anchor_run.year) & (ch_df["month"] == anchor_run.month)
+        ]
+        ch_value = float(ch_match["revenue_keur"].iloc[0]) if not ch_match.empty else None
+    except Exception:
+        ch_value = None
 
     render_chart_title(
         f"{month_name} {anchor_run.year} annualised revenue by policy (fresh-cell, ×12)"
@@ -436,10 +442,10 @@ SoH = 1.0.
         text=[f"€{v:.0f}k" for v in anchor_df["ann_keur"]],
         textposition="outside",
     ))
-    if anchor_run.month == 2 and anchor_run.year == 2026:
+    if ch_value is not None:
         fig_a.add_hline(
-            y=CH_FEB_2026_2H, line_dash="dot", line_color="#666",
-            annotation_text=f"CH {month_name} 2026 index ≈ €{CH_FEB_2026_2H:.0f}k/yr",
+            y=ch_value, line_dash="dot", line_color="#666",
+            annotation_text=f"CH {month_name} {anchor_run.year} ≈ €{ch_value:.0f}k/yr",
             annotation_position="top right",
         )
     fig_a.update_layout(
