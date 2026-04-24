@@ -506,17 +506,27 @@ within a day. Full stochastic Holtorf-Shin would add real price
 uncertainty — a further refinement.
 
 **Where this model stops working**:
-- The participation cap of 0.40 is a reduced-form catch-all. A trader
-  with proper forecasting tools and lower risk aversion could push it
-  higher; one operating under tighter ORL or battery-safety constraints
-  would be lower.
-- Real intraday (ID1/ID3 continuous markets) are not modelled as separate
-  liquidity — we use the DA price twice. Operators with genuine ID
-  trading would see higher absolute numbers across ALL policies, but the
-  relative ordering should hold.
-- The naive policy assumes *zero* cycle pricing, which is a strawman.
-  Real operators at least respect warranty cycle caps. The naive column
-  in this note is an extreme anchor, not a claim about any specific firm.
+- **The naive policy is a strawman.** It assumes zero cycle pricing AND
+  zero DoD ceiling — so the LP cycles from 5 % to 95 % SoC every trade
+  it takes. Real commercial operators respect warranty cycle caps and
+  DoD limits (typically DoD ≤ 0.7), which is a crude but effective form
+  of cycle pricing. Naive here is the extreme "unconstrained revenue-max
+  trader" upper bound, not a claim about any specific firm.
+- **The 5-year naive EOL at SoH = 0.80 isn't the full story.** 0.80 is
+  the typical OEM warranty floor — after which the battery still works
+  but the warranty terminates. Under a contract that accepts operation
+  past 0.80 (e.g. to a functional EOL of 0.70), naive would earn another
+  2-3 years at derated capacity. The 5-year number is contract-life, not
+  physical life.
+- **The participation cap of 0.40 is a reduced-form catch-all.** A
+  trader with better forecasting and lower risk aversion could push it
+  higher; one under tighter operational constraints would be lower.
+  Documented in roadmap `benchmark-reconciliation` as a future refinement.
+- **No separate continuous ID liquidity.** We use `Spotmarktpreis` (EEG
+  §3 Nr. 42a volume-weighted DA + ID auctions) as the ID proxy — it
+  captures intraday scarcity clearing but not the full continuous-market
+  depth. Operators with ID1/ID3 access would see modestly higher numbers
+  across all policies; relative ordering should hold.
 """)
 
 
