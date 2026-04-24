@@ -577,7 +577,10 @@ if mix_intraday:
         f"availability, not cycling, is what pays. Use €/lost-capacity or "
         f"€/MW-reserved instead. (Point flagged by Dr. Sebastian Kawollek in "
         f"response to *What Actually Drives Degradation*, where I used EUR/MWh "
-        f"because there the physics didn't depend on revenue stream. Here it does.)"
+        f"because there the physics didn't depend on revenue stream. Here it does. "
+        f"He, Malkaby-Epstein et al. [2016](https://orbit.dtu.dk/en/publications/optimal-bidding-strategy-of-battery-storage-in-power-markets-cons) "
+        f"made the same argument for performance-based frequency regulation "
+        f"eight years before Kumtepeli/Howey restated it at general-purpose scale.)"
     )
 
 
@@ -615,13 +618,40 @@ Kernel evaluated at `years=1.0` (its calibration horizon), divided by
 365 for today's contribution; `×(1 + 2.5·(1−SoH))` age scaling mirrors
 the simple-model scarcity factor. DoD sensitivity is mild (Note 3
 finding); total-FEC and C-rate dominate. Linear fallback retained for
-debugging (`use_physics_degradation=False`).
+debugging (`use_physics_degradation=False`). The choice to upgrade from
+a linear EUR/FEC model to a physics kernel is exactly what Chen et al.
+[2020](https://www.sciencedirect.com/science/article/abs/pii/S0360544220313359)
+argued for on model-risk grounds — too-crude a degradation model
+materially distorts optimisation results. We recover their point
+empirically: linear fade (2e-4 per FEC) gave naive a 2-year life and
++239 % aging-aware premium; physics fade recovers 5-year life and
++27 % premium (the honest number).
 
-**ADP**: backward-induction DP with state `(SoC, SoH, regime, hour-of-day)`.
-Simplifications: deterministic hourly price means per regime (no
-stochastic transitions within a day), cyclic SoC boundary, SoH-constant
-within a day. Full stochastic Holtorf-Shin would add real price
-uncertainty — a further refinement.
+**ADP**: backward-induction DP with state `(SoC, SoH, regime, hour-of-day)`
+— the Holtorf-Shin [2026](https://arxiv.org/abs/2603.21089) formulation
+with seven explicit simplifications relative to the full published
+approach:
+
+1. **Deterministic hourly price means per regime** (no stochastic
+   transitions within a day) — H-S uses AR or regime-switching price
+   processes.
+2. **Aging applied post-step** (not inside DP objective) — H-S embeds
+   the physics kernel state-dependence into Bellman.
+3. **Daily cyclic SoC boundary** (start-of-day = end-of-day) — H-S
+   optimises multi-day SoC trajectories.
+4. **Discrete grids** (11 SoC × 11 SoH × 3 regimes × 24 hours) — H-S
+   uses continuous or finer discretisation.
+5. **Fixed temperature** 25 °C — H-S can accommodate thermal state
+   (see Zhang et al. [2025](https://www.sciencedirect.com/science/article/pii/S0306261925012243)
+   for coupled electro-thermal + aging MPC).
+6. **Cycle-channel-only inside DP** — calendar fade applied separately.
+7. **No rolling-horizon updates** — DP solved once offline, no online
+   re-planning.
+
+Full-stochastic H-S would capture forecast uncertainty explicitly — our
+LP has perfect foresight, so observed numbers are upper bounds. Real
+operators' forecast-error penalty shows up as the participation cap of
+0.40.
 
 **Temperature sensitivity (sanity check)**: re-running the full 10y × 5
 policy lifecycle at 35 °C instead of 25 °C compresses all absolute NPVs
@@ -653,6 +683,106 @@ rewards any cycle-suppression. Intraday ADP's advantage is structural
   captures intraday scarcity clearing but not the full continuous-market
   depth. Operators with ID1/ID3 access would see modestly higher numbers
   across all policies; relative ordering should hold.
+- **BESS is modelled as a single aggregated unit.** Real BESS have
+  hundreds of modules and thousands of cells ageing unevenly
+  (manufacturing variance, edge-vs-centre thermal, usage asymmetry).
+  The BMS-level power-allocation problem — which Power Split Control
+  paper [2025](https://arxiv.org/abs/2507.00628) addresses — sits one
+  abstraction layer below our external-dispatch view.
+""")
+
+
+# ── Related work ────────────────────────────────────────────
+st.markdown("---")
+with st.expander("Related work"):
+    st.markdown("""
+**Direct anchors (our policies implement these):**
+
+- **Kumtepeli, Hesse, Morstyn, Nosratabadi, Aunedi, Howey (2024)** —
+  *Depreciation Cost is a Poor Proxy for Revenue Lost to Aging in
+  Grid Storage Optimization.*
+  [arXiv:2403.10617](https://arxiv.org/abs/2403.10617) (ACC 2024).
+  The reframe from "CAPEX ÷ lifetime throughput" (our
+  `DepreciationProxyPolicy`) to "forgone future revenue"
+  (our `ADPPolicyIntraday`). Flagged by David Howey in response to
+  the preceding note *What Actually Drives Degradation*, where an
+  EUR/MWh wear framing served the physics-ranking purpose but was
+  exactly the proxy this paper argues against for dispatch.
+- **Holtorf, Shin (2026)** — *Approximate Dynamic Programming for
+  Degradation-aware Market Participation of BESS.*
+  [arXiv:2603.21089](https://arxiv.org/abs/2603.21089).
+  The state-dependent opportunity-cost formulation our intraday-ADP
+  follows, with seven documented simplifications (see Methodology
+  expander). Reports 10-25% profit uplift over heuristics on French
+  market data — consistent in direction with our +14 pp gap between
+  intraday ADP and the closed-form depreciation baseline.
+- **Collath, Englberger, Jossen, Hesse (2023)** — *Increasing the
+  lifetime profitability of battery energy storage systems through
+  aging-aware operation.* [Applied Energy](https://www.sciencedirect.com/science/article/pii/S0306261923008954).
+  Open-source aging-aware MPC framework. Our
+  `AgingAwareDepreciationPolicy` is a lighter-weight relative: same
+  "aging cost in objective" logic, scalar shadow cost rather than
+  rolling-horizon MPC. Collath's repo is a candidate head-to-head
+  baseline for a future validation pass.
+
+**Physics foundation:**
+
+- **Naumann, Reniers, Howey et al. (2022)** — *Aging aware operation
+  of lithium-ion battery energy storage systems: A review.*
+  [J. Energy Storage](https://www.sciencedirect.com/science/article/pii/S2352152X2201622X).
+  Shared vocabulary (stress factors, operation methods). Our
+  physics kernel is calibrated against Naumann 2018 cycling data
+  via Note 3's preset layer.
+- **Chen, Bhuiyan et al. (2020)** — *Impact of battery degradation
+  models on energy management of a grid-connected DC microgrid.*
+  [Energy](https://www.sciencedirect.com/science/article/abs/pii/S0360544220313359).
+  The model-risk paper underpinning our decision to swap
+  linear-in-FEC fade for Note 3's Wang+Naumann kernel. Predicted
+  failure mode: too-crude a degradation model materially distorts
+  optimisation results. Empirically confirmed here — linear fade
+  (2e-4 per FEC) gave naive a 2-year life and +239 % aging-aware
+  premium; physics recovers 5-year life and +27 % premium.
+
+**Ancillary-specific anchor (Kawollek thread):**
+
+- **He, Malkaby-Epstein, Mousavi et al. (2016)** — *Optimal bidding
+  strategy of battery storage in power markets considering
+  performance-based regulation and battery cycle life.*
+  [DTU Orbit](https://orbit.dtu.dk/en/publications/optimal-bidding-strategy-of-battery-storage-in-power-markets-cons).
+  Eight-year precedent for "fast regulation revenue must price
+  cycle life in the bidding logic". Directly relevant to our
+  Signal 5 point that EUR/MWh is the wrong denominator on
+  availability-paid assets. Pre-dates the general aging-aware
+  literature but makes the same structural argument for PFR.
+
+**Refinements we didn't pursue (scope limits):**
+
+- **Zhang, Wang, Ouyang et al. (2025)** — *Battery aging-aware
+  adaptive MPC based on coupled semi-empirical electro-thermal
+  and aging models.*
+  [Applied Energy](https://www.sciencedirect.com/science/article/pii/S0306261925012243).
+  The next lever after state-of-charge/-health: couple thermal
+  control (HVAC setpoint, self-heating) into the aging-aware
+  optimisation. We fix temperature at 25 °C; Zhang-style control
+  matters when thermal is a real decision variable (outdoor BESS,
+  high-rate services, hot climates). Our 25 °C / 35 °C sensitivity
+  check shows the +27 % premium is robust to temperature — but
+  doesn't explore thermal as a lever.
+- **Price Aware Power Split Control in Heterogeneous Battery
+  Storage Systems (2025)** —
+  [arXiv:2507.00628](https://arxiv.org/abs/2507.00628).
+  Sits one abstraction below: given external dispatch, how should
+  the BMS allocate power across cells/strings so that weakest-cell
+  ageing doesn't bottleneck the pack? We treat BESS as a single
+  aggregated unit; internal heterogeneity is a real aging lever we
+  don't model.
+- **Esquivel, Harris, Harris (2026)** — *SAGE: Synthetic Aging for
+  a Grid Environment.* [arXiv:2603.13976](https://arxiv.org/abs/2603.13976).
+  Long-horizon physics-informed BESS simulator — a candidate
+  independent truth-model for cross-validating our Note 3 kernel
+  outputs. Our primary validation uses published anchors (Naumann
+  2018 + SNL 2020 + Stanford 2024); SAGE would be a useful
+  orthogonal check in a follow-up.
 """)
 
 
