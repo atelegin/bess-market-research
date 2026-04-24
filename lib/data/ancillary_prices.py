@@ -19,6 +19,62 @@ from lib.data.cache import CACHE_DIR
 BASE_URL = "https://www.regelleistung.net/apps/cpp-publisher/api/v1/download/tenders/files"
 
 
+def _fetch_regelleistung_xlsx(url_template: str, year: int) -> bytes | None:
+    """Fetch a regelleistung.net XLSX with year-level URL first, fall back to
+    month-by-month concatenation.
+
+    The annual URL returns 0 bytes for some year ranges (observed for 2026
+    as of 2026-04: full-year and YTD both empty, monthly windows all
+    populated). This helper tries the yearly URL, and if that returns
+    empty, iterates over months and merges the results.
+    """
+    annual_url = url_template.format(
+        start=f"{year}-01-01", end=f"{year}-12-31"
+    )
+    try:
+        r = requests.get(annual_url, timeout=120)
+    except Exception as e:
+        logger.warning(f"regelleistung XLSX {year} annual fetch failed: {e}")
+        r = None
+    if r is not None and r.status_code == 200 and len(r.content) > 1000:
+        return r.content
+
+    # Fallback: monthly windows concatenated as separate DataFrames,
+    # returned as one in-memory XLSX workbook via pandas excel writer.
+    frames: list[pd.DataFrame] = []
+    for m in range(1, 13):
+        start = f"{year}-{m:02d}-01"
+        if m == 12:
+            end = f"{year}-12-31"
+        else:
+            # Last day of month via timedelta trick
+            end_ts = (pd.Timestamp(year, m + 1, 1) - pd.Timedelta(days=1))
+            end = end_ts.strftime("%Y-%m-%d")
+        month_url = url_template.format(start=start, end=end)
+        try:
+            rm = requests.get(month_url, timeout=60)
+        except Exception as e:
+            logger.info(f"regelleistung monthly {year}-{m:02d} fetch error: {e}")
+            continue
+        if rm.status_code != 200 or len(rm.content) < 1000:
+            continue
+        try:
+            df_m = pd.read_excel(io.BytesIO(rm.content))
+            frames.append(df_m)
+        except Exception as e:
+            logger.info(f"regelleistung monthly {year}-{m:02d} parse error: {e}")
+            continue
+    if not frames:
+        return None
+    combined = pd.concat(frames, ignore_index=True)
+    # Serialize back to XLSX bytes for drop-in compatibility with callers
+    # that read_excel the returned bytes.
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        combined.to_excel(writer, index=False)
+    return buf.getvalue()
+
+
 def fetch_fcr_weekly_prices(year: int) -> pd.DataFrame | None:
     """
     Fetch FCR settlement prices per 4h block and aggregate to weekly average.
@@ -140,15 +196,16 @@ def fetch_afrr_cap_prices_daily(year: int) -> pd.DataFrame | None:
     if cache_path.exists():
         return pd.read_parquet(cache_path)
 
-    url = f"{BASE_URL}/RESULT_OVERVIEW_CAPACITY_MARKET_aFRR_{year}-01-01_{year}-12-31.xlsx"
+    tmpl = (BASE_URL +
+            "/RESULT_OVERVIEW_CAPACITY_MARKET_aFRR_{start}_{end}.xlsx")
+    xlsx_bytes = _fetch_regelleistung_xlsx(tmpl, year)
+    if xlsx_bytes is None:
+        logger.warning(f"aFRR cap daily {year}: fetch returned empty")
+        return None
     try:
-        r = requests.get(url, timeout=120)
-        if r.status_code != 200:
-            logger.warning(f"aFRR cap daily {year}: HTTP {r.status_code}")
-            return None
-        raw = pd.read_excel(io.BytesIO(r.content))
+        raw = pd.read_excel(io.BytesIO(xlsx_bytes))
     except Exception as e:
-        logger.warning(f"aFRR cap daily {year} fetch failed: {e}")
+        logger.warning(f"aFRR cap daily {year} parse failed: {e}")
         return None
 
     # PRODUCT format: "{DIR}_{START}_{END}" — e.g. "POS_00_04"
@@ -192,15 +249,16 @@ def fetch_afrr_energy_prices(year: int) -> pd.DataFrame | None:
     if cache_path.exists():
         return pd.read_parquet(cache_path)
 
-    url = f"{BASE_URL}/RESULT_OVERVIEW_ENERGY_MARKET_aFRR_{year}-01-01_{year}-12-31.xlsx"
+    tmpl = (BASE_URL +
+            "/RESULT_OVERVIEW_ENERGY_MARKET_aFRR_{start}_{end}.xlsx")
+    xlsx_bytes = _fetch_regelleistung_xlsx(tmpl, year)
+    if xlsx_bytes is None:
+        logger.warning(f"aFRR energy prices {year}: fetch returned empty")
+        return None
     try:
-        r = requests.get(url, timeout=120)
-        if r.status_code != 200:
-            logger.warning(f"aFRR energy prices {year}: HTTP {r.status_code}")
-            return None
-        raw = pd.read_excel(io.BytesIO(r.content))
+        raw = pd.read_excel(io.BytesIO(xlsx_bytes))
     except Exception as e:
-        logger.warning(f"aFRR energy prices {year} fetch failed: {e}")
+        logger.warning(f"aFRR energy prices {year} parse failed: {e}")
         return None
 
     # Parse PRODUCT = "{DIR}_{NNN}" where DIR ∈ {POS, NEG} and NNN = 1..96

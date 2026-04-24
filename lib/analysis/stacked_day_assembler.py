@@ -83,6 +83,30 @@ def _expand_hourly_to_15min(hourly: np.ndarray) -> np.ndarray:
     return np.repeat(hourly, PERIODS_PER_BLOCK // 4)  # 4 intervals per hour
 
 
+def _to_15min_day(values: np.ndarray) -> np.ndarray:
+    """Normalise a daily price slice to 96 × 15-min bins.
+
+    Handles both hourly (24 values — step-expand) and native 15-min
+    (96 values — use as-is) sources. For 2026+ German DA and Spotmarkt-
+    preis the API now returns 15-min natively (SIDC reform); older years
+    are hourly. Also handles 23/25-hour DST days by padding/truncating.
+    """
+    n = len(values)
+    if n >= PERIODS_PER_DAY - 4:  # treat as 15-min with DST slack
+        if n < PERIODS_PER_DAY:
+            values = np.concatenate([values, np.full(PERIODS_PER_DAY - n, values[-1])])
+        return values[:PERIODS_PER_DAY]
+    if n >= 23 and n <= 25:  # hourly, possibly DST
+        return _expand_hourly_to_15min(values)
+    # Partial / malformed — pad with last valid value.
+    if n < 24:
+        if n == 0:
+            return np.zeros(PERIODS_PER_DAY)
+        values = np.concatenate([values, np.full(24 - n, values[-1])])
+        return _expand_hourly_to_15min(values)
+    return _expand_hourly_to_15min(values[:24])
+
+
 def _extract_day_slice(
     frame: pd.DataFrame, target_date: Date, col: str,
     expected_len: int, tz: str = "UTC",
@@ -146,7 +170,7 @@ def assemble_day_inputs(
     if da_slab.empty:
         logger.warning(f"assemble_day_inputs({target_date}): DA slab empty")
         return None
-    prices_da = _expand_hourly_to_15min(da_slab.to_numpy(dtype=float))
+    prices_da = _to_15min_day(da_slab.to_numpy(dtype=float))
     if len(prices_da) != PERIODS_PER_DAY:
         logger.warning(
             f"assemble_day_inputs({target_date}): DA expansion gave "
@@ -197,11 +221,14 @@ def assemble_day_inputs(
                 )
                 spot_frame = None
         if spot_frame is not None and not spot_frame.empty:
-            spot_hourly = _extract_day_slice(
-                spot_frame, target_date, "price_eur_mwh", expected_len=24,
-            )
-            if spot_hourly is not None:
-                prices_id = _expand_hourly_to_15min(spot_hourly)
+            # Spot resolution varies: hourly before 2026 SIDC reform, 15-min
+            # from 2026. _to_15min_day transparently handles both.
+            local_spot = spot_frame.tz_convert("UTC") if spot_frame.index.tz is not None else spot_frame.tz_localize("UTC")
+            day_spot = local_spot.loc[
+                (local_spot.index >= day_start) & (local_spot.index < day_end), "price_eur_mwh"
+            ]
+            if not day_spot.empty:
+                prices_id = _to_15min_day(day_spot.to_numpy(dtype=float))
     if prices_id is None:
         prices_id = prices_da.copy()
 
