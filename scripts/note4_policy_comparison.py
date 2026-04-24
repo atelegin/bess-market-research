@@ -118,6 +118,9 @@ def main(n_years: int = 10, max_days_per_year: int | None = None) -> None:
         power_mw=1.0, duration_h=2.0,
         max_cycles=2.0,
         max_afrr_participation=0.40,
+        use_physics_degradation=True,
+        physics_preset_name="eve_lf280k",
+        physics_temperature_c=25.0,
         max_days_per_year=max_days_per_year,
     )
     dt = time.time() - t0
