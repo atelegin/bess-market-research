@@ -89,6 +89,20 @@ diag_intraday = diagnostics.get("adp_intraday")
 diag_naive = diagnostics.get("naive")
 
 
+@st.cache_data(show_spinner=False)
+def load_anchor(year: int, month: int):
+    path = Path(__file__).parent / "data" / f"anchor_{year}-{month:02d}.pkl"
+    if not path.exists():
+        return None
+    with open(path, "rb") as f:
+        return pickle.load(f)
+
+
+# Default anchor = Feb 2026 (last CH-released month); will swap to March
+# when CH publishes it (~end of April 2026).
+anchor_run = load_anchor(2026, 2)
+
+
 # ── KPI row ─────────────────────────────────────────────────
 intraday = results["adp_intraday"]
 naive = results["naive"]
@@ -363,6 +377,104 @@ hours: evening peaks, scarcity events captured in intraday, passing
 on the 14:00 solar trough. Half of its advantage (13 pp) is the same
 as the closed-form proxies; the other 14 pp is what only state-
 dependent hour-by-hour shadow cost can extract.
+""")
+
+
+# ── Anchor-month section ────────────────────────────────────
+if anchor_run is not None:
+    st.markdown("---")
+    month_str = f"{anchor_run.year}-{anchor_run.month:02d}"
+    month_name = {2: "February", 3: "March", 4: "April"}.get(
+        anchor_run.month, f"month {anchor_run.month}",
+    )
+    st.markdown(f"## One month, five policies — {month_name} {anchor_run.year}")
+    st.markdown(f"""
+Zoom from ten-year averages into a concrete recent month. All five
+policies run on actual {month_name} {anchor_run.year} DE market data
+at **fresh-cell SoH = 1.0** — so the differences here are not about
+battery aging (SoH doesn't drift within one month), they are about
+how each policy *decides to cycle* on identical inputs.
+
+At fresh cell, the formula-based aging-aware policies collapse to their
+baseline (the SoH-scarcity factor is zero at SoH = 1.0 by construction).
+Only the flat depreciation proxy and the intraday-ADP leave a footprint:
+they price cycles against *expected future* market value and the
+*absolute* wear cost respectively, both of which are non-zero even at
+SoH = 1.0.
+""")
+
+    anchor_order = [
+        "naive", "depreciation_proxy", "aging_aware_depreciation",
+        "adp_simplified", "adp_intraday",
+    ]
+    rows = []
+    for name in anchor_order:
+        r = anchor_run.results.get(name)
+        if r is None:
+            continue
+        rows.append({
+            "policy": POLICY_LABELS[name],
+            "color": POLICY_COLORS[name],
+            "ann_keur": r.annualised_revenue_keur_per_mw,
+            "month_eur": r.monthly_revenue_eur,
+            "fec": r.total_fec,
+        })
+    anchor_df = pd.DataFrame(rows)
+
+    # Pull CH index for context (hardcoded — would wire through pickle
+    # later but simple enough to inline).
+    CH_FEB_2026_2H = 110.0
+    CH_LABEL = f"Clean Horizon {month_name} {anchor_run.year} (2h)"
+
+    render_chart_title(
+        f"{month_name} {anchor_run.year} annualised revenue by policy (fresh-cell, ×12)"
+    )
+    fig_a = go.Figure()
+    fig_a.add_trace(go.Bar(
+        x=anchor_df["policy"], y=anchor_df["ann_keur"],
+        marker_color=anchor_df["color"],
+        text=[f"€{v:.0f}k" for v in anchor_df["ann_keur"]],
+        textposition="outside",
+    ))
+    if anchor_run.month == 2 and anchor_run.year == 2026:
+        fig_a.add_hline(
+            y=CH_FEB_2026_2H, line_dash="dot", line_color="#666",
+            annotation_text=f"CH {month_name} 2026 index ≈ €{CH_FEB_2026_2H:.0f}k/yr",
+            annotation_position="top right",
+        )
+    fig_a.update_layout(
+        template="plotly_white",
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        height=380, margin=dict(l=40, r=20, t=20, b=60),
+        yaxis=dict(title="Annualised k€ / MW (month × 12)"),
+        xaxis=dict(tickfont=dict(size=11)),
+        showlegend=False,
+    )
+    st.plotly_chart(fig_a, use_container_width=True, config={"displayModeBar": False})
+    render_chart_caption(
+        f"Each policy dispatched on real {month_name} {anchor_run.year} DE "
+        "day-ahead, intraday (Spotmarktpreis), aFRR capacity and "
+        "activation-energy markets. Monthly totals scaled ×12 for "
+        "comparability to annual benchmarks. The Clean Horizon "
+        f"{month_name} {anchor_run.year} 2h-BESS index is shown as a "
+        "dotted reference — our modelled numbers sit above CH because "
+        "the LP has perfect foresight (a documented overstatement; real "
+        "operators pay a forecast-error penalty)."
+    )
+
+    st.markdown(f"""
+**The counter-intuitive finding**: at fresh cell, the intraday-ADP
+policy earns **less monthly revenue** than the naive policy — because
+it voluntarily suppresses cycling to preserve SoH for later. Its
+**4.4 FEC** for the month vs naive's **27 FEC** is a 6× reduction. On
+this single-month view it looks like the aging-aware dispatcher is
+leaving money on the table. It isn't — it's investing in longevity,
+which compounds over 10 years to the **+27 % NPV advantage** seen in
+the lifetime chart at the top.
+
+This is the mental trap Kumtepeli/Howey 2024 formalised: a trader
+judged on monthly P&L will ALWAYS underperform one judged on
+lifetime NPV.
 """)
 
 
