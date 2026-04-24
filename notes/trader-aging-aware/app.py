@@ -76,11 +76,12 @@ optimiser — on the same German market data and asks a simple question:
 over a ten-year life, what does pricing cycles correctly actually earn?
 
 The gap is smaller than some academic papers suggest, but structural.
-A properly priced optimiser delivers **about 27 % more lifetime revenue**
-than a naive one — and gets there with **3.5× less cycling**. Half the
-gain comes from a simple depreciation-style shadow cost; the other half
-requires state-dependent opportunity-cost optimisation — genuine
-aging-awareness, not its imitation.
+A properly priced optimiser delivers **about 29 % more lifetime revenue**
+than a naive one — and gets there with **3.6× less cycling**. About half
+the gain comes from simply bounding the SoC envelope or using a
+depreciation-style shadow cost (+14–18 %); the other half requires
+state-dependent opportunity-cost optimisation — genuine aging-awareness,
+not its imitation.
 """)
 
 data = load_precomputed()
@@ -137,7 +138,7 @@ with col3:
 # ── Main chart: lifetime NPV by policy ──────────────────────
 render_chart_title(
     "Over ten years, the policy decides the outcome. "
-    "Pricing cycles correctly is worth ~27 % of lifetime revenue."
+    "Pricing cycles correctly is worth ~29 % of lifetime revenue."
 )
 
 POLICY_ORDER = [
@@ -428,11 +429,12 @@ hour-varying — not the magnitude.
 different route: instead of pricing cycles in the objective, it
 confines the battery to a 20–80 % SoC band by hard constraint. No
 shadow cost at all. This is how most commercial warranty terms
-actually implement aging-awareness. Empirically it lands close to
-the formula-based policies on lifetime NPV — confirming that
-"constraint or penalty" is a modelling convenience more than a
-structural difference once the mechanism keeps the battery out of
-high-stress extremes.
+actually implement aging-awareness. Empirically it **outperforms
+the formula-based policies at +18 %** vs their +14 % — by cycling
+MORE inside the safe band (1,837 FEC) rather than less overall
+(1,262 FEC), capturing more revenue without hitting the high-stress
+extremes. Real commercial warranty practice (hard DoD caps rather
+than internal shadow costs) is vindicated here.
 
 **The intraday opportunity-cost optimiser** (Holtorf-Shin style) earns
 **+27 %**. It cycles just 557 FEC — 3.5× less than naive — and the
