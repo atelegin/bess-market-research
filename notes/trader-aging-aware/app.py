@@ -238,6 +238,50 @@ with col_soh:
     st.plotly_chart(fig_soh, use_container_width=True, config={"displayModeBar": False})
 
 
+# ── Timescale mismatch (roadmap-required section) ───────────
+st.markdown("---")
+st.markdown("## The timescale problem with a single shadow cost")
+st.markdown("""
+Market decisions happen every 15 minutes. Degradation plays out over
+years. A single EUR-per-MWh shadow cost number has to bridge both —
+and it can't.
+
+**Concretely**: suppose the "correct" annual fade is 3 % of SoH at
+roughly 400 cycles per year. A trader who divides lifetime CAPEX
+(€180k/MW) by lifetime throughput (6,000 FEC × 2 MWh) lands on ~15
+€/MWh as their flat shadow cost. On a **weak-spread day** where the
+DA range is 40 €/MWh, a cycle netting 20 €/MWh after charge-discharge
+losses is killed by the 15 €/MWh shadow cost (net profit: 5 €/MWh,
+below the marginal-cost hurdle) — the trader doesn't cycle and gives
+up real money. On a **strong-spread day** where the range is 300
+€/MWh, the same 15 €/MWh shadow cost is dwarfed by the spread — the
+trader cycles at full depth. But the *right* shadow cost for a
+spread like that is much higher: cycling a battery to support 300
+€/MWh arbitrage costs more future option value than cycling it for
+40 €/MWh. Flat numbers over-penalise weak days and under-penalise
+strong ones, both at once.
+
+**The two-timescale structure**. The aging problem is slow: state
+evolution over weeks and months. The market problem is fast:
+decisions every 15 minutes given a state. Holtorf & Shin ([2026](https://arxiv.org/abs/2603.21089))
+separate them explicitly. **Offline**, before the trading year
+starts, you solve a dynamic program that produces a *state-value
+function* — "given current SoC, SoH, market regime, and hour of
+day, what is the expected remaining lifetime value?" **Online**,
+at each 15-minute decision, you consult the gradient of that
+function with respect to SoC — *that's* your shadow cost right now,
+at this hour, in this regime. It varies.
+
+Our intraday-ADP implements a simplified version of this. Cycling
+at the 18:00 peak where the next-hour price drops sharply has a
+different shadow cost than cycling at 03:00 where prices are flat
+through morning. A flat EUR/MWh cannot distinguish the two; a
+state-gradient number can. The +14 percentage-point spread between
+our closed-form aging-aware formula (+13 %) and intraday-ADP
+(+27 %) is the quantitative footprint of precisely this structure.
+""")
+
+
 # ── Week-zoom: what the policies actually do ────────────────
 st.markdown("---")
 st.markdown("## What do the policies actually do in a volatile week?")
