@@ -56,6 +56,11 @@ class ShadowCostPolicy(ABC):
     energy revenue in its LP objective. Length ``periods_per_day`` (96 by
     default). Values are non-negative by convention; negative shadow cost
     makes no physical sense (cycling can't be *rewarded* by wear).
+
+    Additionally, policies may override LP-level parameters (SoC envelope,
+    cycle cap) via :meth:`lp_overrides`. Most policies return an empty
+    dict — the exception is a constraint-based policy such as
+    :class:`SoCWindowPolicy`.
     """
 
     name: str
@@ -80,6 +85,19 @@ class ShadowCostPolicy(ABC):
             duration_h: BESS energy duration; informs throughput-per-MWh
                 accounting in some policies.
         """
+
+    def lp_overrides(
+        self, soh_current: float, day_of_year: int = 1,
+    ) -> dict:
+        """Optional per-day overrides of LP parameters.
+
+        Return a dict with any of: ``soc_min_frac``, ``soc_max_frac``,
+        ``max_cycles``, ``max_afrr_participation``. Defaults to empty
+        (no overrides). Constraint-based policies (SoC window, hard
+        cycle cap) use this channel to impose structure the LP wouldn't
+        otherwise see.
+        """
+        return {}
 
 
 @dataclass(frozen=True)
@@ -187,6 +205,52 @@ class AgingAwareDepreciationPolicy(ShadowCostPolicy):
         # Below 0.90: ratio > 1 (cost rises); above 0.90: ratio < 1 (cost falls).
         ratio = consumed / headroom
         return np.full(periods_per_day, self.base_eur_per_mwh * ratio)
+
+
+@dataclass(frozen=True)
+class SoCWindowPolicy(ShadowCostPolicy):
+    """Constraint-based aging-aware dispatch (ROADMAP channel (d)).
+
+    Rather than pricing cycles via a shadow cost in the LP objective,
+    this policy *constrains* the LP to a tighter SoC envelope — e.g.
+    20–80 % of usable energy. The LP then still maximises revenue
+    subject to that envelope, but cannot cycle past the high-stress
+    extremes.
+
+    Rationale (per ROADMAP trader-aging-aware §Key questions channel
+    (d)): "SoC-window constraints that cap high-stress operation
+    directly". This is how real commercial operators typically
+    implement aging-awareness — warranty terms often impose hard SoC
+    limits rather than internal shadow costs.
+
+    Shadow cost returned is zero — the policy does not subtract from
+    revenue. The mechanism is entirely the narrower envelope.
+
+    Args:
+        soc_min_frac: Lower SoC bound (fraction of usable energy).
+        soc_max_frac: Upper SoC bound.
+    """
+
+    name: str = "soc_window"
+    soc_min_frac: float = 0.20
+    soc_max_frac: float = 0.80
+
+    def wear_cost(
+        self,
+        soh_current: float,
+        day_of_year: int = 1,
+        periods_per_day: int = 96,
+        duration_h: float = 2.0,
+    ) -> np.ndarray:
+        return np.zeros(periods_per_day)
+
+    def lp_overrides(
+        self, soh_current: float, day_of_year: int = 1,
+    ) -> dict:
+        return {
+            "soc_min_frac": self.soc_min_frac,
+            "soc_max_frac": self.soc_max_frac,
+        }
 
 
 class ADPPolicy(ShadowCostPolicy):

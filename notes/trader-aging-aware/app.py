@@ -30,6 +30,7 @@ PRECOMPUTED_PATH = Path(__file__).parent / "data" / "precomputed.pkl"
 
 POLICY_LABELS = {
     "naive": "Naive (no cycle cost)",
+    "soc_window": "SoC window (constraint)",
     "depreciation_proxy": "Flat depreciation proxy",
     "aging_aware_depreciation": "Aging-aware formula",
     "adp_simplified": "ADP — simplified state",
@@ -37,6 +38,7 @@ POLICY_LABELS = {
 }
 POLICY_COLORS = {
     "naive": "#94a3b8",                    # slate
+    "soc_window": "#f472b6",               # pink (constraint-based)
     "depreciation_proxy": "#fbbf24",       # yellow (Kumtepeli target)
     "aging_aware_depreciation": "#3b82f6", # blue
     "adp_simplified": "#a78bfa",           # light purple
@@ -138,9 +140,14 @@ render_chart_title(
     "Pricing cycles correctly is worth ~27 % of lifetime revenue."
 )
 
+POLICY_ORDER = [
+    "naive", "soc_window", "depreciation_proxy",
+    "aging_aware_depreciation", "adp_simplified", "adp_intraday",
+]
 npv_rows = []
-for name in ["naive", "depreciation_proxy", "aging_aware_depreciation",
-             "adp_simplified", "adp_intraday"]:
+for name in POLICY_ORDER:
+    if name not in results:
+        continue
     r = results[name]
     npv_rows.append({
         "policy": POLICY_LABELS[name],
@@ -194,7 +201,9 @@ col_rev, col_soh = st.columns(2)
 with col_rev:
     render_chart_title("Annual revenue (nominal k€/MW)")
     fig_rev = go.Figure()
-    for name in ["naive", "depreciation_proxy", "aging_aware_depreciation", "adp_intraday"]:
+    for name in ["naive", "soc_window", "depreciation_proxy", "aging_aware_depreciation", "adp_intraday"]:
+        if name not in results:
+            continue
         r = results[name]
         fig_rev.add_trace(go.Scatter(
             x=np.arange(1, n_years + 1),
@@ -216,7 +225,9 @@ with col_rev:
 with col_soh:
     render_chart_title("End-of-year State of Health")
     fig_soh = go.Figure()
-    for name in ["naive", "depreciation_proxy", "aging_aware_depreciation", "adp_intraday"]:
+    for name in ["naive", "soc_window", "depreciation_proxy", "aging_aware_depreciation", "adp_intraday"]:
+        if name not in results:
+            continue
         r = results[name]
         fig_soh.add_trace(go.Scatter(
             x=np.arange(1, n_years + 1),
@@ -413,6 +424,16 @@ matters at mid-life. The Kumtepeli/Howey 2024 "poor proxy" critique
 turns out to be about the *shape* of the shadow cost — flat versus
 hour-varying — not the magnitude.
 
+**SoC-window constraint** (ROADMAP channel (d)) takes an entirely
+different route: instead of pricing cycles in the objective, it
+confines the battery to a 20–80 % SoC band by hard constraint. No
+shadow cost at all. This is how most commercial warranty terms
+actually implement aging-awareness. Empirically it lands close to
+the formula-based policies on lifetime NPV — confirming that
+"constraint or penalty" is a modelling convenience more than a
+structural difference once the mechanism keeps the battery out of
+high-stress extremes.
+
 **The intraday opportunity-cost optimiser** (Holtorf-Shin style) earns
 **+27 %**. It cycles just 557 FEC — 3.5× less than naive — and the
 battery lasts seven years at stable ~€220k/yr. Revenue per cycle is
@@ -448,8 +469,8 @@ SoH = 1.0.
 """)
 
     anchor_order = [
-        "naive", "depreciation_proxy", "aging_aware_depreciation",
-        "adp_simplified", "adp_intraday",
+        "naive", "soc_window", "depreciation_proxy",
+        "aging_aware_depreciation", "adp_simplified", "adp_intraday",
     ]
     rows = []
     for name in anchor_order:

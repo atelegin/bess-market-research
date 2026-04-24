@@ -196,7 +196,7 @@ def simulate_lifecycle(
                 day_idx += 1
                 continue
 
-            # Policy-derived per-interval wear cost
+            # Policy-derived per-interval wear cost + optional LP overrides
             day_of_year = (current - start_date).days + 1
             wear = policy.wear_cost(
                 soh_current=current_soh,
@@ -204,18 +204,22 @@ def simulate_lifecycle(
                 periods_per_day=96,
                 duration_h=duration_h,
             )
+            overrides = policy.lp_overrides(
+                soh_current=current_soh, day_of_year=day_of_year,
+            )
 
             # SoH-derated usable energy (SoC window scales with SoH)
             usable_energy_mwh = power_mw * duration_h * current_soh
 
-            day_out = optimize_day_stacked(
-                **inputs.as_kwargs(),
+            lp_kwargs = dict(
                 energy_mwh=usable_energy_mwh, power_mw=power_mw, rte=rte,
                 max_cycles=max_cycles,
                 afrr_reserve_duration_hours=afrr_reserve_duration_hours,
                 max_afrr_participation=max_afrr_participation,
                 wear_cost_eur_per_mwh=wear,
             )
+            lp_kwargs.update(overrides)  # policy-level LP parameter overrides
+            day_out = optimize_day_stacked(**inputs.as_kwargs(), **lp_kwargs)
             if not day_out.success:
                 days_skipped += 1
                 current += timedelta(days=1)

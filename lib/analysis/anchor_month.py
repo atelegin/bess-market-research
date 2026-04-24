@@ -127,14 +127,18 @@ def run_anchor_month(
                 soh_current=initial_soh, day_of_year=d.timetuple().tm_yday,
                 periods_per_day=96, duration_h=duration_h,
             )
-            day_out = optimize_day_stacked(
-                **inputs.as_kwargs(),
+            overrides = policy.lp_overrides(
+                soh_current=initial_soh, day_of_year=d.timetuple().tm_yday,
+            )
+            lp_kwargs = dict(
                 energy_mwh=energy_mwh, power_mw=power_mw, rte=rte,
                 max_cycles=max_cycles,
                 afrr_reserve_duration_hours=afrr_reserve_duration_hours,
                 max_afrr_participation=max_afrr_participation,
                 wear_cost_eur_per_mwh=wear,
             )
+            lp_kwargs.update(overrides)
+            day_out = optimize_day_stacked(**inputs.as_kwargs(), **lp_kwargs)
             if not day_out.success:
                 continue
             rev += day_out.revenue_total

@@ -33,6 +33,7 @@ from lib.data.day_ahead_prices import fetch_day_ahead_prices
 from lib.models.adp_shadow_cost import (
     ADPPolicy, ADPPolicyIntraday,
     AgingAwareDepreciationPolicy, DepreciationProxyPolicy, NaivePolicy,
+    SoCWindowPolicy,
 )
 from lib.models.adp_solver import ADPSolver, default_grids
 from lib.models.adp_solver_intraday import (
@@ -71,6 +72,7 @@ def build_policies(regime_fit_year: int = 2024) -> dict:
     base = 100_000.0 / 6_000.0
     return {
         "naive": NaivePolicy(),
+        "soc_window": SoCWindowPolicy(soc_min_frac=0.20, soc_max_frac=0.80),
         "depreciation_proxy": DepreciationProxyPolicy(
             capex_eur_per_mwh=100_000, lifetime_throughput_ratio=6_000,
         ),
