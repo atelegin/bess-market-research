@@ -95,6 +95,9 @@ def simulate_lifecycle(
     pool_neg_mw: float = DEFAULT_POOL_NEG_MW,
     fade_per_fec_at_soh_1: float = 3.3e-5,
     calendar_fade_per_day: float = 2e-5,
+    use_physics_degradation: bool = False,
+    physics_preset_name: str = "eve_lf280k",
+    physics_temperature_c: float = 25.0,
     max_days_per_year: Optional[int] = None,
     prefetched_frames: Optional[dict[int, dict]] = None,
     collect_diagnostics_year: Optional[int] = None,
@@ -145,6 +148,13 @@ def simulate_lifecycle(
 
     current_soh = float(initial_soh)
     diagnostic_days: list = []
+
+    # Optional Note 3 physics kernel
+    physics_preset = None
+    if use_physics_degradation:
+        from lib.models.degradation import PRESETS
+        physics_preset = PRESETS[physics_preset_name]
+        from lib.analysis.physics_degradation import physics_degradation_per_day
 
     # Prefetch frames per template year once.
     frames_by_year: dict[int, dict] = dict(prefetched_frames) if prefetched_frames else {}
@@ -230,12 +240,21 @@ def simulate_lifecycle(
                 )
 
             # Degrade SoH for today's throughput
-            delta = degradation_per_day(
-                intensity=day_out.full_equivalent_cycles,
-                soh=current_soh,
-                fade_per_fec_at_soh_1=fade_per_fec_at_soh_1,
-                calendar_fade_per_day=calendar_fade_per_day,
-            )
+            if use_physics_degradation and physics_preset is not None:
+                delta = physics_degradation_per_day(
+                    day_result=day_out,
+                    energy_mwh=usable_energy_mwh,
+                    soh_current=current_soh,
+                    preset=physics_preset,
+                    temperature_c=physics_temperature_c,
+                )
+            else:
+                delta = degradation_per_day(
+                    intensity=day_out.full_equivalent_cycles,
+                    soh=current_soh,
+                    fade_per_fec_at_soh_1=fade_per_fec_at_soh_1,
+                    calendar_fade_per_day=calendar_fade_per_day,
+                )
             current_soh -= delta
             if current_soh < warranty_floor:
                 current_soh = warranty_floor
