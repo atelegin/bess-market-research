@@ -31,6 +31,7 @@ from lib.data.ancillary_prices import (
 )
 from lib.data.day_ahead_prices import fetch_day_ahead_prices
 from lib.data.intraday_prices import fetch_id_aep
+from lib.data.spotmarktpreis import fetch_spotmarktpreis
 from lib.models.dispatch_stacked import (
     BLOCKS_PER_DAY,
     PERIODS_PER_BLOCK,
@@ -111,10 +112,12 @@ def assemble_day_inputs(
     # Optional pre-fetched frames — pass to avoid re-hitting APIs in a loop
     da_frame: pd.DataFrame | None = None,
     id_frame: pd.DataFrame | None = None,
+    spot_frame: pd.DataFrame | None = None,
     afrr_cap_frame: pd.DataFrame | None = None,
     afrr_energy_frame: pd.DataFrame | None = None,
     activations_frame: pd.DataFrame | None = None,
     use_aep_for_id: bool = False,
+    use_spotmarktpreis_for_id: bool = True,
 ) -> Optional[StackedDayInputs]:
     """
     Build the 8 input arrays for the stacked-market LP for one day.
@@ -151,16 +154,19 @@ def assemble_day_inputs(
         )
         return None
 
-    # -- Intraday prices --
-    # WARNING on AEP: netztransparenz's AEP (Ausgleichsenergiepreis) is the
-    # TSO's *imbalance settlement price*, not a tradable ID market price.
-    # Using AEP directly lets the LP exploit extreme imbalance prints that
-    # no real BESS trader can capture (not a market). We therefore default
-    # to prices_id == prices_da (DA-proxy); LP treats DA and ID as separate
-    # variables but identical prices → no phantom revenue. Real intraday
-    # continuous/auction data would be a later substitution; they are not
-    # in the repo yet. Set ``use_aep_for_id=True`` to intentionally exploit
-    # AEP (not recommended for published analyses).
+    # -- Intraday proxy (Spotmarktpreis) --
+    # Default: netztransparenz Spotmarktpreis (EEG §3 Nr. 42a) — volume-
+    # weighted average of EPEX + EXAA DA + intraday auctions. For quiet
+    # hours Spot ≈ DA; for scarcity events (e.g. 2024-06-26 spiked to
+    # +2000 EUR/MWh in ID while DA stayed at 107) Spot captures real
+    # intraday volatility a BESS trader with ID access could capture.
+    # Not a continuous-intraday feed but the best free proxy we have for
+    # historical DE (EPEX ID historical is paywalled). Step-expanded from
+    # hourly to 15-min.
+    #
+    # Fallback: DA-proxy (use_spotmarktpreis_for_id=False). Set
+    # use_aep_for_id=True to exploit netztransparenz AEP imbalance prices
+    # — NOT a market, documented-against; kept for debugging only.
     prices_id = None
     if use_aep_for_id:
         if id_frame is None:
@@ -179,6 +185,23 @@ def assemble_day_inputs(
                 id_frame.columns[0],
             )
             prices_id = _extract_day_slice(id_frame, target_date, id_col, PERIODS_PER_DAY)
+    elif use_spotmarktpreis_for_id:
+        if spot_frame is None:
+            try:
+                spot_frame = fetch_spotmarktpreis(
+                    start=f"{year}-01-01", end=f"{year}-12-31T23:00:00",
+                )
+            except Exception as e:
+                logger.warning(
+                    f"assemble_day_inputs({target_date}): Spotmarktpreis fetch failed: {e}"
+                )
+                spot_frame = None
+        if spot_frame is not None and not spot_frame.empty:
+            spot_hourly = _extract_day_slice(
+                spot_frame, target_date, "price_eur_mwh", expected_len=24,
+            )
+            if spot_hourly is not None:
+                prices_id = _expand_hourly_to_15min(spot_hourly)
     if prices_id is None:
         prices_id = prices_da.copy()
 

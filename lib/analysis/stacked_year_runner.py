@@ -79,9 +79,10 @@ class StackedYearResult:
 
 def _prefetch_year_frames(year: int) -> dict[str, Optional[pd.DataFrame]]:
     """Load all year-level sources once to avoid API hits per day."""
+    from lib.data.spotmarktpreis import fetch_spotmarktpreis
     frames: dict[str, Optional[pd.DataFrame]] = {
-        "da": None, "id": None, "afrr_cap": None, "afrr_energy": None,
-        "activations": None,
+        "da": None, "id": None, "spot": None,
+        "afrr_cap": None, "afrr_energy": None, "activations": None,
     }
     try:
         frames["da"] = fetch_day_ahead_prices(
@@ -89,6 +90,12 @@ def _prefetch_year_frames(year: int) -> dict[str, Optional[pd.DataFrame]]:
         )
     except Exception as e:
         logger.warning(f"prefetch({year}): DA frame unavailable: {e}")
+    try:
+        frames["spot"] = fetch_spotmarktpreis(
+            start=f"{year}-01-01", end=f"{year}-12-31T23:00:00",
+        )
+    except Exception as e:
+        logger.warning(f"prefetch({year}): Spotmarktpreis unavailable: {e}")
     try:
         frames["id"] = fetch_id_aep(start=f"{year}-01-01", end=f"{year}-12-31")
     except Exception as e:
@@ -158,6 +165,7 @@ def run_stacked_year(
             target_date=current,
             pool_pos_mw=pool_pos_mw, pool_neg_mw=pool_neg_mw,
             da_frame=frames["da"], id_frame=frames["id"],
+            spot_frame=frames.get("spot"),
             afrr_cap_frame=frames["afrr_cap"],
             afrr_energy_frame=frames["afrr_energy"],
             activations_frame=frames["activations"],

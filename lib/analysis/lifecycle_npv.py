@@ -175,6 +175,7 @@ def simulate_lifecycle(
                 target_date=current,
                 pool_pos_mw=pool_pos_mw, pool_neg_mw=pool_neg_mw,
                 da_frame=frames.get("da"), id_frame=frames.get("id"),
+                spot_frame=frames.get("spot"),
                 afrr_cap_frame=frames.get("afrr_cap"),
                 afrr_energy_frame=frames.get("afrr_energy"),
                 activations_frame=frames.get("activations"),
