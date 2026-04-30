@@ -1266,12 +1266,13 @@ discounted gross revenue stream each methodology generates.
   how the ordering bends under the fleet-saturation revenue decay.
 - The `bid_win_rate=1.0` is an LP-upper-bound assumption (see
   Calibration anchors above). Real-world clearing rates are < 100 %
-  — operator-side observations from 2025 portfolios suggest ~78 % for
-  certain bid strategies (BayWa internal). Lower clearing would
-  compress aFRR cap revenue and shrink the +36.5 % M5 uplift.
-  Sensitivity is partially captured by the trajectory section's
-  `bid_win_scale` decay; a clean re-anchoring requires a full-bid-set
-  data source not yet available.
+  for any individual bidder, depending on bid strategy and fleet
+  capacity vs auction demand. Lower clearing would compress aFRR cap
+  revenue and shrink the +36.5 % M5 uplift. Sensitivity is partially
+  captured by the trajectory section's `bid_win_scale` decay; a clean
+  re-anchoring requires a full-bid-set data source not yet available
+  (regelleistung public CSVs contain only winning bids, so they
+  cannot ground a true clearing-rate estimate).
 - M4 (physics-from-duty) cycles only ~7 FEC / year over the lifetime
   at this calibration — the LP parks the asset in low-cycling mode
   and earns most revenue from aFRR availability. This is the genuine
