@@ -1,22 +1,21 @@
 """
 Note 4 — Is Your Trader Aging-Aware? The Cost of a Cycle.
 
-Headline numbers from `data/precomputed_v40_5methods_10y.pkl` (v4.0
-paper-grade, publicly anchored to regelleistung.net + Clean Horizon
-Storage Index + EVE LF280K manufacturer endurance). The pkl re-keys
-the underlying ablation pkl into clean publication M-numbering:
-    M1_naive    — no shadow cost (was L1_naive)
-    M2_flat     — flat €/MWh wear (was L3_flat_wear)
-    M3_scarcity — flat × SoH-state scarcity (was L4_scarcity)
-    M4_physics  — ADP + physics-from-duty (was L6_physics_full)
-    M5_adp      — pure ADP, no flat / scarcity (was L5_adp_only)
-plus two ablation cross-check variants under separate keys for the
-"why blending doesn't help" methodology footnote.
-
-Diagnostic dispatch logs for the five owner-facing signals come from
-`data/precomputed_two_stage.pkl` (v3.5; signal patterns are
-calibration-agnostic). The diag pkl retains the old L-key naming and
-is mapped to the M-numbering at access time via DIAG_KEY_FOR.
+Single pkl drives both the headline bar chart AND the diagnostic
+dispatch logs: `data/precomputed_diag_v41_y2025.pkl`. v4.1 calibration
+(v4.0 B + FCR phantom + SIDC IDA2 intraday + Stage-2 pass-2 wear
+refinement + kernel_scale=0.66). Y2 = 2025 template captured for
+diagnostic dispatch logs. Five publication methodologies keyed
+M1-M5 directly:
+    M1_naive    — no shadow cost
+    M2_flat     — flat €/MWh wear (Kumtepeli proxy)
+    M3_scarcity — flat × SoH-state scarcity
+    M4_physics  — ADP + physics-from-duty (Stage-2 pass-2 refined)
+    M5_adp      — pure ADP, the empirical winner at +37.07 % vs M1
+The two ablation variants used in "Why blending doesn't help" methodology
+footnote (`ablation_M5_with_classical_stack`, `ablation_physics_without_adp`)
+live in the headline pkl `data/precomputed_v40_5methods_10y.pkl` only —
+they're lifecycle-only (no diagnostic_days collected).
 """
 from __future__ import annotations
 
@@ -42,11 +41,12 @@ from lib.ui.theme import (
 
 
 DATA_DIR = Path(__file__).parent / "data"
-# Headline = v4.0 B + FCR phantom + SIDC IDA2 wholesale-ID feed (post
-# 2024-06-13, real DE-LU pan-European intraday auction prices via
-# ENTSO-E API). Under this calibration the M1 → M5 stack orders
-# monotonically (M5 > M4 > M3 > M2 > M1) at +37.1 % NPV uplift at the
-# M5 winner. Each Mn shows ONE shadow-cost form; M1-M3 are the
+# Headline + diagnostic dispatch logs = v4.1 calibration: v4.0 B + FCR
+# phantom + SIDC IDA2 wholesale-ID feed (post 2024-06-13) + Stage-2
+# pass-2 wear refinement enabled + kernel_scale=0.66 plumbed through
+# physics_wear_from_duty. Under this calibration the M1 → M5 stack
+# orders monotonically (M5 > M4 > M3 > M2 > M1) at +37.1 % NPV uplift
+# at the M5 winner. Each Mn shows ONE shadow-cost form; M1-M3 are the
 # classical depreciation-proxy family (no shadow → throughput-only →
 # SoH-aware), M4-M5 are the state-aware family (physics-from-duty
 # observed dispatch → ADP opportunity-cost gradient). Empirical winner
@@ -54,21 +54,15 @@ DATA_DIR = Path(__file__).parent / "data"
 # refinement on top of M5 (= M4) or stacking the M2/M3 classical
 # proxy under M5 both hurt by 1-4 pp — best shadow cost is one
 # shadow cost, chosen well.
-PRECOMPUTED_HEADLINE = DATA_DIR / "precomputed_v40_5methods_10y.pkl"
-PRECOMPUTED_DIAG = DATA_DIR / "precomputed_two_stage.pkl"
-
-# The diag pkl pre-dates the M-renaming. Mapping at access time:
-# diag-pkl provides dispatch-log signatures that are calibration-
-# agnostic, and qualitatively the diag's L5_intraday_adp (additive
-# blend) signature stands in for M5 (pure ADP) since both are
-# ADP-dominated.
-DIAG_KEY_FOR = {
-    "M1_naive":     "L1_naive",
-    "M2_flat":      "L3_flat_wear",
-    "M3_scarcity":  "L4_scarcity",
-    "M4_physics":   "L6_physics_full",
-    "M5_adp":       "L5_intraday_adp",
-}
+#
+# Single pkl serves both headline KPI / bar chart AND the diagnostic
+# dispatch logs (5-signal scatter + 4-tile owner-facing dashboard).
+# Y2 = 2025 template was the diagnostic year (post-IDA2 launch).
+PRECOMPUTED_HEADLINE = DATA_DIR / "precomputed_diag_v41_y2025.pkl"
+# Ablation variants for "Why blending doesn't help" footnote — loaded
+# separately from the standalone ablation pkl (lifecycle-only, no
+# dispatch logs).
+PRECOMPUTED_ABLATION = DATA_DIR / "precomputed_v40_5methods_10y.pkl"
 
 
 # Five shadow-cost methodologies. M1-M3 are classical depreciation-proxy
@@ -157,10 +151,15 @@ kernel.
 data = _load_pkl(str(PRECOMPUTED_HEADLINE))
 results = data["results"]
 n_years = data["n_years"]
+diag_results = results  # Single pkl drives both headline and diagnostics
 
-diag_data = _load_pkl(str(PRECOMPUTED_DIAG)) if PRECOMPUTED_DIAG.exists() else None
-diagnostics = diag_data.get("diagnostics") if diag_data else {}
-diag_results = diag_data.get("results") if diag_data else {}
+# Ablation variants (lifecycle-only, no dispatch logs) for the
+# "Why blending doesn't help" methodology footnote.
+ablation_data = (
+    _load_pkl(str(PRECOMPUTED_ABLATION))
+    if PRECOMPUTED_ABLATION.exists() else {"results": {}}
+)
+ablation_results = ablation_data["results"]
 
 
 # ── KPI row ─────────────────────────────────────────────────
@@ -376,8 +375,8 @@ _m2 = results["M2_flat"]
 _m3 = results["M3_scarcity"]
 _m4 = results["M4_physics"]
 _m5 = results["M5_adp"]
-_abl_blend = results["ablation_M5_with_classical_stack"]
-_abl_solo = results["ablation_physics_without_adp"]
+_abl_blend = ablation_results.get("ablation_M5_with_classical_stack")
+_abl_solo = ablation_results.get("ablation_physics_without_adp")
 st.markdown(f"""
 Each methodology shows ONE shadow-cost form, not a stack. M1-M3 are
 the classical depreciation-proxy family — the cost of a cycle is
@@ -509,21 +508,12 @@ pick one well-instrumented shadow cost and let it do the work alone.
 st.markdown("---")
 st.markdown("## Reading aging-awareness off your trader's dashboard")
 
-# Multi-month scatter feeds off the v3.5 lifecycle pkl (has all five
-# policies). The three dashboard tiles further down use the v4.0 B +
-# FCR diag pkl (`precomputed_diag_2025.pkl`) — same calibration as the
-# headline, captured from the 2025 template year.
-_v40_diag_path = DATA_DIR / "precomputed_diag_2025.pkl"
-if _v40_diag_path.exists():
-    _v40_diag = _load_pkl(str(_v40_diag_path))
-    l1_year_days = _v40_diag["results"][DIAG_KEY_FOR["M1_naive"]].diagnostic_days
-    l6_year_days = _v40_diag["results"][DIAG_KEY_FOR["M4_physics"]].diagnostic_days
-else:
-    # Fallback to v3.5 diagnostic pkl if v4.0 B diag was not generated.
-    l1_year_days = diag_results.get(DIAG_KEY_FOR["M1_naive"]).diagnostic_days if diag_results.get(DIAG_KEY_FOR["M1_naive"]) else None
-    l6_year_days = diag_results.get(DIAG_KEY_FOR["M4_physics"]).diagnostic_days if diag_results.get(DIAG_KEY_FOR["M4_physics"]) else None
+# 4-tile dashboard: M1 naive vs M5 ADP (the empirical winner). Both
+# come from the same v4.1 diag pkl, Y2 = 2025 template (post-IDA2).
+m1_year_days = diag_results["M1_naive"].diagnostic_days if diag_results.get("M1_naive") else None
+m5_year_days = diag_results["M5_adp"].diagnostic_days if diag_results.get("M5_adp") else None
 
-if l1_year_days and l6_year_days:
+if m1_year_days and m5_year_days:
     st.markdown("""
 Most BESS optimisers (Entrix, suena, Re.Volt, Modo, in-house desks)
 ship owners a near-real-time monitoring portal. Different vendors,
@@ -543,22 +533,18 @@ below match your own dashboard one-for-one.
 
     # ─── Multi-month robustness scatter ─────────────────────────
     from collections import defaultdict
-    # Iterate in M-order; pull diagnostic dispatch logs from the diag
-    # pkl using DIAG_KEY_FOR. The diag pkl pre-dates the M-renaming;
-    # see DIAG_KEY_FOR comment near the top of this file for caveats.
     monthly_rows = []
     naive_monthly_avg = None
     # Compute M1 monthly average for normalisation index
     l1_by_month = defaultdict(lambda: dict(rev=0.0, fec=0.0))
-    for day in diag_results[DIAG_KEY_FOR["M1_naive"]].diagnostic_days:
+    for day in diag_results["M1_naive"].diagnostic_days:
         m = day.date.month
         l1_by_month[m]["rev"] += day.daily_revenue_eur
         l1_by_month[m]["fec"] += day.full_equivalent_cycles
     naive_monthly_avg = np.mean([v["rev"] for v in l1_by_month.values()])
 
     for m_name in POLICY_ORDER:
-        diag_name = DIAG_KEY_FOR[m_name]
-        days = diag_results[diag_name].diagnostic_days
+        days = diag_results[m_name].diagnostic_days
         by_month = defaultdict(lambda: dict(rev=0.0, fec=0.0))
         for day in days:
             m = day.date.month
@@ -684,15 +670,15 @@ unconstrained reference.
     st.markdown("---")
     st.markdown("### Four tiles you'll find on every trader portal")
     st.markdown(
-        "Below: the same M1 vs M4 (physics-from-duty) contrast on four "
-        "standard dashboard tiles — *Cumulative Cycles*, *State of "
-        "Charge Development*, *Daily Revenue per Market*, *Revenue "
-        "Share per Market* — across a full year of 2025 dispatch under "
-        "the paper-grade v4.0 calibration. Naming follows Entrix's "
-        "commercial dashboard; suena, Re.Volt and Modo render the same "
-        "information under slightly different labels. Match your own "
-        "tiles to the M1 or M4 column to identify your trader's policy "
-        "family."
+        "Below: the M1 (naive) vs M5 (intraday ADP — the empirical "
+        "winner) contrast on four standard dashboard tiles — "
+        "*Cumulative Cycles*, *State of Charge Development*, *Daily "
+        "Revenue per Market*, *Revenue Share per Market* — across a "
+        "full year of 2025 dispatch under the v4.1 paper-grade "
+        "calibration. Naming follows Entrix's commercial dashboard; "
+        "suena, Re.Volt and Modo render the same information under "
+        "slightly different labels. Match your own tiles to the M1 or "
+        "M5 column to identify your trader's policy family."
     )
 
     NAIVE_C = "#e07a5f"
@@ -712,8 +698,8 @@ unconstrained reference.
     # Forces the same vertical scale on both panels so the L1 vs L6 ratio
     # reads honestly (528 vs 54 = ~10× gap, must be visually a 10× gap).
     _cycles_y_max = max(
-        float(np.cumsum([d.full_equivalent_cycles for d in l1_year_days]).max()),
-        float(np.cumsum([d.full_equivalent_cycles for d in l6_year_days]).max()),
+        float(np.cumsum([d.full_equivalent_cycles for d in m1_year_days]).max()),
+        float(np.cumsum([d.full_equivalent_cycles for d in m5_year_days]).max()),
     ) * 1.05
 
     def _cum_cycles_panel(col, days, label, color, fill, y_max):
@@ -751,17 +737,17 @@ unconstrained reference.
                 st.plotly_chart(fig, use_container_width=True,
                                 config={"displayModeBar": False})
 
-    _cum_cycles_panel(col_l1, l1_year_days, "M1 Naive", NAIVE_C, NAIVE_FILL, _cycles_y_max)
-    _cum_cycles_panel(col_l6, l6_year_days, "M4 Aging-aware", AGING_C, AGING_FILL, _cycles_y_max)
+    _cum_cycles_panel(col_l1, m1_year_days, "M1 Naive", NAIVE_C, NAIVE_FILL, _cycles_y_max)
+    _cum_cycles_panel(col_l6, m5_year_days, "M5 ADP", AGING_C, AGING_FILL, _cycles_y_max)
 
-    l1_total_fec = sum(d.full_equivalent_cycles for d in l1_year_days)
-    l6_total_fec = sum(d.full_equivalent_cycles for d in l6_year_days)
+    l1_total_fec = sum(d.full_equivalent_cycles for d in m1_year_days)
+    l6_total_fec = sum(d.full_equivalent_cycles for d in m5_year_days)
     st.markdown(
         f"**What you're looking for.** Average cycles per day above ~0.7 "
         f"(annual total > 250 FEC, monthly > 20) — the trader is running "
         f"unconstrained or near-unconstrained. Below ~0.2 / day "
         f"(annual ~70 FEC, monthly ~5) — the trader is pricing cycles "
-        f"against a meaningful shadow cost. The M1 → M4 gap is "
+        f"against a meaningful shadow cost. The M1 → M5 gap is "
         f"{l1_total_fec/l6_total_fec:.0f}× across a full year, visible "
         f"at first glance."
     )
@@ -827,23 +813,23 @@ unconstrained reference.
                 st.plotly_chart(fig, use_container_width=True,
                                 config={"displayModeBar": False})
 
-    _soc_envelope_panel(col_l1, l1_year_days, "M1 Naive", NAIVE_C, NAIVE_FILL)
-    _soc_envelope_panel(col_l6, l6_year_days, "M4 Aging-aware", AGING_C, AGING_FILL)
+    _soc_envelope_panel(col_l1, m1_year_days, "M1 Naive", NAIVE_C, NAIVE_FILL)
+    _soc_envelope_panel(col_l6, m5_year_days, "M5 ADP", AGING_C, AGING_FILL)
 
     l1_max_avg = float(np.mean([np.array(d.soc_mwh).max() / d.energy_mwh
-                                for d in l1_year_days]))
+                                for d in m1_year_days]))
     l1_min_avg = float(np.mean([np.array(d.soc_mwh).min() / d.energy_mwh
-                                for d in l1_year_days]))
+                                for d in m1_year_days]))
     l6_max_avg = float(np.mean([np.array(d.soc_mwh).max() / d.energy_mwh
-                                for d in l6_year_days]))
+                                for d in m5_year_days]))
     l6_min_avg = float(np.mean([np.array(d.soc_mwh).min() / d.energy_mwh
-                                for d in l6_year_days]))
+                                for d in m5_year_days]))
     st.markdown(
         f"**What you're looking for.** A wide daily envelope (Min ≈ 0.05, "
         f"Max ≈ 0.95) every day = the trader runs to the rails on every "
         f"trade. A narrow envelope clustered around 0.40 – 0.60 = the "
         f"shadow-cost form is doing the work. M1 averaged "
-        f"[{l1_min_avg:.2f}, {l1_max_avg:.2f}] across the year; M4 averaged "
+        f"[{l1_min_avg:.2f}, {l1_max_avg:.2f}] across the year; M5 averaged "
         f"[{l6_min_avg:.2f}, {l6_max_avg:.2f}] — visibly tighter, mean "
         f"pinned to mid-band."
     )
@@ -895,8 +881,8 @@ unconstrained reference.
         neg_sum = df[cols].clip(upper=0).sum(axis=1)
         return float(pos_sum.max()), float(neg_sum.min())
 
-    _df_l1_pre = _daily_stream_breakdown(l1_year_days)
-    _df_l6_pre = _daily_stream_breakdown(l6_year_days)
+    _df_l1_pre = _daily_stream_breakdown(m1_year_days)
+    _df_l6_pre = _daily_stream_breakdown(m5_year_days)
     _p1, _n1 = _signed_extremes(_df_l1_pre)
     _p2, _n2 = _signed_extremes(_df_l6_pre)
     _rev_y_top = max(_p1, _p2) * 1.05
@@ -937,11 +923,11 @@ unconstrained reference.
                 st.plotly_chart(fig, use_container_width=True,
                                 config={"displayModeBar": False})
 
-    _daily_revenue_panel(col_l1, l1_year_days, "M1 Naive", (_rev_y_bot, _rev_y_top))
-    _daily_revenue_panel(col_l6, l6_year_days, "M4 Aging-aware", (_rev_y_bot, _rev_y_top))
+    _daily_revenue_panel(col_l1, m1_year_days, "M1 Naive", (_rev_y_bot, _rev_y_top))
+    _daily_revenue_panel(col_l6, m5_year_days, "M5 ADP", (_rev_y_bot, _rev_y_top))
 
-    df_l1_full = _daily_stream_breakdown(l1_year_days)
-    df_l6_full = _daily_stream_breakdown(l6_year_days)
+    df_l1_full = _daily_stream_breakdown(m1_year_days)
+    df_l6_full = _daily_stream_breakdown(m5_year_days)
     l1_total = df_l1_full[list(STREAM_COLORS)].sum().sum()
     l6_total = df_l6_full[list(STREAM_COLORS)].sum().sum()
     l1_ws = (df_l1_full["DA"].sum() + df_l1_full["ID (IDA2)"].sum())
@@ -952,7 +938,7 @@ unconstrained reference.
         f"spread the market offers. A near-flat aFRR-cap base every day "
         f"with only the rare wholesale bar = aging-aware shadow cost is "
         f"binding most of the time. In our 2025 simulation M1's "
-        f"wholesale total reached €{l1_ws/1000:.0f} k vs M4's "
+        f"wholesale total reached €{l1_ws/1000:.0f} k vs M5's "
         f"€{l6_ws/1000:.0f} k — a "
         f"{(l1_ws - l6_ws)/max(l1_ws, 1)*100:.0f} % gap, exactly the "
         f"channel through which aging-aware policies trade short-term "
@@ -983,7 +969,7 @@ unconstrained reference.
         "([SIDC IDA2](https://www.entsoe.eu/network_codes/cacm/implementation/ida/), "
         "15-min, gate-closure D−1 22:00 CET) — the closest free "
         "continuous-style intraday signal available since SIDC went "
-        "live 13 June 2024. The *M1 → M4 shift* — wholesale share "
+        "live 13 June 2024. The *M1 → M5 shift* — wholesale share "
         "shrinking as the optimiser commits more SoC to aFRR cap — is "
         "the calibration-robust diagnostic. The absolute aFRR fraction "
         "still sits above public BESS indices (Modo / CH show real "
@@ -1022,8 +1008,8 @@ unconstrained reference.
                 st.plotly_chart(fig, use_container_width=True,
                                 config={"displayModeBar": False})
 
-    _share_pie_panel(col_l1, l1_year_days, "M1 Naive")
-    _share_pie_panel(col_l6, l6_year_days, "M4 Aging-aware")
+    _share_pie_panel(col_l1, m1_year_days, "M1 Naive")
+    _share_pie_panel(col_l6, m5_year_days, "M5 ADP")
 
     def _afrr_pct(days):
         df = _stream_breakdown(days)
@@ -1032,8 +1018,8 @@ unconstrained reference.
                + df["aFRR cap"].sum() + df["aFRR energy"].sum())
         return afrr / max(net, 1.0) * 100
 
-    l1_afrr = _afrr_pct(l1_year_days)
-    l6_afrr = _afrr_pct(l6_year_days)
+    l1_afrr = _afrr_pct(m1_year_days)
+    l6_afrr = _afrr_pct(m5_year_days)
     l1_ws = 100 - l1_afrr
     l6_ws = 100 - l6_afrr
     st.markdown(
@@ -1042,11 +1028,11 @@ unconstrained reference.
         f"earns money from *availability*. An optimiser that prices "
         f"cycles against a higher shadow cost mechanically shifts "
         f"toward capacity products. In our model M1's wholesale slice "
-        f"is ~{l1_ws:.0f}% of net revenue; M4 shrinks it to ~{l6_ws:.0f}% "
+        f"is ~{l1_ws:.0f}% of net revenue; M5 shrinks it to ~{l6_ws:.0f}% "
         f"— a {-(l1_ws - l6_ws):+.0f} pp shift toward aFRR. Your own "
         f"dashboard's wholesale share will sit higher in absolute "
         f"terms (we're missing EPEX continuous ID), but the same "
-        f"*direction* of M1 → M4 movement is the diagnostic. "
+        f"*direction* of M1 → M5 movement is the diagnostic. "
         f"Pragmatically: if your trader's aFRR share rose year-over-"
         f"year while monthly FEC dropped, that's shadow-cost work. "
         f"Once aFRR exceeds ~50% of total revenue, €/MWh-throughput "
@@ -1283,37 +1269,29 @@ discounted gross revenue stream each methodology generates.
   fade slope (e.g. Sony LFP, slope ratio 7.67× vs EVE 1.11×) M4
   would likely cycle more and possibly beat M5; this is cell-
   specific.
-- Stage-1 ↔ Stage-2 fixed-point under refined wear is not solved at
-  v1.1 — Stage-1 commits under pass-1 wear (ADP only for M4); pass-2
-  re-prices Stage-2 only. We tested closing the fixed-point with
-  Picard iteration (`two_stage_picard_max_iter=5`, see
-  `lifecycle_npv.py`) — at `bid_win_rate=1.0` Picard makes M4 *worse*
+- Stage-1 ↔ Stage-2 fixed-point under refined wear: by default v1.1
+  approximates it — Stage-1 commits under pass-1 wear (ADP only for
+  M4) and pass-2 re-prices Stage-2 only with Stage-1 commitments
+  locked. The fixed-point closure (Picard iteration, available via
+  `two_stage_picard_max_iter` in `lifecycle_npv.py`) was tested as a
+  counter-experiment: at `bid_win_rate=1.0` Picard makes M4 *worse*
   by −1.7 pp because reducing Stage-1 r commitments loses guaranteed
   aFRR cap revenue more than the freed SoC headroom unlocks
   arbitrage. v1.1's locked Stage-1 r is super-optimal by accident.
-  Picard counter-experiment full write-up in the README under
-  "v4.1 paper-grade headline / Picard counter-experiment". Available
-  in code with default off; relevant under fleet-saturation
-  calibrations where `bid_win_rate < 1.0`.
+  Default kept at v1.1; Picard available for sensitivity work under
+  fleet-saturation calibrations where `bid_win_rate < 1.0`. Full
+  write-up in the README under "v4.1 paper-grade headline / Picard
+  counter-experiment".
 
-**Diagnostic dispatch logs.** The five-signal section uses
-`precomputed_two_stage.pkl` (v3.5 calibration; signal *patterns* —
-DoD-by-spread, SoC histogram, €/FEC quartile inversion — are
-calibration-agnostic). The four-tile dashboard panels (Cumulative
-Cycles / SoC envelope / Daily revenue / Revenue share) use
-`precomputed_diag_2025.pkl` (v4.0 B; same calibration as the
-headline, captured from the 2025 template year). Both diag pkls
-predate the M-numbering so they retain old internal policy names
-(`L1_naive`, `L3_flat_wear`, `L4_scarcity`, `L5_intraday_adp`,
-`L6_physics_full`); `app.py` maps them to the M-display via the
-`DIAG_KEY_FOR` dict at access time. Crucially, the diag M5 panel uses
-`L5_intraday_adp` (the additive blend with flat + scarcity + ADP)
-because the v3.5 diag pkl predates the v4.1 ablation — the *signal
-patterns* are virtually identical to a pure-ADP M5 (both
-ADP-dominated, ~250-400 FEC / year), so the diagnostic message holds;
-only the absolute FEC count would shift by a few percent if regenerated
-on pure-ADP. Documented in the README under "v4.1 paper-grade
-headline".
+**Diagnostic dispatch logs.** Both the five-signal scatter and the
+four-tile owner-facing dashboard read from a single unified pkl,
+`precomputed_diag_v41_y2025.pkl`, generated at v4.1 calibration
+(matches the headline bar chart) with `collect_diagnostics_year=1`
+(Y2 = 2025 template, post-IDA2 launch). Five publication policies
+keyed M1-M5 directly; no L→M mapping at access time. The four-tile
+dashboard contrasts M1 (naive) against M5 (intraday ADP — empirical
+winner); the multi-month FEC scatter shows all five methodologies
+side-by-side.
 """)
 
 
