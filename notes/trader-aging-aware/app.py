@@ -1,21 +1,25 @@
 """
 Note 4 — Is Your Trader Aging-Aware? The Cost of a Cycle.
 
-Single pkl drives both the headline bar chart AND the diagnostic
-dispatch logs: `data/precomputed_diag_v41_y2025.pkl`. v4.1 calibration
-(v4.0 B + FCR phantom + SIDC IDA2 intraday + Stage-2 pass-2 wear
-refinement + kernel_scale=0.66). Y2 = 2025 template captured for
-diagnostic dispatch logs. Five publication methodologies keyed
-M1-M5 directly:
+Single pkl drives headline bar chart + diagnostic dispatch logs +
+ablation footnote: `data/precomputed_v42_5methods_10y.pkl`. v4.2
+calibration (v4.0 B + FCR phantom + SIDC IDA2 intraday + Stage-2
+pass-2 wear refinement + `kernel_scale=0.66`). Single template year
+2025 (every simulation year sees full IDA2 spreads — no fallback to
+Spotmarktpreis-as-DA-proxy). Y1 = 2025 captured for diagnostic
+dispatch logs.
+
+Five publication methodologies keyed M1-M5 directly:
     M1_naive    — no shadow cost
     M2_flat     — flat €/MWh wear (Kumtepeli proxy)
     M3_scarcity — flat × SoH-state scarcity
     M4_physics  — ADP + physics-from-duty (Stage-2 pass-2 refined)
-    M5_adp      — pure ADP, the empirical winner at +37.07 % vs M1
-The two ablation variants used in "Why blending doesn't help" methodology
-footnote (`ablation_M5_with_classical_stack`, `ablation_physics_without_adp`)
-live in the headline pkl `data/precomputed_v40_5methods_10y.pkl` only —
-they're lifecycle-only (no diagnostic_days collected).
+    M5_adp      — pure ADP, the empirical winner at +36.5 % vs M1
+
+Two ablation variants for "Why blending doesn't help" footnote in
+the same pkl under separate keys:
+    ablation_M5_with_classical_stack — flat + scarcity + ADP additive
+    ablation_physics_without_adp     — physics alone, no ADP base
 """
 from __future__ import annotations
 
@@ -41,12 +45,13 @@ from lib.ui.theme import (
 
 
 DATA_DIR = Path(__file__).parent / "data"
-# Headline + diagnostic dispatch logs = v4.1 calibration: v4.0 B + FCR
-# phantom + SIDC IDA2 wholesale-ID feed (post 2024-06-13) + Stage-2
-# pass-2 wear refinement enabled + kernel_scale=0.66 plumbed through
-# physics_wear_from_duty. Under this calibration the M1 → M5 stack
-# orders monotonically (M5 > M4 > M3 > M2 > M1) at +37.1 % NPV uplift
-# at the M5 winner. Each Mn shows ONE shadow-cost form; M1-M3 are the
+# Headline + diagnostic dispatch logs + ablation footnote — all from a
+# single v4.2 pkl: v4.0 B + FCR phantom + SIDC IDA2 wholesale-ID feed
+# + Stage-2 pass-2 wear refinement + kernel_scale=0.66. Single template
+# year 2025 throughout the 10-year horizon (every simulation year sees
+# full IDA2 spreads). Under this calibration the M1 → M5 stack orders
+# monotonically (M5 > M4 > M3 > M2 > M1) at +36.5 % NPV uplift at the
+# M5 winner. Each Mn shows ONE shadow-cost form; M1-M3 are the
 # classical depreciation-proxy family (no shadow → throughput-only →
 # SoH-aware), M4-M5 are the state-aware family (physics-from-duty
 # observed dispatch → ADP opportunity-cost gradient). Empirical winner
@@ -54,15 +59,7 @@ DATA_DIR = Path(__file__).parent / "data"
 # refinement on top of M5 (= M4) or stacking the M2/M3 classical
 # proxy under M5 both hurt by 1-4 pp — best shadow cost is one
 # shadow cost, chosen well.
-#
-# Single pkl serves both headline KPI / bar chart AND the diagnostic
-# dispatch logs (5-signal scatter + 4-tile owner-facing dashboard).
-# Y2 = 2025 template was the diagnostic year (post-IDA2 launch).
-PRECOMPUTED_HEADLINE = DATA_DIR / "precomputed_diag_v41_y2025.pkl"
-# Ablation variants for "Why blending doesn't help" footnote — loaded
-# separately from the standalone ablation pkl (lifecycle-only, no
-# dispatch logs).
-PRECOMPUTED_ABLATION = DATA_DIR / "precomputed_v40_5methods_10y.pkl"
+PRECOMPUTED_HEADLINE = DATA_DIR / "precomputed_v42_5methods_10y.pkl"
 
 
 # Five shadow-cost methodologies. M1-M3 are classical depreciation-proxy
@@ -148,18 +145,12 @@ kernel.
 """)
 
 # ── Load data ───────────────────────────────────────────────
+# Single pkl drives headline + diagnostics + ablation footnote.
 data = _load_pkl(str(PRECOMPUTED_HEADLINE))
 results = data["results"]
 n_years = data["n_years"]
-diag_results = results  # Single pkl drives both headline and diagnostics
-
-# Ablation variants (lifecycle-only, no dispatch logs) for the
-# "Why blending doesn't help" methodology footnote.
-ablation_data = (
-    _load_pkl(str(PRECOMPUTED_ABLATION))
-    if PRECOMPUTED_ABLATION.exists() else {"results": {}}
-)
-ablation_results = ablation_data["results"]
+diag_results = results
+ablation_results = results  # Same pkl; ablation_* keys live alongside M1-M5
 
 
 # ── KPI row ─────────────────────────────────────────────────
@@ -278,7 +269,7 @@ render_chart_caption(
     "one prices the cost of a cycle. Bars indexed to M1 = 100; "
     "absolute revenue depends on calibration choices (perfect-"
     "foresight LP, `max_afrr` cap, FCR phantom layer) and is not the "
-    "focus of this note. The relative ordering and the +37% M1 → M5 "
+    "focus of this note. The relative ordering and the ~+36% M1 → M5 "
     "spread are robust to those choices. Markets held at 2024 levels; "
     "the Note 1 trajectory section below shows how the ordering bends "
     "when wholesale grows and aFRR cap compresses."
@@ -429,8 +420,10 @@ physics kernel (Wang + Naumann two-channel, calibrated to EVE LF280K
 via `kernel_scale = 0.66`); pass 2 re-solves Stage-2 with the
 resulting per-MWh wear cost that reflects the actual DoD / C-rate /
 SoC-band of the day's duty. Stage-1 r commitments stay locked from
-pass-1 — re-pricing them would require solving the Stage-1 ↔ Stage-2
-fixed point, out of scope for ADR-001 v1.0. NPV
+pass-1 in the v4.1 default — closing the Stage-1 ↔ Stage-2 ↔ wear
+fixed-point is implemented as an optional Picard iteration but
+turned off by default after the counter-experiment showed it hurts
+M4 NPV by 1.7 pp (see README "Picard counter-experiment"). NPV
 **+{(_m4.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.1f}%**
 vs M1.
 
@@ -1204,31 +1197,45 @@ headline includes a post-LP FCR phantom layer (€36 k / MW / yr
 decaying over the lifetime) for apples-to-apples comparison vs the
 Clean Horizon Storage Index, which includes FCR.
 
-**Dispatch LP.** Two-stage market-aware (ADR-001 v1.1). Stage 1
+**Dispatch LP.** Two-stage market-aware (ADR-001 v1.2). Stage 1
 commits per-4-hour-block aFRR capacity at D−1 under a regime-
-conditional α-forecast with `bid_win_rate = 1.0` (regelleistung
-empirical 99.8% clearing rate, 2.16 M bids analysed). Stage 2 re-
+conditional α-forecast with `bid_win_rate = 1.0` (LP-upper-bound
+assumption: every block bid clears at the auction). Stage 2 re-
 optimises full DA + ID + activation dispatch under realised α with
 the Stage 1 commitment locked. The 1-hour SoC reservation horizon
 matches the Modo public aFRR product SLA. For two-pass methodologies
-(M4 — physics-from-duty), Stage 2 runs a second LP with refined wear
-based on observed first-pass dispatch fed through the Note 3 kernel
-(`physics_wear_from_duty`); Stage 1 commitments stay frozen — re-
-pricing them would require solving the Stage-1 ↔ Stage-2 ↔ wear
-fixed-point, out of scope for ADR-001 v1.1.
+(M4 — physics-from-duty), v4.1+ enables a Stage-2 pass-2 wear
+refinement: Stage 2 runs a second LP with wear re-priced via the
+Note 3 kernel (`physics_wear_from_duty`) on the observed first-pass
+dispatch, while Stage-1 r commitments stay frozen from pass-1. The
+full Stage-1 ↔ Stage-2 ↔ wear fixed-point is closable in code via
+Picard iteration (`two_stage_picard_max_iter` parameter) but
+default-off — the counter-experiment writeup in the README shows it
+makes M4 worse by 1.7 pp at `bid_win_rate=1.0` because reducing
+Stage-1 r commitments under refined wear loses guaranteed aFRR cap
+revenue.
 
-**Calibration anchors.** All publicly citable. aFRR clearing rate from
-own analysis of regelleistung.net public auction CSVs. aFRR cap price
-€12.21 / MW / h matches the gemenergyanalytics independent reading
-(€13 POS / €10 NEG average 2024). 2 h DE 2024 incl FCR realised
-revenue €200 k / MW / yr from the Clean Horizon Storage Index public
-CSV. Model M1 sits within ±10% of CH index — the residual reflects
-the LP's perfect-foresight premium.
+**Calibration anchors.** Publicly citable, except for `bid_win_rate`:
+aFRR cap price €12.21 / MW / h matches the gemenergyanalytics
+independent reading (€13 POS / €10 NEG average 2024). 2 h DE 2024
+incl FCR realised revenue €200 k / MW / yr from the Clean Horizon
+Storage Index public CSV. Model M1 sits within ±10% of CH index —
+the residual reflects the LP's perfect-foresight premium. The
+`bid_win_rate=1.0` setting is **NOT empirically anchored** to a clean
+clearing-rate measurement: regelleistung public CSVs contain only
+*winning* bids (rejected bids are absent), so the "99.8% clearing
+rate" cited in some earlier drafts was actually a partial-fill ratio
+within winners, not a true clearing probability. We treat `bid_win=1.0`
+as an LP-upper-bound assumption pending proper full-bid-set
+estimation. The Note 1 trajectory section below applies a fleet-
+saturation decay schedule
+(`lib.analysis.market_trend.FLEET_SATURATION_BID_WIN_SCALE`,
+1.0 → 0.15 over 2024 → 2033) for the realistic forward outlook.
 
-**Lifetime simulation.** 10 years, rotating template years 2023 ↔
-2025 (DE 2024 DA API unreliable). Each template year sees identical
-inputs across all five methodologies; only the wear-cost vector each
-methodology emits differs.
+**Lifetime simulation.** 10 years × single template year 2025 (every
+year sees full SIDC IDA2 spreads; no Spotmarktpreis-as-DA fallback).
+Each year sees identical inputs across all five methodologies; only
+the wear-cost vector each methodology emits differs.
 
 **The metric we report** is *discounted gross market revenue* over 10
 years at a 7% discount rate, summed across DA + ID + aFRR cap + aFRR
@@ -1243,22 +1250,28 @@ discounted gross revenue stream each methodology generates.
 - The Y7 naive EOL at SoH = 0.80 is contract-life, not physical life.
   Under contracts that accept operation past 0.80 the naive policy
   earns another 2 – 3 years at derated capacity.
-- The IDA2 feed is post 13 June 2024 only. Year 1 of the simulation
-  (template 2023) sees no continuous-style intraday signal; ID is
-  proxied by Spotmarktpreis ≈ DA. This is why the aging-aware uplift
-  (+37% at M5) is concentrated in the post-IDA2 template years —
-  pre-2024-06-13 dispatch can't time intraday spreads. Operators with
-  full EPEX continuous ID1 / ID3 access since 2018 would see a higher
-  baseline absolute revenue across all methodologies; relative
-  ordering should hold.
+- IDA2 launched 13 June 2024. Single-template-year 2025 simulation
+  has full IDA2 throughout, but operators trading earlier (2018-2024)
+  would see different absolute revenue baselines without the
+  pan-European Intraday Auction price signal. EPEX continuous ID1 /
+  ID3 access (since 2018) would lift baseline revenue further;
+  relative ordering across methodologies should hold.
 - The BESS is modelled as a single aggregated unit. Real systems have
   hundreds of modules with manufacturing variance, edge-vs-centre
   thermal asymmetry, and uneven usage. The pack-level allocation
   problem sits one abstraction below this analysis.
-- Calendar year mapping. Year 1 of the simulation = template 2023; we
-  do not model the calendar mapping to 2026 onward. Note 1's
-  trajectory chart is layered post-hoc on top of the policy-emitted
-  stream mix.
+- Calendar year mapping. We hold 2025 prices for all 10 simulation
+  years rather than projecting forward. Note 1's trajectory chart is
+  layered post-hoc on top of the policy-emitted stream mix and shows
+  how the ordering bends under the fleet-saturation revenue decay.
+- The `bid_win_rate=1.0` is an LP-upper-bound assumption (see
+  Calibration anchors above). Real-world clearing rates are < 100 %
+  — operator-side observations from 2025 portfolios suggest ~78 % for
+  certain bid strategies (BayWa internal). Lower clearing would
+  compress aFRR cap revenue and shrink the +36.5 % M5 uplift.
+  Sensitivity is partially captured by the trajectory section's
+  `bid_win_scale` decay; a clean re-anchoring requires a full-bid-set
+  data source not yet available.
 - M4 (physics-from-duty) cycles only ~7 FEC / year over the lifetime
   at this calibration — the LP parks the asset in low-cycling mode
   and earns most revenue from aFRR availability. This is the genuine
