@@ -85,7 +85,7 @@ POLICY_SHORT = {
 # M1 sits in warm terra-coral as the unconstrained-baseline reference —
 # visually orthogonal to the teal stack so it reads as the "odd one out"
 # at a glance. M2 → M5 progress through a single-hue tint gradient
-# anchored on BayWa Deep Sea (#0D3F4A).
+# anchored on a deep-teal base.
 POLICY_COLORS = {
     "M1_naive":     "#e07a5f",
     "M2_flat":      "#b4d2d8",

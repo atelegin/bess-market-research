@@ -9,7 +9,7 @@ Open-source models and Streamlit notes on the economics of battery energy storag
 | 1 | German BESS revenue outlook 2026–2040 | https://de-bess-outlook.streamlit.app/ |
 | 2 | Cycles & marginal value | https://de-bess-cycles.streamlit.app/ |
 | 3 | What actually drives degradation | https://bess-degradation-drivers.streamlit.app/ |
-| 4 | Trader aging-aware dispatch | (Streamlit Cloud) |
+| 4 | Cost of a cycle: is your optimiser aging-aware? | https://bess-cycle-cost.streamlit.app/ |
 
 Each note in `notes/<slug>/` is a self-contained Streamlit app reading a precomputed `data/precomputed.pkl`. The `precompute*.py` scripts rebuild those artefacts from price data in `lib/data/cache/` plus the models in `lib/`.
 
