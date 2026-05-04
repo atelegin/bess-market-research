@@ -20,8 +20,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 import numpy as np
 import pandas as pd
 
-from lib.models.degradation import PRESETS, CellPreset
-from lib.models.degradation_detailed import (
+from lib.models.degradation.simple import PRESETS, CellPreset
+from lib.models.degradation.detailed import (
     DutyCycle,
     cell_soh_detailed,
     lifecycle_value_detailed,

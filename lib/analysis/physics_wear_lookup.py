@@ -21,7 +21,7 @@ Two functions here, same underlying Note 3 Wang+Naumann kernel:
 
 Both functions return EUR per MWh of throughput, suitable for the
 ``wear_cost_eur_per_mwh`` parameter of
-:func:`lib.models.dispatch_stacked.optimize_day_stacked`.
+:func:`lib.models.dispatch.stacked.optimize_day_stacked`.
 """
 from __future__ import annotations
 
@@ -30,11 +30,11 @@ from typing import TYPE_CHECKING, Optional
 import numpy as np
 
 from lib.analysis.physics_degradation import physics_degradation_per_day
-from lib.models.degradation import CellPreset
-from lib.models.degradation_detailed import DutyCycle, project_capacity_detailed
+from lib.models.degradation.simple import CellPreset
+from lib.models.degradation.detailed import DutyCycle, project_capacity_detailed
 
 if TYPE_CHECKING:
-    from lib.models.dispatch_stacked import StackedDispatchResult
+    from lib.models.dispatch.stacked import StackedDispatchResult
 
 
 def physics_wear_cost_per_mwh(

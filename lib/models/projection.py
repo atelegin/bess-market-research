@@ -17,7 +17,7 @@ from lib.models.ancillary import (
     HISTORICAL_YEARS_WITH_MEASURED_DATA,
     ancillary_revenue,
 )
-from lib.models.degradation import PRESETS, fleet_average_capacity
+from lib.models.degradation.simple import PRESETS, fleet_average_capacity
 
 
 def id_da_ratio(year: int) -> float:

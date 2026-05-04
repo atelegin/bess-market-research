@@ -2,7 +2,7 @@
 Intraday backward-induction DP — extends the scalar DP with SoC and
 hour-of-day state (Note 4 A3-extension, Holtorf-Shin style).
 
-The scalar ``(SoH, regime)`` DP in :mod:`lib.models.adp_solver` produces
+The scalar ``(SoH, regime)`` DP in :mod:`lib.models.adp.solver` produces
 a nearly-flat shadow cost because all intra-day price variation is
 averaged into a single daily revenue number. Real ADP dispatch needs a
 shadow cost that *varies by hour* — pricing cycling higher when expected
@@ -37,7 +37,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from lib.models.adp_solver import ADPGrids, default_grids, degradation_per_day
+from lib.models.adp.solver import ADPGrids, default_grids, degradation_per_day
 from lib.models.price_regime import RegimeClassification
 
 logger = logging.getLogger(__name__)

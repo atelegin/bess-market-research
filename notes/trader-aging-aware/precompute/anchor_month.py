@@ -32,12 +32,12 @@ import numpy as np
 from lib.analysis.lifecycle_npv import compare_policies
 from lib.analysis.physics_wear_lookup import physics_wear_cost_per_mwh
 from lib.data.day_ahead_prices import fetch_day_ahead_prices
-from lib.models.adp_shadow_cost import NaivePolicy, ProgressivePolicy
-from lib.models.adp_solver import default_grids
-from lib.models.adp_solver_intraday import (
+from lib.models.adp.shadow_cost import NaivePolicy, ProgressivePolicy
+from lib.models.adp.solver import default_grids
+from lib.models.adp.solver_intraday import (
     IntradayADPSolver, fit_hourly_price_scenarios,
 )
-from lib.models.degradation import PRESETS
+from lib.models.degradation.simple import PRESETS
 from lib.models.price_regime import fit_regimes
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"

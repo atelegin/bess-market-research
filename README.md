@@ -1,37 +1,63 @@
 # BESS Market Research
 
-Energy storage market notes and analysis tools.
+Open-source models and Streamlit notes on the economics of battery energy storage in the German power market — revenue outlook, cycling-vs-revenue trade-offs, degradation drivers, and aging-aware dispatch.
 
-## Structure
+## Published notes
+
+| # | Note | App |
+|---|---|---|
+| 1 | German BESS revenue outlook 2026–2040 | https://de-bess-outlook.streamlit.app/ |
+| 2 | Cycles & marginal value | https://de-bess-cycles.streamlit.app/ |
+| 3 | What actually drives degradation | https://bess-degradation-drivers.streamlit.app/ |
+| 4 | Trader aging-aware dispatch | (Streamlit Cloud) |
+
+Each note in `notes/<slug>/` is a self-contained Streamlit app reading a precomputed `data/precomputed.pkl`. The `precompute*.py` scripts rebuild those artefacts from price data in `lib/data/cache/` plus the models in `lib/`.
+
+## Project layout
 
 ```
-lib/              Shared modelling code (data fetchers, dispatch, projection)
-notes/            Market notes — each is a self-contained Streamlit app
-  de-bess-best-days/    Revenue concentration analysis (DE)
-  de-bess-outlook/      German BESS revenue outlook 2026-2040
-  _template/            Starter for new notes
-notebooks/        Exploratory work (Jupyter, scratch scripts)
+lib/
+  analysis/      Revenue, lifecycle NPV, degradation diagnostics, rolling-horizon helpers
+  data/          Price loaders + cached CSVs (DA, ID, aFRR, FCR, clean-horizon indices)
+  models/
+    dispatch/    LP dispatch variants (arbitrage, stacked, Collath benchmark, piecewise common)
+    degradation/ Simple + detailed (Wang/Naumann LFP) capacity-fade models
+    adp/         Approximate dynamic programming solvers + shadow-cost
+    ancillary.py
+    price_regime.py
+    projection.py
+  shared/        Common Streamlit theme + bundled fonts
+notes/
+  de-bess-outlook/        Note 1
+  cycles-marginal-value/  Note 2
+  degradation-drivers/    Note 3
+  trader-aging-aware/     Note 4
 ```
 
 ## Running a note
 
 ```bash
+git clone https://github.com/atelegin/bess-market-research.git
 cd bess-market-research
-streamlit run notes/de-bess-outlook/app.py
-```
-
-## Adding a new note
-
-```bash
-cp -r notes/_template notes/XX-your-slug
-# Edit app.py and README.md
-```
-
-## Setup
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env  # add API credentials
+streamlit run notes/de-bess-outlook/app.py    # or any other note
 ```
+
+To rebuild a note's precomputed artefacts:
+
+```bash
+python -m notes.de_bess_outlook.precompute
+```
+
+## Tests
+
+```bash
+pytest lib/
+```
+
+## License
+
+MIT — see `LICENSE`.
+
+Author: Anton Telegin (PO BESS Data Platform, BayWa r.e. Data Services GmbH).

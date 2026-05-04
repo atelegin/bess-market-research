@@ -27,7 +27,7 @@ from typing import Optional
 import numpy as np
 
 from lib.analysis.stacked_day_assembler import StackedDayInputs
-from lib.models.dispatch_stacked import (
+from lib.models.dispatch.stacked import (
     PERIODS_PER_BLOCK,
     PERIODS_PER_DAY,
     StackedDispatchResult,

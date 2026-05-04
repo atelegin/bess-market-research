@@ -21,7 +21,7 @@ import logging
 from lib.data.day_ahead_prices import fetch_day_ahead_prices, prices_to_daily_arrays
 from lib.data.ancillary_prices import fetch_fcr_annual_revenue, fetch_afrr_annual_revenue
 from lib.data.clean_horizon import annual_average, annual_average_all
-from lib.models.dispatch import dispatch_day, annual_revenue
+from lib.models.dispatch.simple import dispatch_day, annual_revenue
 from lib.models.projection import id_da_ratio
 
 logging.basicConfig(level=logging.INFO)

@@ -34,7 +34,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from lib.ui.theme import (
+from lib.shared.theme import (
     apply_theme,
     render_chart_caption,
     render_chart_title,
@@ -134,9 +134,9 @@ render_header(
 # ── Intro ───────────────────────────────────────────────────
 st.markdown("""
 What should the wear fee depend on? A flat €/MWh for every cycle,
-the battery's age, the hour of day, or the full physics of the
-dispatch the battery saw today? The optimiser then skips any trade
-whose spread doesn't cover the fee.
+the battery's age, the hour of day, or the depth, C-rate and SoC
+band of the dispatch the battery saw today? The optimiser then
+skips any trade whose spread doesn't cover the fee.
 
 This note runs five of those answers on a 2 h LFP battery
 (1 MW / 2 MWh) trading 2025 German day-ahead, intraday and aFRR
@@ -1075,10 +1075,13 @@ monthly sanity checks, and the EVE LF280K cell datasheet for the
 physics kernel. Specifics, all publicly citable except for
 `bid_win_rate`:
 aFRR cap price €12.21 / MW / h matches the gemenergyanalytics
-independent reading (€13 POS / €10 NEG average 2024). 2 h DE 2024
-incl FCR realised revenue €200 k / MW / yr from the Clean Horizon
-Storage Index public CSV. Model M1 sits within ±10% of CH index —
-the residual reflects the LP's perfect-foresight premium. The
+independent reading (€13 POS / €10 NEG average 2024). 2 h DE 2025
+incl FCR realised revenue €236 k / MW / yr from the Clean Horizon
+Storage Index public CSV. Model M1 Y1 = €279 k / MW / yr — **+18 %**
+above the CH index, reflecting the LP's perfect-foresight premium
+(the LP sees realised prices in Stage-2; CH's COSMOS simulates
+fleet-realistic dispatch with forecast errors) plus the
+`bid_win_rate=1.0` LP-upper-bound assumption. The
 `bid_win_rate=1.0` setting is **NOT empirically anchored** to a clean
 clearing-rate measurement — it is an LP-upper-bound assumption
 pending proper full-bid-set estimation. The

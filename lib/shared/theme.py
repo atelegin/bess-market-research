@@ -2,7 +2,7 @@
 Shared Streamlit theme for market notes.
 
 Usage:
-    from lib.ui.theme import apply_theme, render_header, render_takeaway, ...
+    from lib.shared.theme import apply_theme, render_header, render_takeaway, ...
 
     apply_theme()                          # call once at top of app
     apply_theme(show_sidebar=True)         # keep sidebar visible (for interactive notes)

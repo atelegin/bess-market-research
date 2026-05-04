@@ -22,7 +22,7 @@ cares about.
 
 Degradation
 -----------
-Uses the same :func:`lib.models.adp_solver.degradation_per_day` formula
+Uses the same :func:`lib.models.adp.solver.degradation_per_day` formula
 as the DP, to keep policies consistent with the backward-induction
 model. Daily SoH decrement = linear-in-FEC + mild age acceleration +
 calendar fade. At end-of-life (SoH ≤ warranty_floor) the year terminates
@@ -43,9 +43,9 @@ from lib.analysis.stacked_day_assembler import (
     assemble_day_inputs,
 )
 from lib.analysis.stacked_year_runner import _prefetch_year_frames
-from lib.models.adp_shadow_cost import ShadowCostPolicy
-from lib.models.adp_solver import degradation_per_day
-from lib.models.dispatch_stacked import (
+from lib.models.adp.shadow_cost import ShadowCostPolicy
+from lib.models.adp.solver import degradation_per_day
+from lib.models.dispatch.stacked import (
     PERIODS_PER_BLOCK,
     optimize_day_stacked,
     optimize_day_two_stage,
@@ -291,7 +291,7 @@ def simulate_lifecycle(
     # Optional Note 3 physics kernel
     physics_preset = None
     if use_physics_degradation:
-        from lib.models.degradation import PRESETS
+        from lib.models.degradation.simple import PRESETS
         physics_preset = PRESETS[physics_preset_name]
         from lib.analysis.physics_degradation import physics_degradation_per_day
 

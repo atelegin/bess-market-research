@@ -19,7 +19,7 @@ from plotly.subplots import make_subplots
 import streamlit as st
 from scipy.optimize import curve_fit
 
-from lib.ui.theme import (
+from lib.shared.theme import (
     apply_theme,
     render_header,
     render_standfirst,

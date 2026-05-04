@@ -21,9 +21,9 @@ import streamlit as st
 
 from plotly.subplots import make_subplots
 
-from lib.models.degradation import PRESETS
-from lib.models.degradation_detailed import DutyCycle, project_capacity_detailed
-from lib.ui.theme import (
+from lib.models.degradation.simple import PRESETS
+from lib.models.degradation.detailed import DutyCycle, project_capacity_detailed
+from lib.shared.theme import (
     apply_theme,
     render_chart_caption,
     render_chart_title,
@@ -808,7 +808,7 @@ with st.expander("Which cell these curves are built on"):
     st.markdown(
         """
 All response curves, the DoD table, and the interactive above use the
-`baseline_fleet` preset in `lib.models.degradation`. It is a synthetic
+`baseline_fleet` preset in `lib.models.degradation.simple`. It is a synthetic
 fleet-average LFP/graphite surrogate, not any vendor's datasheet. The
 kernel form (Wang 2011 cycle × Naumann 2018 calendar, two-channel
 Arrhenius) is pinned to real LFP data; pre-factors are internally

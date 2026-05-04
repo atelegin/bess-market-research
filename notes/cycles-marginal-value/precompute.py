@@ -17,13 +17,13 @@ import pandas as pd
 
 from lib.data.day_ahead_prices import fetch_day_ahead_prices
 from lib.data.intraday_prices import fetch_id_aep
-from lib.models.dispatch_detailed import (
+from lib.models.dispatch.detailed import (
     AGGRESSIVE_STRATEGY,
     DispatchStrategy,
     run_dispatch_with_intraday_overlay_for_period,
     run_dispatch_for_period,
 )
-from lib.models.degradation import (
+from lib.models.degradation.simple import (
     DEFAULT_DEGRADATION_ASSUMPTIONS,
     equivalent_stress_fec_per_year,
     estimate_years_to_eol,
@@ -235,7 +235,7 @@ def main():
     # ── Median SoC profiles: "rich" vs "poor" second-cycle days ──
     # Rich: days where 2nd cycle earns >€50. Poor: ≤€10.
     # Shows the structural difference in battery behaviour.
-    from lib.models.dispatch_detailed import optimize_day
+    from lib.models.dispatch.detailed import optimize_day
     print("\nBuilding median SoC profiles (rich vs poor days)...")
     soc_profiles = {}
     energy_mwh_soc = 2.0

@@ -2,7 +2,7 @@
 Assemble per-day input arrays for the stacked-market LP (A2.2).
 
 Collects observed DE-LU market data for one day and shapes it into the
-arrays expected by ``lib.models.dispatch_stacked.optimize_day_stacked``:
+arrays expected by ``lib.models.dispatch.stacked.optimize_day_stacked``:
 
 * DA day-ahead prices (hourly → step-expand to 15-min)
 * ID intraday AEP prices (15-min, from netztransparenz)
@@ -32,7 +32,7 @@ from lib.data.ancillary_prices import (
 from lib.data.day_ahead_prices import fetch_day_ahead_prices
 from lib.data.intraday_prices import fetch_id_aep
 from lib.data.spotmarktpreis import fetch_spotmarktpreis
-from lib.models.dispatch_stacked import (
+from lib.models.dispatch.stacked import (
     BLOCKS_PER_DAY,
     PERIODS_PER_BLOCK,
     PERIODS_PER_DAY,

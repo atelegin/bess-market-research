@@ -1,31 +1,42 @@
-.venv/
+# Python
 __pycache__/
 *.pyc
+.pytest_cache/
+
+# Virtualenv
+.venv/
+
+# Local env / secrets
 .env
+.streamlit/secrets.toml
+
+# OS
 .DS_Store
-*.parquet
-lib/data/cache/day_ahead_prices_*.json
-ROADMAP.md
-DIGEST_SPEC.md
-notebooks/
+
+# IDE
+.vscode/
+.devcontainer/
 .claude/
-lib/data/cache/dispatch_*.json
-lib/data/cache/dispatch_*.parquet
-lib/data/cache/afrr_activations_*.json
-lib/data/cache/netztransparenz_id_aep_*.json
 
-# External validation datasets (downloaded on demand via scripts/)
-data/external/
+# Local-only archives, drafts, scratch
+**/_archive/
+**/_draft/
+**/draft.md
+**/DRAFT.md
 
-# Note 4 local provenance — historical scripts, stale pkls, internal drafts
-notes/trader-aging-aware/_archive/
-# Note 4 README is the longform internal source-of-truth — kept local only
-notes/trader-aging-aware/README.md
+# Internal note documentation kept local
+notes/*/README.md
 
-# lib/ archive — modules / tests not used by published notes (kept locally for provenance)
-lib/_archive/
+# Per-note local explorations
+notes/*/explore_*.py
 
-# lib/ subtrees not part of published notes (architecture decisions, internal charts, LinkedIn build)
-lib/architecture/
-lib/charts/
-lib/linkedin/
+# Note generators (runtime uses pre-built artefacts; rebuild locally)
+notes/*/generate_charts.py
+
+# Cache
+*.parquet
+lib/data/cache/dispatch_*
+lib/data/cache/afrr_activations_*
+lib/data/cache/netztransparenz_*
+lib/data/cache/day_ahead_prices_*.json
+lib/data/cache/spotmarktpreis_*.json

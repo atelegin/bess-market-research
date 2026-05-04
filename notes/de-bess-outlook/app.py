@@ -19,7 +19,7 @@ import logging
 
 from lib.config import DEFAULT_BESS_BUILDOUT
 from lib.models.projection import project_full_stack
-from lib.ui.theme import (
+from lib.shared.theme import (
     apply_theme,
     render_header,
     render_standfirst,

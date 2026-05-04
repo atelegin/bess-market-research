@@ -2,8 +2,8 @@
 Per-day physics-based degradation for lifecycle simulation (Note 4 step 2).
 
 Replaces the linear-in-FEC ``degradation_per_day`` from
-:mod:`lib.models.adp_solver` with a call into the Note 3 physics kernel
-(``lib.models.degradation_detailed.project_capacity_detailed``).
+:mod:`lib.models.adp.solver` with a call into the Note 3 physics kernel
+(``lib.models.degradation.detailed.project_capacity_detailed``).
 
 Why
 ---
@@ -46,7 +46,7 @@ without introducing new calibration risk on aged cells.
 
 Inputs
 ------
-``day_result`` — :class:`lib.models.dispatch_stacked.StackedDispatchResult`
+``day_result`` — :class:`lib.models.dispatch.stacked.StackedDispatchResult`
 from the daily LP solve.
 ``energy_mwh`` — usable energy (MWh) used for normalisation. Typically
 ``power_mw × duration_h × soh_current`` (SoH-derated).
@@ -60,14 +60,14 @@ from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
-from lib.models.degradation import PRESETS, CellPreset
-from lib.models.degradation_detailed import (
+from lib.models.degradation.simple import PRESETS, CellPreset
+from lib.models.degradation.detailed import (
     DutyCycle,
     project_capacity_detailed,
 )
 
 if TYPE_CHECKING:
-    from lib.models.dispatch_stacked import StackedDispatchResult
+    from lib.models.dispatch.stacked import StackedDispatchResult
 
 
 DEFAULT_PRESET: CellPreset = PRESETS["eve_lf280k"]

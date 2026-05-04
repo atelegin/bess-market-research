@@ -4,7 +4,7 @@ Offline backward-induction DP solver for aging-aware shadow cost (Note 4 A3.3).
 Computes the state-value function :math:`V(\\text{SoH}, \\text{regime})`
 by value iteration over a simplified state space, plus the implied
 optimal daily cycling intensity and the per-state shadow cost used by
-:class:`lib.models.adp_shadow_cost.ADPPolicy`.
+:class:`lib.models.adp.shadow_cost.ADPPolicy`.
 
 State simplification
 --------------------
@@ -40,7 +40,7 @@ of consuming one more unit of SoH headroom** — i.e. the partial
 derivative of ``V`` along the SoH axis, converted to EUR per MWh of
 throughput via the fade-per-throughput relationship. The solver exposes
 this as ``shadow_cost(soh, regime) -> EUR/MWh`` ready to feed the
-:class:`lib.models.adp_shadow_cost.ADPPolicy` wrapper.
+:class:`lib.models.adp.shadow_cost.ADPPolicy` wrapper.
 
 Known limitations of the scalar-per-state DP
 --------------------------------------------
@@ -61,7 +61,7 @@ signal one would need to extend the state with:
 
 These extensions turn the DP into the full Holtorf-Shin formulation,
 which is several days of additional implementation. For Note 4's
-current scope, use :class:`lib.models.adp_shadow_cost.AgingAwareDepreciationPolicy`
+current scope, use :class:`lib.models.adp.shadow_cost.AgingAwareDepreciationPolicy`
 as the primary "state-aware scarcity-responsive" policy — it produces
 the scarcity signal by construction. This ADP solver is retained as the
 principled DP reference; the warranty-penalty channel makes V sensitive

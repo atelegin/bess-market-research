@@ -47,7 +47,7 @@ from typing import Dict, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
-from lib.models.degradation import CellPreset, ChemistryFamily, PRESETS
+from lib.models.degradation.simple import CellPreset, ChemistryFamily, PRESETS
 
 
 # ────────────────────────────────────────────────────────────────────────────

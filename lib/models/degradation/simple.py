@@ -4,7 +4,7 @@ Battery degradation model — calendar and cycle ageing (simple closed-form).
 This module is the **fast approximation** of the production degradation model.
 
 For the production Wang 2011 + Naumann 2018 model with Monte Carlo cell-to-cell
-variation see ``lib.models.degradation_detailed``. The two are kept in parity
+variation see ``lib.models.degradation.detailed``. The two are kept in parity
 at baseline duty per Note 3 §4.5 (``test_simple_detailed_parity.py``).
 """
 from __future__ import annotations

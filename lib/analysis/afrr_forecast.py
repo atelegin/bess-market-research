@@ -31,7 +31,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from lib.models.dispatch_stacked import PERIODS_PER_DAY
+from lib.models.dispatch.stacked import PERIODS_PER_DAY
 from lib.models.price_regime import RegimeClassification
 
 logger = logging.getLogger(__name__)

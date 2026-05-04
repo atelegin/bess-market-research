@@ -42,7 +42,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from lib.models.dispatch_stacked import StackedDispatchResult
+    from lib.models.dispatch.stacked import StackedDispatchResult
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 """Public model exports."""
 
-from lib.models.degradation import (
+from lib.models.degradation.simple import (
     CellPreset,
     ChemistryFamily,
     DegradationAssumptions,
@@ -20,7 +20,7 @@ from lib.models.degradation import (
     project_capacity_simple,
     summarize_dispatch_degradation,
 )
-from lib.models.degradation_detailed import (
+from lib.models.degradation.detailed import (
     ChemistryAgingKernel,
     DutyCycle,
     LFPGraphiteWangNaumann,

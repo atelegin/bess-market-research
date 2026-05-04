@@ -35,7 +35,7 @@ from lib.data.ancillary_prices import (
 )
 from lib.data.day_ahead_prices import fetch_day_ahead_prices
 from lib.data.intraday_prices import fetch_id_aep
-from lib.models.dispatch_stacked import optimize_day_stacked
+from lib.models.dispatch.stacked import optimize_day_stacked
 
 logger = logging.getLogger(__name__)
 

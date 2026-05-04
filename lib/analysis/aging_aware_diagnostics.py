@@ -5,7 +5,7 @@ Five signals an owner can compute from a month or year of BESS dispatch
 logs to detect whether the trader is genuinely pricing cycles or just
 running a throughput-penalty dressed up as aging-aware optimisation.
 Each signal is a pure function over per-day dispatch traces + market
-context; the LP-native :class:`lib.models.dispatch_stacked.StackedDispatchResult`
+context; the LP-native :class:`lib.models.dispatch.stacked.StackedDispatchResult`
 plus the matching :class:`lib.analysis.stacked_day_assembler.StackedDayInputs`
 collapse cleanly into the :class:`DayDiagnosticData` record this module
 consumes.
