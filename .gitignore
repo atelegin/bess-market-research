@@ -33,6 +33,9 @@ notes/*/explore_*.py
 # Note generators (runtime uses pre-built artefacts; rebuild locally)
 notes/*/generate_charts.py
 
+# LinkedIn carousels (published artefact; build locally, don't ship via repo)
+notes/*/linkedin/
+
 # Cache
 *.parquet
 lib/data/cache/dispatch_*
