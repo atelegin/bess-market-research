@@ -128,7 +128,7 @@ apply_theme(show_sidebar=False)
 render_header(
     title="Cost of a Cycle: Is Your Optimiser Aging-Aware?",
     kicker="GERMAN BESS | COST OF A CYCLE",
-    subtitle="Every cycle wears the battery. How the optimiser charges for that wear — or whether it does at all — decides how early-life revenue trades against years of battery life.",
+    subtitle="Every cycle wears the battery. How the optimiser charges for that wear — or whether it does at all — sets the trade-off between early-life revenue and years of battery life.",
 )
 
 # ── Intro ───────────────────────────────────────────────────
