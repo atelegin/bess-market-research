@@ -128,19 +128,18 @@ apply_theme(show_sidebar=False)
 render_header(
     title="Cost of a Cycle: Is Your Optimiser Aging-Aware?",
     kicker="GERMAN BESS | COST OF A CYCLE",
-    subtitle="Every cycle wears the battery. How the optimiser charges for that wear — or whether it does at all — sets the trade-off between early-life and lifetime revenue.",
+    subtitle="Every cycle wears the battery. Some optimisers ignore that; others charge a cycle cost on every trade. The choice sets the trade-off between early-life and lifetime revenue.",
 )
 
 # ── Intro ───────────────────────────────────────────────────
 st.markdown("""
-What should the wear fee depend on? A flat €/MWh per cycle, the
+What should the cycle cost depend on? A flat €/MWh per cycle, the
 battery's age, or the shape of today's dispatch — how deep each
 cycle goes, how fast, and which part of the 0–100 % range it sits
-in? The optimiser then skips any trade whose spread doesn't cover
-the fee.
+in?
 
-This note runs five candidate policies in parallel. All see the
-same prices and activations; only the cycle cost differs.
+This note runs five answers in parallel. All see the same markets;
+only the cycle cost differs.
 """)
 
 # ── Load data ───────────────────────────────────────────────
@@ -247,14 +246,13 @@ charge plus one full discharge of the nameplate energy) lifetime;
 battery hits the 80 % warranty floor in year {eol_naive}; lifetime
 revenue index = 100 (by definition).
 
-**M2 — Fixed fee.** Subtract a flat €/MWh wear charge from every
-cycle — CAPEX divided by expected lifetime throughput
-(≈ €16.67 / MWh here). Cycling drops to
-**{int(_m2.annual_fec.sum()):,} FEC**; revenue
+**M2 — Fixed fee.** A flat €/MWh cycle cost — CAPEX divided by
+expected lifetime throughput (≈ €16.67 / MWh here). Cycling drops
+to **{int(_m2.annual_fec.sum()):,} FEC**; revenue
 **+{(_m2.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.1f}%**
 vs M1 — the single biggest jump in the stack.
 
-**M3 — Health-aware.** Same fee, but scaled up as the cell ages
+**M3 — Health-aware.** Same cost, but scaled up as the cell ages
 (1× fresh → 2× at the warranty floor). Adds
 **+{(_m3.lifetime_npv_eur / _m2.lifetime_npv_eur - 1) * 100:.1f} pp**
 over M2 by suppressing cycling once the battery is already worn.
@@ -269,7 +267,7 @@ pass re-solves the intraday with the refined per-MWh wear. Adds
 **+{(_m4.lifetime_npv_eur / _m3.lifetime_npv_eur - 1) * 100:.1f} pp**
 over M3.
 
-**M5 — Time-and-state-aware.** The wear cost now varies hour by
+**M5 — Time-and-state-aware.** The cycle cost now varies hour by
 hour and with the *market regime* — *volatile* days (fat spreads
 worth chasing) get a low cost so the battery cycles freely, *calm*
 days (tight spreads, cycling isn't worth much) get a high cost so
@@ -360,8 +358,8 @@ render_chart_caption(
     f"M1 (no cycle cost) earns the most while the battery is fresh, "
     f"then hits the 80 % warranty floor in year {eol_naive} and "
     f"stops earning. M2 and M3 cycle less as the battery ages, "
-    f"extending its life by ~2 years. M4 and M5 stay above the "
-    f"floor for the full 10 years."
+    f"pushing the warranty floor ~2 years later. M4 and M5 stay "
+    f"above the floor for the full 10 years."
 )
 
 
@@ -421,14 +419,14 @@ on aFRR capacity and rarely trade wholesale, shifting revenue from
 cycling-paid to availability-paid. That looks weak on monthly
 revenue while the battery is fresh: in {month_label} M4 and M5 earned
 **{(_m4_mar/_m1_mar - 1)*100:.0f} %** and
-**{(_m5_mar/_m1_mar - 1)*100:.0f} %** less than M1
+**{(_m5_mar/_m1_mar - 1)*100:.0f} %** vs M1
 (€{_m4_mar:.1f} k and €{_m5_mar:.1f} k vs €{_m1_mar:.1f} k).
 Yet over 10 years M5 wins **+{_uplift_pct:.0f}%** in discounted
 revenue by avoiding the warranty-floor cliff that ends M1 in year
 {eol_naive}. You can't have both. Either benchmark the optimiser on
 lifetime revenue, or accept the early-life shortfall as the price of
 battery longevity. The four panels below show how that trade-off
-reads on your portal.
+reads on the portal.
 """)
     st.markdown("")
     st.markdown(
@@ -489,7 +487,7 @@ reads on your portal.
     st.caption(
         "Stacked bars of **gross** daily revenue across the month, "
         "split by market (DA + ID + aFRR cap + aFRR energy — directly "
-        "comparable to your optimiser portal). The no-cost policy "
+        "comparable to the optimiser portal). The no-cost policy "
         "captures big DA / ID arbitrage spikes on volatile days; the "
         "aging-aware policy lives almost entirely on the steady aFRR "
         "capacity base."
