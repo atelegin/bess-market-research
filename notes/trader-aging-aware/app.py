@@ -904,14 +904,12 @@ netztransparenz.de.
 
 **Dispatch LP.** Two-stage market-aware. Stage 1 commits
 per-4-hour-block aFRR capacity at D−1 under a regime-conditional
-α-forecast (`bid_win_rate = 1.0`; see *Where this model stops
-working* below for the caveat). Stage 2 re-optimises full
+α-forecast (`bid_win_rate = 1.0`). Stage 2 re-optimises full
 DA + ID + activation dispatch under realised α with the Stage 1
 commitment locked. For two-pass methodologies (M4 —
 physics-from-duty), Stage 2 runs a second LP with wear re-priced
 via the [*What Drives Degradation*](https://bess-degradation-drivers.streamlit.app/)
-kernel (`physics_wear_from_duty`) on the observed first-pass
-dispatch.
+kernel on the observed first-pass dispatch.
 
 **Cycle-cost forms — implementation detail.**
 - **M1 (No cycle cost).** Wear cost = 0 €/MWh. Trades every profitable spread.
@@ -968,11 +966,11 @@ wear-cost vector each methodology emits differs.
   [*German BESS Outlook*](https://de-bess-outlook.streamlit.app)
   trajectory chart layers fleet-saturation revenue decay on top of
   each policy's dispatch and shows how the ranking shifts.
-- The `bid_win_rate=1.0` is an LP-upper-bound assumption (see
-  Calibration anchors above). Real-world clearing rates are < 100 %
-  for individual bidders, depending on bid strategy and fleet
-  capacity vs auction demand. Lower clearing would compress aFRR cap
-  revenue and shrink the M5 uplift.
+- The `bid_win_rate=1.0` is an LP-upper-bound assumption: every
+  block bid is taken to clear at the auction. Real-world clearing
+  rates are < 100 % for individual bidders, depending on bid
+  strategy and fleet capacity vs auction demand. Lower clearing
+  would compress aFRR cap revenue and shrink the M5 uplift.
 """)
 
 
@@ -1014,22 +1012,6 @@ with st.expander("Related work"):
   Mechanism-side justification for the age-acceleration multiplier
   and the asymmetric-down SoC optimum.
 
-**Ancillary-specific anchor.**
-
-- **He, Malkaby-Epstein et al. (2016).** *Optimal bidding strategy of
-  battery storage in power markets considering performance-based
-  regulation and battery cycle life.*
-  [DTU Orbit](https://orbit.dtu.dk/en/publications/optimal-bidding-strategy-of-battery-storage-in-power-markets-cons).
-  Eight-year precedent for the signal-5 point that €/MWh is the wrong
-  denominator on availability-paid assets.
-
-**Independent confirmation.**
-
-- **Humiston, Cetin, de Queiroz (2026).** *Evaluating Battery
-  Degradation Models in Rolling-Horizon BESS Arbitrage Optimization.*
-  [Energies 19(4), 1056](https://www.mdpi.com/1996-1073/19/4/1056).
-  ERCOT replication of the Kumtepeli "shape matters" claim on
-  15-minute real-time data.
 """)
 
 
