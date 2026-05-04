@@ -139,8 +139,8 @@ cycle goes, how fast, and which part of the 0–100 % range it sits
 in? The optimiser then skips any trade whose spread doesn't cover
 the fee.
 
-This note runs them in parallel. All see the same prices and
-activations; only the cycle cost differs.
+This note runs five candidate policies in parallel. All see the
+same prices and activations; only the cycle cost differs.
 """)
 
 # ── Load data ───────────────────────────────────────────────
