@@ -904,9 +904,8 @@ netztransparenz.de.
 
 **Dispatch LP.** Two-stage market-aware. Stage 1 commits
 per-4-hour-block aFRR capacity at D−1 under a regime-conditional
-α-forecast (`bid_win_rate = 1.0`). Stage 2 re-optimises full
-DA + ID + activation dispatch under realised α with the Stage 1
-commitment locked. For two-pass methodologies (M4 —
+α-forecast. Stage 2 re-optimises full DA + ID + activation
+dispatch under realised α with the Stage 1 commitment locked. For two-pass methodologies (M4 —
 physics-from-duty), Stage 2 runs a second LP with wear re-priced
 via the [*What Drives Degradation*](https://bess-degradation-drivers.streamlit.app/)
 kernel on the observed first-pass dispatch.
