@@ -20,9 +20,10 @@ lib/
   analysis/      Revenue, lifecycle NPV, degradation diagnostics, rolling-horizon helpers
   data/          Price loaders + cached CSVs (DA, ID, aFRR, FCR, clean-horizon indices)
   models/
-    dispatch/    LP dispatch variants (arbitrage, stacked, Collath benchmark, piecewise common)
+    dispatch/    Dispatch policies — simple, detailed, stacked, arbitrage,
+                 Collath benchmark, piecewise common, aFRR clearing-rate,
+                 and the ADP (approximate dynamic programming) sub-package.
     degradation/ Simple + detailed (Wang/Naumann LFP) capacity-fade models
-    adp/         Approximate dynamic programming solvers + shadow-cost
     ancillary.py
     price_regime.py
     projection.py
