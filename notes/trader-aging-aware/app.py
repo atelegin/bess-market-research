@@ -139,8 +139,8 @@ cycle goes, how fast, and which part of the 0–100 % range it sits
 in? The optimiser then skips any trade whose spread doesn't cover
 the fee.
 
-This note runs five answers in parallel. All see the same prices
-and activations; only the cycle cost differs.
+This note runs them in parallel. All see the same prices and
+activations; only the cycle cost differs.
 """)
 
 # ── Load data ───────────────────────────────────────────────
@@ -163,11 +163,7 @@ fec_winner = int(winner.annual_fec.sum())
 
 # ── Main chart ──────────────────────────────────────────────
 render_chart_title(
-    "Five ways to price a cycle, ranked by 10-year discounted "
-    "lifetime revenue (sum of revenue over the asset's life, future "
-    "euros discounted at 7 %/yr). Going right, each policy looks at "
-    "more of the battery's state — from no cycle cost at all to a "
-    "full time-and-state price."
+    "Aging-aware policies earn ~36 % more over 10 years"
 )
 
 npv_rows = []
@@ -215,11 +211,16 @@ fig.update_layout(
 )
 st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
-    "Ten-year simulation, 2 h LFP battery, 1 MW / 2 MWh, 2025 German "
-    "markets replayed every year. All five policies see the same "
-    "prices and activation signals; only the cycle cost differs. "
-    "Bars indexed to M1 = 100. The ranking and ~+36 % M1 → M5 spread "
-    "are robust to modelling choices. The section further down — "
+    "Five policies ranked by 10-year discounted lifetime revenue "
+    "(sum of revenue over the asset's life, future euros discounted "
+    "at 7 %/yr). Going right, each policy looks at more of the "
+    "battery's state — from no cycle cost at all to a full "
+    "time-and-state price. Ten-year simulation, 2 h LFP battery, "
+    "1 MW / 2 MWh, 2025 German markets replayed every year. All "
+    "five policies see the same prices and activation signals; only "
+    "the cycle cost differs. Bars indexed to M1 = 100. The ranking "
+    "and ~+36 % M1 → M5 spread are robust to modelling choices. The "
+    "section further down — "
     "<i>Does the ranking survive when ancillary revenue collapses?</i> — "
     "shows how it changes once wholesale grows and aFRR cap shrinks."
 )
@@ -237,7 +238,7 @@ _abl_solo = ablation_results.get("ablation_physics_without_adp")
 st.markdown(f"""
 Each policy uses a richer view of the battery's state: nothing →
 fixed fee → health → cycle shape → time and state. Full formulas
-are in the methodology expander at the bottom.
+are in the methodology expander.
 
 **M1 — No cycle cost.** Trade every profitable spread, no penalty
 for wear. The simplest baseline: most cycles, shortest battery
@@ -286,7 +287,7 @@ st.markdown("---")
 st.markdown("### Lifetime revenue comes from cycling less")
 render_chart_title(
     "M1 earns most early, then hits the warranty floor — aging-aware "
-    "policies extend life"
+    "policies trade that for higher lifetime revenue"
 )
 
 col_rev, col_soh = st.columns(2)
@@ -366,7 +367,7 @@ render_chart_caption(
 
 # ── Reading aging-awareness off the dashboard (merged) ─────
 st.markdown("---")
-st.markdown("## How aging-awareness shows up on your optimiser's dashboard")
+st.markdown("## How aging-awareness shows up on an optimiser's dashboard")
 
 # 4-tile dashboard: M1 naive vs M5 ADP (the empirical winner) on real
 # 2026 monthly dispatch (anchor_2026-{MM}_v42.pkl, from
@@ -797,11 +798,8 @@ for name in POLICY_ORDER:
 trend_df = pd.DataFrame(trend_rows)
 
 render_chart_title(
-    "Flat 2025 markets vs <i>German BESS Outlook</i> mid-case "
-    "trajectory (2026 → 2035, "
-    "dispatch re-run each year under projected prices). Each panel "
-    "indexed to its own M1 = 100 — the question is how the M1→M5 "
-    "ranking changes when the market shifts, not absolute levels."
+    "Sophistication wins on flat 2025; simple wins on the projected "
+    "trajectory"
 )
 
 _y_max = float(max(trend_df["flat_index"].max(),
@@ -868,11 +866,14 @@ _trend_winner_name = max(_trend_uplifts, key=_trend_uplifts.get)
 _trend_winner_pct = _trend_uplifts[_trend_winner_name]
 
 render_chart_caption(
-    f"Under flat 2025, M5 wins <b>+{_m5_flat_uplift:.0f}%</b>. Under "
-    f"the projected trajectory, the simple regime-independent "
-    f"policies (M2, M3) take the lead. Each panel is normalised to "
-    f"its own M1 = 100; absolute lifetime NPV differs between "
-    f"scenarios but that's not the point of this comparison."
+    f"Flat 2025 markets vs <i>German BESS Outlook</i> mid-case "
+    f"trajectory (2026 → 2035, dispatch re-run each year under "
+    f"projected prices). Each panel indexed to its own M1 = 100; "
+    f"absolute lifetime NPV differs between scenarios but that's "
+    f"not the point of this comparison. Under flat 2025, M5 wins "
+    f"<b>+{_m5_flat_uplift:.0f}%</b>. Under the projected "
+    f"trajectory, the simple regime-independent policies (M2, M3) "
+    f"take the lead."
 )
 
 
