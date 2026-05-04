@@ -995,10 +995,13 @@ with st.expander("Related work"):
   lifetime profitability of battery energy storage systems through
   aging-aware operation.*
   [Applied Energy 348, 121531](https://www.sciencedirect.com/science/article/pii/S0306261923008954).
-  Reports +29.3% lifetime profit from a piecewise-linear in-objective
-  form. This note recovers the directional claim and somewhat larger
-  magnitude on DE markets with a publicly-anchored calibration; M5 vs
-  M1 on the headline run lands at +36 %.
+  Reports +29.3 % lifetime profit from a piecewise-linear
+  in-objective form. The same form was implemented and tested
+  separately on EVE LF280K cell physics, where it ties with M2
+  (cyclic fade slope ratio 1.11× — essentially linear, so the
+  in-objective form has no edge over the scalar-wear form). The
+  +36 % headline above comes from M5 (ADP), a different methodology
+  in the same family of aging-aware approaches.
 
 **Physics foundation.**
 
