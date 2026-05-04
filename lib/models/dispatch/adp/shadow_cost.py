@@ -369,7 +369,7 @@ class DoDAwareRainflowProxyPolicy(ShadowCostPolicy):
 class ADPPolicy(ShadowCostPolicy):
     """Shadow cost from a solved backward-induction DP (A3.4 online lookup).
 
-    Wraps a solved :class:`lib.models.adp.solver.ADPSolver` and exposes its
+    Wraps a solved :class:`lib.models.dispatch.adp.solver.ADPSolver` and exposes its
     per-state shadow cost through the ``ShadowCostPolicy`` interface. At
     each call, finds the grid bucket for the current ``SoH`` and the
     regime for the given calendar day, then emits a flat
@@ -380,7 +380,7 @@ class ADPPolicy(ShadowCostPolicy):
     ::
 
         from lib.models.price_regime import fit_regimes
-        from lib.models.adp.solver import ADPSolver, default_grids, empirical_daily_revenue_curve
+        from lib.models.dispatch.adp.solver import ADPSolver, default_grids, empirical_daily_revenue_curve
 
         rc = fit_regimes(da_price_series)
         rev_curve = empirical_daily_revenue_curve(
@@ -466,7 +466,7 @@ class ADPPolicy(ShadowCostPolicy):
 class ADPPolicyIntraday(ShadowCostPolicy):
     """Hour-varying shadow cost from intraday ADP (Holtorf-Shin style).
 
-    Wraps an :class:`lib.models.adp.solver_intraday.IntradayADPResult`.
+    Wraps an :class:`lib.models.dispatch.adp.solver_intraday.IntradayADPResult`.
     At online-lookup time, snaps (SoH, regime) to grid, returns 24-hour
     shadow cost vector expanded to 96 × 15-min intervals.
 

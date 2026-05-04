@@ -2,7 +2,7 @@
 Per-day physics-based degradation for lifecycle simulation (Note 4 step 2).
 
 Replaces the linear-in-FEC ``degradation_per_day`` from
-:mod:`lib.models.adp.solver` with a call into the Note 3 physics kernel
+:mod:`lib.models.dispatch.adp.solver` with a call into the Note 3 physics kernel
 (``lib.models.degradation.detailed.project_capacity_detailed``).
 
 Why

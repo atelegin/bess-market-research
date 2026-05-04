@@ -33,12 +33,12 @@ from lib.analysis.lifecycle_npv import compare_policies
 from lib.analysis.physics_wear_lookup import physics_wear_cost_per_mwh
 from lib.analysis.stacked_year_runner import _prefetch_year_frames
 from lib.data.day_ahead_prices import fetch_day_ahead_prices
-from lib.models.adp.shadow_cost import (
+from lib.models.dispatch.adp.shadow_cost import (
     NaivePolicy,
     ProgressivePolicy,
 )
-from lib.models.adp.solver import default_grids
-from lib.models.adp.solver_intraday import (
+from lib.models.dispatch.adp.solver import default_grids
+from lib.models.dispatch.adp.solver_intraday import (
     IntradayADPSolver,
     fit_hourly_price_profiles,
     fit_hourly_price_scenarios,

@@ -1,6 +1,6 @@
 """
 Tests for the Rainflow sidebar wear function and policy
-(:mod:`lib.analysis.rainflow_wear`, :class:`lib.models.adp.shadow_cost.RainflowPolicy`).
+(:mod:`lib.analysis.rainflow_wear`, :class:`lib.models.dispatch.adp.shadow_cost.RainflowPolicy`).
 
 Methodology lives parallel to L6 physics_wear_from_duty; tests mirror
 the structure of test_physics_degradation but probe the rainflow-
@@ -16,7 +16,7 @@ from lib.analysis.rainflow_wear import (
     rainflow_wear_from_duty,
     evaluate_piecewise,
 )
-from lib.models.adp.shadow_cost import RainflowPolicy
+from lib.models.dispatch.adp.shadow_cost import RainflowPolicy
 from lib.models.dispatch.stacked import StackedDispatchResult
 
 
