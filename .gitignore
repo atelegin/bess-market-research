@@ -19,6 +19,8 @@ data/external/
 
 # Note 4 local provenance — historical scripts, stale pkls, internal drafts
 notes/trader-aging-aware/_archive/
+# Note 4 README is the longform internal source-of-truth — kept local only
+notes/trader-aging-aware/README.md
 
 # lib/ archive — modules / tests not used by published notes (kept locally for provenance)
 lib/_archive/
