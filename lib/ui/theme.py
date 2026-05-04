@@ -236,7 +236,16 @@ def render_chart_title(text: str) -> None:
 
 
 def render_chart_caption(text: str) -> None:
-    st.markdown(f'<div class="chart-caption">{text}</div>', unsafe_allow_html=True)
+    # Streamlit's stMarkdownContainer has margin-bottom:-16px baked
+    # in (collapses the natural 16px gap between consecutive
+    # st.markdown blocks). To leave real space below the caption, the
+    # caption div needs padding-bottom large enough to overcome that
+    # -16px clawback and still leave the gap visible.
+    st.markdown(
+        f'<div class="chart-caption" style="padding-bottom:2.6rem;">'
+        f'{text}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def render_annotation(title: str, text: str) -> None:

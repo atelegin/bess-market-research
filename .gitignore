@@ -1,0 +1,29 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+*.parquet
+lib/data/cache/day_ahead_prices_*.json
+ROADMAP.md
+DIGEST_SPEC.md
+notebooks/
+.claude/
+lib/data/cache/dispatch_*.json
+lib/data/cache/dispatch_*.parquet
+lib/data/cache/afrr_activations_*.json
+lib/data/cache/netztransparenz_id_aep_*.json
+
+# External validation datasets (downloaded on demand via scripts/)
+data/external/
+
+# Note 4 local provenance — historical scripts, stale pkls, internal drafts
+notes/trader-aging-aware/_archive/
+
+# lib/ archive — modules / tests not used by published notes (kept locally for provenance)
+lib/_archive/
+
+# lib/ subtrees not part of published notes (architecture decisions, internal charts, LinkedIn build)
+lib/architecture/
+lib/charts/
+lib/linkedin/

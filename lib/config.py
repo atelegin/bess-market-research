@@ -82,65 +82,12 @@ AFRR_DEPTH_MW = 4000          # combined pos+neg addressable by BESS
 ANCILLARY_COMBINED_GW = 4.5   # FCR ~0.6 GW (regelleistung.net) + aFRR ~4 GW (SO GL)
 
 
-# ── Degradation model (cohort-based) ──────────────────────
-# Assumptions: 2 cycles/day, 2-hour battery, including
-# degradation and augmentation after ~10k cycles
-# Each year's new BESS capacity is a separate cohort with its own age.
-# Fleet-average degradation = capacity-weighted mean across all cohorts.
-CYCLES_PER_YEAR = 730          # 2 cycles/day × 365
-AUGMENTATION_AT_CYCLES = 8500  # augmentation threshold (~year 11.6)
-ANNUAL_FADE_RATE = 0.018       # ~1.8%/yr effective capacity loss per cohort
-AUGMENTATION_RESTORE = 0.92    # augmentation restores to 92% of nameplate
-
-
-def _cohort_capacity(age_years: float) -> float:
-    """Effective capacity of a single cohort aged `age_years`."""
-    capacity = 1.0 - ANNUAL_FADE_RATE * age_years
-    aug_year = AUGMENTATION_AT_CYCLES / CYCLES_PER_YEAR
-    if age_years >= aug_year:
-        capacity = AUGMENTATION_RESTORE - ANNUAL_FADE_RATE * (age_years - aug_year)
-    return max(capacity, 0.50)
-
-
-def fleet_degradation_factor(
-    year: int,
-    buildout: 'Dict[int, float] | None' = None,
-) -> float:
-    """
-    Fleet-average degradation factor for `year`.
-
-    Each vintage (year of commissioning) is a cohort whose MW = delta
-    of cumulative buildout. The fleet-average capacity is the
-    MW-weighted mean of all cohort capacities.
-
-    Returns value in (0, 1].
-    """
-    if buildout is None:
-        buildout = DEFAULT_BESS_BUILDOUT
-
-    # Build sorted list of (vintage_year, installed_gw)
-    sorted_years = sorted(buildout.keys())
-
-    total_mw = 0.0
-    weighted_cap = 0.0
-
-    for i, vy in enumerate(sorted_years):
-        if vy > year:
-            break
-        # Delta MW added in vintage year
-        prev_gw = buildout[sorted_years[i - 1]] if i > 0 else 0.0
-        delta_gw = max(buildout[vy] - prev_gw, 0.0)
-        if delta_gw <= 0:
-            continue
-
-        age = year - vy
-        cap = _cohort_capacity(age)
-        total_mw += delta_gw
-        weighted_cap += delta_gw * cap
-
-    if total_mw <= 0:
-        return 1.0
-    return weighted_cap / total_mw
+# ── Degradation model ─────────────────────────────────────
+# The cohort-weighted fleet-average lives in
+# ``lib.models.degradation.fleet_average_capacity`` (CellPreset-driven).
+# Legacy constants (CYCLES_PER_YEAR, AUGMENTATION_AT_CYCLES, ANNUAL_FADE_RATE,
+# AUGMENTATION_RESTORE, _cohort_capacity, fleet_degradation_factor) retired
+# in Note 3; ``baseline_fleet`` preset reproduces them to ±0.2pp.
 
 
 # ── Gas price (TTF) ─────────────────────────────────────────

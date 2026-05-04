@@ -80,8 +80,9 @@ class StackedYearResult:
 def _prefetch_year_frames(year: int) -> dict[str, Optional[pd.DataFrame]]:
     """Load all year-level sources once to avoid API hits per day."""
     from lib.data.spotmarktpreis import fetch_spotmarktpreis
+    from lib.data.ida_prices import fetch_ida_prices_de_lu
     frames: dict[str, Optional[pd.DataFrame]] = {
-        "da": None, "id": None, "spot": None,
+        "da": None, "id": None, "spot": None, "ida": None,
         "afrr_cap": None, "afrr_energy": None, "activations": None,
     }
     try:
@@ -114,6 +115,48 @@ def _prefetch_year_frames(year: int) -> dict[str, Optional[pd.DataFrame]]:
         )
     except Exception as e:
         logger.warning(f"prefetch({year}): activations unavailable: {e}")
+    # SIDC pan-European intraday auctions for DE-LU (15-min) — only
+    # available from 2024-06-13 onwards. Build the ID feed as
+    # **IDA2 with IDA1 fallback** (model A+, see lib/data/ida_prices.py
+    # docstring): IDA2 is the most-informed pre-delivery snapshot
+    # (gate-close D-1 22:00, ~98% slot coverage, tighter tails); IDA1
+    # (gate-close D-1 15:00, ~99% coverage, wider tails from earlier
+    # less-informed bids) fills the residual ~1.8% IDA2 gaps. Combined
+    # coverage ≈ 99.9%, daily peak-trough preserved within 2 €/MWh of
+    # IDA2-only — see ROADMAP `benchmark-reconciliation` Model B for
+    # why we don't run a multi-window LP across both auctions.
+    if year >= 2024:
+        ida2 = ida1 = None
+        try:
+            ida2 = fetch_ida_prices_de_lu(
+                start=f"{year}-01-01", end=f"{year + 1}-01-01", sequence=2,
+            )
+            if ida2 is not None and ida2.empty:
+                ida2 = None
+        except Exception as e:
+            logger.info(f"prefetch({year}): IDA2 unavailable: {e}")
+        try:
+            ida1 = fetch_ida_prices_de_lu(
+                start=f"{year}-01-01", end=f"{year + 1}-01-01", sequence=1,
+            )
+            if ida1 is not None and ida1.empty:
+                ida1 = None
+        except Exception as e:
+            logger.info(f"prefetch({year}): IDA1 unavailable: {e}")
+        if ida2 is not None and ida1 is not None:
+            combined = ida2["price_eur_mwh"].combine_first(ida1["price_eur_mwh"])
+            n_total = len(combined)
+            n_from_ida1 = int((~ida2["price_eur_mwh"].reindex(combined.index).notna()).sum())
+            logger.info(
+                f"prefetch({year}): IDA combined = IDA2 ({len(ida2)}) + "
+                f"IDA1 fallback ({n_from_ida1} slots, {n_from_ida1 / max(n_total, 1):.1%})"
+            )
+            frames["ida"] = combined.to_frame(name="price_eur_mwh")
+        elif ida2 is not None:
+            frames["ida"] = ida2
+        elif ida1 is not None:
+            logger.info(f"prefetch({year}): IDA2 missing entirely — using IDA1 only")
+            frames["ida"] = ida1
     return frames
 
 
@@ -169,6 +212,7 @@ def run_stacked_year(
             afrr_cap_frame=frames["afrr_cap"],
             afrr_energy_frame=frames["afrr_energy"],
             activations_frame=frames["activations"],
+            ida_frame=frames.get("ida"),
         )
         if inputs is None:
             days_skipped += 1

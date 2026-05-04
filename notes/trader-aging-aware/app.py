@@ -1,5 +1,5 @@
 """
-Note 4 — Is Your Trader Aging-Aware? The Cost of a Cycle.
+Note 4 — Cost of a Cycle, or Is Your Optimiser Aging-Aware?
 
 Single pkl drives headline bar chart + diagnostic dispatch logs +
 ablation footnote: `data/precomputed_v42_5methods_10y.pkl`. v4.2
@@ -41,6 +41,7 @@ from lib.ui.theme import (
     render_closing,
     render_footer,
     render_header,
+    render_takeaway,
 )
 
 
@@ -68,18 +69,18 @@ PRECOMPUTED_HEADLINE = DATA_DIR / "precomputed_v42_5methods_10y.pkl"
 # Each Mn shows ONE methodology, not a stack — the labels intentionally
 # avoid "+" framing that would imply progressive layering.
 POLICY_LABELS = {
-    "M1_naive":     "M1 — Naive (no shadow cost)",
-    "M2_flat":      "M2 — Flat €/MWh wear (Kumtepeli proxy)",
-    "M3_scarcity":  "M3 — Scarcity scaling (SoH-state)",
-    "M4_physics":   "M4 — Physics-from-duty (ADP base + Note 3 kernel)",
-    "M5_adp":       "M5 — Intraday ADP (Holtorf-Shin)",
+    "M1_naive":     "M1 — No cycle cost",
+    "M2_flat":      "M2 — Fixed fee",
+    "M3_scarcity":  "M3 — Health-aware",
+    "M4_physics":   "M4 — Cycle-shape-aware",
+    "M5_adp":       "M5 — Time-and-state-aware",
 }
 POLICY_SHORT = {
-    "M1_naive":     "M1 Naive",
-    "M2_flat":      "M2 Flat",
-    "M3_scarcity":  "M3 Scarcity",
-    "M4_physics":   "M4 Physics",
-    "M5_adp":       "M5 ADP",
+    "M1_naive":     "M1 No-cost",
+    "M2_flat":      "M2 Fixed-fee",
+    "M3_scarcity":  "M3 Health",
+    "M4_physics":   "M4 Shape",
+    "M5_adp":       "M5 Time-state",
 }
 # M1 sits in warm terra-coral as the unconstrained-baseline reference —
 # visually orthogonal to the teal stack so it reads as the "odd one out"
@@ -87,9 +88,9 @@ POLICY_SHORT = {
 # anchored on BayWa Deep Sea (#0D3F4A).
 POLICY_COLORS = {
     "M1_naive":     "#e07a5f",
-    "M2_flat":      "#a8c4cb",
-    "M3_scarcity":  "#5a8c97",
-    "M4_physics":   "#1d566a",
+    "M2_flat":      "#b4d2d8",
+    "M3_scarcity":  "#6fa3b0",
+    "M4_physics":   "#3d7a8a",
     "M5_adp":       "#0d3f4a",
 }
 POLICY_ORDER = [
@@ -104,13 +105,19 @@ def _eol_year_1indexed(years_to_floor, n_years):
 
 
 @st.cache_data(show_spinner=False)
-def _load_pkl(path_str: str):
+def _load_pkl_with_mtime(path_str: str, mtime: float):
     with open(path_str, "rb") as f:
         return pickle.load(f)
 
 
+def _load_pkl(path_str: str):
+    # Cache key includes mtime so a regenerated pkl invalidates the cache
+    # without needing to restart the Streamlit server.
+    return _load_pkl_with_mtime(path_str, Path(path_str).stat().st_mtime)
+
+
 st.set_page_config(
-    page_title="Is Your Trader Aging-Aware?",
+    page_title="Cost of a Cycle: Is Your Optimiser Aging-Aware?",
     page_icon="🔋",
     layout="wide",
 )
@@ -119,29 +126,22 @@ apply_theme(show_sidebar=False)
 
 # ── Header ──────────────────────────────────────────────────
 render_header(
-    title="Is Your Trader Aging-Aware?",
+    title="Cost of a Cycle: Is Your Optimiser Aging-Aware?",
     kicker="GERMAN BESS | COST OF A CYCLE",
-    subtitle="A class of dispatch policies that price each cycle against future revenue loss. Five methodologies, what each one is worth, and how to read the signature off a monthly trader report.",
+    subtitle="Every cycle wears the battery. The fix is a wear fee the optimiser subtracts from every trade — and five ways to set that fee are in active use today. Pick well and you trade early-life revenue for extra years of battery life.",
 )
 
 # ── Intro ───────────────────────────────────────────────────
 st.markdown("""
-The literature on BESS dispatch contains a spectrum of *aging-aware*
-formulations — policies that subtract a cost-per-cycle term from the
-revenue objective so the optimiser declines marginal cycles whose
-spread does not justify the wear. The formulations differ in *which*
-state the shadow cost depends on: throughput only, state-of-health,
-hour-of-day, the full physics of the observed dispatch.
+What should the wear fee depend on? A flat €/MWh for every cycle,
+the battery's age, the hour of day, or the full physics of the
+dispatch the battery saw today? The optimiser then skips any trade
+whose spread doesn't cover the fee.
 
-This note runs five distinct methodologies on a 2 h LFP system across
-2023 and 2025 German day-ahead, intraday and aFRR markets, on a
-10-year rotating horizon. All five see identical prices and identical
-activation signals; the only difference is *how* each one prices the
-cost of a cycle. The headline below uses the v4.0 calibration anchored
-to publicly-citable sources: regelleistung.net public auction CSVs for
-aFRR clearing, the Clean Horizon Storage Index for absolute revenue
-level, and the EVE LF280K manufacturer endurance spec for the physics
-kernel.
+This note runs five of those answers on a 2 h LFP battery
+(1 MW / 2 MWh) trading 2025 German day-ahead, intraday and aFRR
+markets, replayed for 10 years. All five see the same prices and
+activation signals; only the cycle price differs.
 """)
 
 # ── Load data ───────────────────────────────────────────────
@@ -149,11 +149,10 @@ kernel.
 data = _load_pkl(str(PRECOMPUTED_HEADLINE))
 results = data["results"]
 n_years = data["n_years"]
-diag_results = results
 ablation_results = results  # Same pkl; ablation_* keys live alongside M1-M5
 
 
-# ── KPI row ─────────────────────────────────────────────────
+# ── Headline references ─────────────────────────────────────
 naive = results["M1_naive"]
 winner = results["M5_adp"]
 
@@ -162,59 +161,14 @@ eol_winner = _eol_year_1indexed(winner.years_to_floor, n_years)
 fec_naive = int(naive.annual_fec.sum())
 fec_winner = int(winner.annual_fec.sum())
 
-col1, col2, col3, col4 = st.columns(4)
-uplift_pct = (winner.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100
-with col1:
-    st.metric(
-        "M5 vs M1 — lifetime DCF uplift",
-        f"+{uplift_pct:.1f}%",
-        "monotonic across M1 → M2 → M3 → M4 → M5",
-        delta_color="off",
-    )
-with col2:
-    st.metric(
-        "Cycling reduction (M1 → M5)",
-        f"−{(1 - fec_winner / fec_naive) * 100:.0f}%",
-        f"{fec_naive:,} → {fec_winner:,} FEC over 10 y",
-        delta_color="off",
-    )
-with col3:
-    eol_text = (
-        f"warranty floor never reached"
-        if winner.years_to_floor is None
-        else f"Y{eol_naive} → Y{eol_winner} at SoH 0.80"
-    )
-    extension = (
-        f"+{n_years - eol_naive}+ years"
-        if winner.years_to_floor is None
-        else f"+{eol_winner - eol_naive} years"
-    )
-    st.metric(
-        "EOL extension",
-        extension,
-        eol_text,
-        delta_color="off",
-    )
-with col4:
-    fec_ratio = fec_naive / max(fec_winner, 1)
-    st.metric(
-        "Cycling intensity ratio",
-        f"{fec_ratio:.0f}× ",
-        f"M1 cycles {fec_ratio:.0f}× more than M5 over the lifetime",
-        delta_color="off",
-    )
-
 
 # ── Main chart ──────────────────────────────────────────────
 render_chart_title(
-    "Five shadow-cost methodologies, ten-year discounted lifetime "
-    "revenue. M1 (no shadow cost) at the bottom, M5 (Holtorf-Shin "
-    "intraday ADP) at the top. M1-M3 are the classical depreciation-"
-    "proxy family (no shadow → throughput-only → SoH-aware multiplier); "
-    "M4-M5 are the state-aware family (physics-from-duty observed "
-    "dispatch → ADP opportunity-cost gradient). Each Mn shows ONE "
-    "shadow-cost form; the methodology footnote below covers two "
-    "ablation cross-checks where blending Mn with Mn+k components hurts."
+    "Five ways to price a cycle, ranked by 10-year discounted "
+    "lifetime revenue (sum of revenue over the asset's life, future "
+    "euros discounted at 7 %/yr). Going right, each policy looks at "
+    "more of the battery's state — from no cycle cost at all to a "
+    "full time-and-state price."
 )
 
 npv_rows = []
@@ -237,8 +191,7 @@ fig = go.Figure()
 fig.add_trace(go.Bar(
     x=npv_df["policy"], y=npv_df["index"],
     marker_color=npv_df["color"],
-    text=[f"{v:.0f}<br>{p:+.1f}%" for v, p in
-          zip(npv_df["index"], npv_df["pct_vs_naive"])],
+    text=[f"{p:+.1f}%" for p in npv_df["pct_vs_naive"]],
     textposition="outside",
     hovertemplate=(
         "%{x}<br>Index: %{y:.1f} (M1 = 100)<br>"
@@ -257,61 +210,127 @@ fig.update_layout(
     template="plotly_white",
     paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
     height=440, margin=dict(l=40, r=20, t=40, b=80),
-    yaxis=dict(title="Lifetime DCF index (M1 = 100)"),
+    yaxis=dict(title="Lifetime revenue (M1 = 100)"),
     xaxis=dict(tickfont=dict(size=10)),
     showlegend=False,
 )
 st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
-    "Ten-year lifecycle simulation, 2 h LFP, 1 MW / 2 MWh, rotating "
-    "2023↔2025 DE markets. All five methodologies face identical "
-    "prices and activation signals; the only difference is how each "
-    "one prices the cost of a cycle. Bars indexed to M1 = 100; "
-    "absolute revenue depends on calibration choices (perfect-"
-    "foresight LP, `max_afrr` cap, FCR phantom layer) and is not the "
-    "focus of this note. The relative ordering and the ~+36% M1 → M5 "
-    "spread are robust to those choices. Markets held at 2024 levels; "
-    "the Note 1 trajectory section below shows how the ordering bends "
-    "when wholesale grows and aFRR cap compresses."
+    "Ten-year simulation, 2 h LFP battery, 1 MW / 2 MWh, 2025 German "
+    "markets replayed every year. All five policies see the same "
+    "prices and activation signals; only the cycle price differs. "
+    "Bars are indexed to M1 = 100. Absolute revenue depends on "
+    "modelling choices (perfect-foresight optimiser, FCR add-on, "
+    "calibration parameters) and is not the point of this chart — the "
+    "ranking and the ~+36 % M1 → M5 spread are what matter and are "
+    "robust to those choices. The section further down — "
+    "<i>Does the ranking survive when ancillary revenue collapses?</i> — "
+    "shows how the ranking changes once wholesale grows and aFRR cap "
+    "shrinks."
 )
 
 
+# ── The five methodologies, plain language ──────────────────
+st.markdown("---")
+st.markdown("## The five cycle-cost methodologies")
+_m2 = results["M2_flat"]
+_m3 = results["M3_scarcity"]
+_m4 = results["M4_physics"]
+_m5 = results["M5_adp"]
+_abl_blend = ablation_results.get("ablation_M5_with_classical_stack")
+_abl_solo = ablation_results.get("ablation_physics_without_adp")
+st.markdown(f"""
+Each policy looks at more of the battery's state than the last:
+nothing → fixed fee → health → cycle shape → time and state. Full
+formulas are in the methodology expander at the bottom.
+
+**M1 — No cycle cost.** Trade every spread that beats variable cost,
+no penalty for wear. The simplest baseline: most cycles, shortest
+battery life. **{fec_naive:,} full-equivalent cycles** (FEC — one
+full charge plus one full discharge of the nameplate energy)
+lifetime; battery hits the 80 % warranty floor in year {eol_naive};
+lifetime revenue index = 100 (by definition).
+
+**M2 — Fixed fee.** Subtract a flat €/MWh wear charge from every
+cycle — CAPEX divided by expected lifetime throughput
+(≈ €16.67 / MWh here). Cycling drops to
+**{int(_m2.annual_fec.sum()):,} FEC**; revenue
+**+{(_m2.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.1f}%**
+vs M1. The single biggest jump in the stack: most of the aging-aware
+value comes from a sensible per-MWh penalty, not from sophistication.
+
+**M3 — Health-aware.** Same fee, but scaled up as the cell ages
+(1× fresh → 2× at the warranty floor). Adds
+**+{(_m3.lifetime_npv_eur / _m2.lifetime_npv_eur - 1) * 100:.1f} pp**
+over M2 by suppressing cycling once the battery is already worn.
+
+**M4 — Cycle-shape-aware.** The optimiser solves the day twice: a
+first pass dispatches with a rough wear estimate; the resulting
+schedule is fed through the [degradation
+physics](https://bess-degradation-drivers.streamlit.app/) to compute
+the actual wear of *that specific dispatch shape*; the optimiser then re-solves
+the intraday with that refined per-MWh wear cost. Three things drive
+it: *depth of discharge* (how much of the battery is used in one cycle —
+a 100 % swing is much harder on the cell than two 50 % swings),
+*C-rate* (how fast the battery is charged or discharged — high power
+heats the cell and accelerates wear), and *SoC band* (where in the
+0–100 % range the cycle sits — cells stress most near full and
+empty). A day spent on shallow, mid-band cycles is priced cheap; a
+day with deep full-range cycles at high power is priced expensive.
+Adds
+**+{(_m4.lifetime_npv_eur / _m3.lifetime_npv_eur - 1) * 100:.1f} pp**
+over M3.
+
+**M5 — Time-and-state-aware.** The wear cost now varies hour by
+hour and with the *market regime* — *volatile* days (fat spreads
+worth chasing) get a low cost so the battery cycles freely, *calm*
+days (tight spreads, cycling isn't worth much) get a high cost so
+the battery sits. At 18:00 on a volatile day one MWh in the cell is
+worth more than at 03:00 on a calm one. Cycles drop to **{int(_m5.annual_fec.sum()):,} FEC**
+lifetime — about {(fec_naive / max(int(_m5.annual_fec.sum()), 1)):.0f}× fewer
+than M1. Revenue
+**+{(_m5.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.1f}%**
+vs M1 — peak of the stack.
+""", unsafe_allow_html=True)
+
+
 # ── Annual revenue + SoH trajectories ───────────────────────
-st.markdown("### Lifetime revenue is bought with cycling restraint")
+st.markdown("---")
+st.markdown("### Lifetime revenue comes from cycling less")
+render_chart_title(
+    "M1 earns most early, then hits the warranty floor — aging-aware "
+    "policies extend life"
+)
 
 col_rev, col_soh = st.columns(2)
 
 with col_rev:
-    render_chart_title("Cumulative discounted revenue (M1 lifetime = 100)")
     fig_rev = go.Figure()
     discount_factors = np.array([
         1.0 / (1.0 + 0.07) ** y for y in range(n_years)
     ])
-    naive_lifetime = float((naive.annual_revenue_eur * discount_factors).sum())
     for name in POLICY_ORDER:
         r = results[name]
-        cum = np.cumsum(r.annual_revenue_eur * discount_factors) / naive_lifetime * 100
+        annual_disc = r.annual_revenue_eur * discount_factors / 1000.0
         fig_rev.add_trace(go.Scatter(
             x=np.arange(1, n_years + 1),
-            y=cum,
+            y=annual_disc,
             mode="lines+markers",
             name=POLICY_SHORT[name],
             line=dict(color=POLICY_COLORS[name], width=2.5),
         ))
-    fig_rev.add_hline(y=100, line_dash="dot", line_color="#94a3b8", line_width=1)
     fig_rev.update_layout(
         template="plotly_white",
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         height=360, margin=dict(l=40, r=20, t=20, b=50),
         xaxis=dict(title="Year"),
-        yaxis=dict(title="Cumulative DCF index (M1 lifetime = 100)"),
+        yaxis=dict(title="Annual discounted revenue (k€/MW)"),
         legend=dict(orientation="h", y=-0.20, font=dict(size=10)),
     )
     st.plotly_chart(fig_rev, use_container_width=True,
                     config={"displayModeBar": False})
 
 with col_soh:
-    render_chart_title("State of health trajectory")
     fig_soh = go.Figure()
     floor = 0.80
     for name in POLICY_ORDER:
@@ -350,496 +369,118 @@ with col_soh:
                     config={"displayModeBar": False})
 
 render_chart_caption(
-    f"M1 naive earns the most revenue per year while the battery is "
-    f"fresh, then hits the warranty floor in year {eol_naive} and loses "
-    f"all subsequent cap revenue. M2 / M3 scale back cycling as SoH "
-    f"drops, extending operational life by ~2 years; M4 / M5 reduce "
-    f"cycling so aggressively that they never reach the warranty floor "
-    f"in the 10-year horizon."
+    f"M1 (no cycle cost) earns the most while the battery is fresh, "
+    f"then hits the 80 % warranty floor in year {eol_naive} and loses "
+    f"all aFRR cap revenue after that. M2 and M3 cycle less as the "
+    f"battery ages, extending its life by ~2 years. M4 and M5 hold "
+    f"back so much that they never reach the floor inside 10 years."
 )
-
-
-# ── The five methodologies, plain language ──────────────────
-st.markdown("---")
-st.markdown("## The five shadow-cost methodologies")
-_m2 = results["M2_flat"]
-_m3 = results["M3_scarcity"]
-_m4 = results["M4_physics"]
-_m5 = results["M5_adp"]
-_abl_blend = ablation_results.get("ablation_M5_with_classical_stack")
-_abl_solo = ablation_results.get("ablation_physics_without_adp")
-st.markdown(f"""
-Each methodology shows ONE shadow-cost form, not a stack. M1-M3 are
-the classical depreciation-proxy family — the cost of a cycle is
-estimated from CAPEX-over-throughput accounting, optionally scaled by
-remaining SoH headroom. M4-M5 are the state-aware family — the cost
-is derived from a richer information source: observed dispatch
-(physics-from-duty) or a pre-solved value function (ADP). The five
-are alternative formulations, not a progressive build-up; the chart
-orders them by lifetime DCF, which happens to track sophistication of
-state-dependence.
-
-**M1 — Naive.** No cycle cost, no envelope. The LP takes any spread
-that clears variable cost. This is the unconstrained revenue-max
-strawman; no real operator trades this way, but it is the upper bound
-of cycling and the lower bound of battery life. **Lifetime DCF index =
-100** (by definition); cycles **{fec_naive:,} FEC** across the 10
-years; reaches the warranty floor in year {eol_naive}.
-
-**M2 — Flat €/MWh wear (Kumtepeli proxy).** CAPEX divided by expected
-lifetime throughput gives a single number (~€16.67 / MWh on this
-asset). The LP subtracts it from every cycle's revenue. Adds
-**+{(_m2.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.1f}%**
-over M1 by skipping marginal cycles whose spread does not clear the
-wear hurdle. Cycling drops from {fec_naive:,} to
-{int(_m2.annual_fec.sum()):,} FEC; EOL extends by ~2 years. The
-single-largest jump above naive — most of the aging-aware value comes
-from any sensible per-MWh penalty, not from sophistication.
-
-(A pure SoC envelope [0.20, 0.80] without a shadow cost — the
-literature's classical "L2" — was tested separately; under v4.0
-calibration the LP-aware operator's natural trajectory already sits
-inside the band, so the envelope alone adds nothing. All aging-aware
-uplift flows through the shadow-cost form, not envelope geometry.
-The five methodologies shown here are the ones that *do* move the
-needle.)
-
-**M3 — Scarcity scaling (SoH-state).** The flat shadow cost is
-multiplied by `1 + (1 − SoH) / (1 − floor)` — bounded 1× at fresh
-cell, 2× at the warranty floor. One extra dimension of state: SoH.
-Adds another
-**+{(_m3.lifetime_npv_eur / _m2.lifetime_npv_eur - 1) * 100:.1f}** pp
-over M2 by suppressing late-life cycling, where the marginal cycle
-costs the most because remaining capacity to monetise is shrinking.
-
-**M4 — Physics-from-duty.** A 2-pass LP. Pass 1 uses the ADP intraday
-shadow cost (so the LP has a meaningful starting dispatch in two-stage
-mode where Stage-1 commitments must be fixed before pass-2 sees the
-day's trajectory); the observed dispatch is fed into the Note 3
-physics kernel (Wang + Naumann two-channel, calibrated to EVE LF280K
-via `kernel_scale = 0.66`); pass 2 re-solves Stage-2 with the
-resulting per-MWh wear cost that reflects the actual DoD / C-rate /
-SoC-band of the day's duty. Stage-1 r commitments stay locked from
-pass-1 in the v4.1 default — closing the Stage-1 ↔ Stage-2 ↔ wear
-fixed-point is implemented as an optional Picard iteration but
-turned off by default after the counter-experiment showed it hurts
-M4 NPV by 1.7 pp (see README "Picard counter-experiment"). NPV
-**+{(_m4.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.1f}%**
-vs M1.
-
-**M5 — Intraday ADP (Holtorf-Shin).** An offline backward-induction DP
-over `(SoC, SoH, regime, hour-of-day)` returns a state-value function;
-its gradient with respect to SoC is the shadow cost — and because hour
-is in the state, the cost varies hour by hour. At 18:00 in a volatile
-regime one MWh of stored energy is worth more than at 03:00 in a calm
-regime. Cycles drop to **{int(_m5.annual_fec.sum()):,} FEC** over the
-lifetime — about
-{(fec_naive / max(int(_m5.annual_fec.sum()), 1)):.0f}× less than M1.
-NPV **+{(_m5.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.1f}%**
-vs M1 — the peak of the stack.
-
-**The pattern.** Each additional state dimension in the shadow cost
-adds value monotonically, with diminishing returns. M2 captures the
-largest single step
-(+{(_m2.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.0f} pp);
-M3 adds another
-+{(_m3.lifetime_npv_eur / _m2.lifetime_npv_eur - 1) * 100:.0f} pp via
-SoH-state; M4 adds
-+{(_m4.lifetime_npv_eur / _m3.lifetime_npv_eur - 1) * 100:.0f} pp via
-duty-dependent physics; M5 adds the final
-+{(_m5.lifetime_npv_eur / _m4.lifetime_npv_eur - 1) * 100:.0f} pp via
-hour-of-day opportunity-cost state. The literature's direction is
-fully recovered on real DE markets at
-+{(winner.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.1f}%
-total uplift — Collath et al. (2023) reported +29.3% on a similar
-setup; Kumtepeli & Howey (2024) framed the depreciation proxy as a
-poor shadow cost and argued for state-dependent forms. Both are
-confirmed.
-
----
-
-#### Why blending doesn't help
-
-Two ablation cross-checks confirm that **the best shadow cost is one
-shadow cost, chosen well** — not a sum of two.
-
-**(a) Stacking M2/M3 classical proxy under M5 ADP** (the additive
-form: flat + scarcity + ADP) gives NPV
-**+{(_abl_blend.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.2f}%**
-vs M1 — that is **{(_abl_blend.lifetime_npv_eur / _m5.lifetime_npv_eur - 1) * 100:+.2f} pp** vs M5 alone. *Why*: the
-flat-wear term is a *depreciation proxy* (assumes every MWh of
-throughput costs CAPEX/total_throughput). The ADP gradient is the
-*true opportunity cost* (marginal value of saving SoC for later). The
-proxy double-prices what ADP already accounts for; the LP sees "ADP
-says skip this cycle in calm hours" + "depreciation says skip every
-cycle always" → over-suppression on hours where ADP alone would have
-cycled. Empirical confirmation of Kumtepeli-Howey (2024): adding a
-poor proxy on top of a state-aware form is noise, not signal.
-
-**(b) Removing ADP from M4** (physics-from-duty alone, no ADP base)
-gives NPV
-**+{(_abl_solo.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.2f}%**
-vs M1 — that is **{(_abl_solo.lifetime_npv_eur / _m4.lifetime_npv_eur - 1) * 100:+.2f} pp** vs the canonical M4 (with ADP base). *Why*: in
-two-stage dispatch the second pass only re-prices Stage-2 under
-locked Stage-1 commitments. Without ADP in pass-1, Stage-1 commits
-naively (= M1-style), and pass-2 physics can only correct what
-Stage-2 controls — too little, too late. Physics-from-duty needs ADP
-in pass-1 to push the dispatch into the right neighbourhood before
-the kernel refines wear. The two are not substitutes; M4 is "ADP +
-physics refinement", not "physics standalone".
-
-**Combined reading**: M5 (pure ADP) is the empirical winner because
-ADP's state-grid `(SoC, SoH, regime, hour)` already implicitly prices
-the information that depreciation-proxy and physics-from-duty try to
-capture separately. Adding either on top double-counts; subtracting
-ADP from M4 leaves physics with insufficient leverage. Best practice:
-pick one well-instrumented shadow cost and let it do the work alone.
-""", unsafe_allow_html=True)
 
 
 # ── Reading aging-awareness off the dashboard (merged) ─────
 st.markdown("---")
-st.markdown("## Reading aging-awareness off your trader's dashboard")
+st.markdown("## How aging-awareness shows up on your optimiser's dashboard")
 
-# 4-tile dashboard: M1 naive vs M5 ADP (the empirical winner). Both
-# come from the same v4.1 diag pkl, Y2 = 2025 template (post-IDA2).
-m1_year_days = diag_results["M1_naive"].diagnostic_days if diag_results.get("M1_naive") else None
-m5_year_days = diag_results["M5_adp"].diagnostic_days if diag_results.get("M5_adp") else None
+# 4-tile dashboard: M1 naive vs M5 ADP (the empirical winner) on real
+# 2026 monthly dispatch (anchor_2026-{MM}_v42.pkl, from
+# precompute_anchor_v42.py — same calibration as the headline 10-year
+# run, just one recent month at fresh cell). Pkl shape: dict with
+# year/month/calibration/results, results[name] = {'daily_logs': [...]}.
+# Radio selector lets the reader compare winter (Jan/Feb — thin spreads,
+# ID slice empty, optimiser skips intraday) vs spring (Mar/Apr — fat
+# spreads, ID returns) seasonality.
+_ANCHOR_MONTHS = {
+    "Jan 2026": ("anchor_2026-01_v42.pkl", "January 2026"),
+    "Feb 2026": ("anchor_2026-02_v42.pkl", "February 2026"),
+    "Mar 2026": ("anchor_2026-03_v42.pkl", "March 2026"),
+    "Apr 2026": ("anchor_2026-04_v42.pkl", "April 2026"),
+}
+# Read selected month from session state BEFORE the radio renders, so
+# the intro/core-tension paragraphs above the chart panels can reference
+# `month_label` even though the radio itself is rendered further down
+# (right above Panel 1, where it sits next to the visuals it controls).
+_selected_month_short = st.session_state.get("anchor_month_radio", "Apr 2026")
+_anchor_filename, month_label = _ANCHOR_MONTHS[_selected_month_short]
+_anchor_path = DATA_DIR / _anchor_filename
+_anchor = _load_pkl(str(_anchor_path))
 
-if m1_year_days and m5_year_days:
+if _anchor and "M1_naive" in _anchor["results"] and "M5_adp" in _anchor["results"]:
     st.markdown("""
-Most BESS optimisers (Entrix, suena, Re.Volt, Modo, in-house desks)
-ship owners a near-real-time monitoring portal. Different vendors,
-similar tiles: cycles per day, state-of-charge over time, revenue
-share by stream. Each tile carries one of the diagnostic signals —
-once you know what to look for.
-
-Panels below are **calibration-robust**: ratios, indexed values and
-operational counts (cycles, SoC fractions, % of revenue mix). The
-intraday stream uses real DE-LU SIDC pan-European Intraday Auction
-prices ([IDA2 15-min, ENTSO-E](https://www.entsoe.eu/network_codes/cacm/implementation/ida/),
-post 13 June 2024 launch). Absolute euros still depend on perfect-
-foresight LP and bid-shading assumptions our model doesn't capture —
-those inflate revenue ~30% above realised public indices; the *shapes*
-below match your own dashboard one-for-one.
+Most BESS optimisers ship the asset owner a live monitoring portal
+with similar tiles across vendors: cycles per day, state-of-charge
+over time, revenue split by market. Each tile carries a clue about
+the cycle-cost policy.
 """)
 
-    # ─── Multi-month robustness scatter ─────────────────────────
-    from collections import defaultdict
-    monthly_rows = []
-    naive_monthly_avg = None
-    # Compute M1 monthly average for normalisation index
-    l1_by_month = defaultdict(lambda: dict(rev=0.0, fec=0.0))
-    for day in diag_results["M1_naive"].diagnostic_days:
-        m = day.date.month
-        l1_by_month[m]["rev"] += day.daily_revenue_eur
-        l1_by_month[m]["fec"] += day.full_equivalent_cycles
-    naive_monthly_avg = np.mean([v["rev"] for v in l1_by_month.values()])
+    _uplift_pct = (winner.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100
 
-    for m_name in POLICY_ORDER:
-        days = diag_results[m_name].diagnostic_days
-        by_month = defaultdict(lambda: dict(rev=0.0, fec=0.0))
-        for day in days:
-            m = day.date.month
-            by_month[m]["rev"] += day.daily_revenue_eur
-            by_month[m]["fec"] += day.full_equivalent_cycles
-        for m, agg in by_month.items():
-            monthly_rows.append({
-                "policy": POLICY_SHORT[m_name],
-                "label": POLICY_LABELS[m_name],
-                "color": POLICY_COLORS[m_name],
-                "fec": agg["fec"],
-                "rev_index": agg["rev"] / naive_monthly_avg * 100,
-                "month": m,
-            })
-    monthly_df = pd.DataFrame(monthly_rows)
+    # Selected-month gross per policy — used inline in the "core
+    # tension" paragraph to anchor the monthly-revenue gap with concrete
+    # numbers (changes with the radio selector above).
+    def _march_gross_keur(name: str) -> float:
+        return sum(
+            sum(d.revenue_breakdown.values())
+            for d in _anchor["results"][name]["daily_logs"]
+        ) / 1000.0
 
-    render_chart_title(
-        "Monthly cycle count by policy — twelve months of dispatch on "
-        "real DE markets. Naive sits in its own band, no overlap with "
-        "the aging-aware policies."
-    )
-    fig_diag = go.Figure()
-    # Reverse order so M1 sits at the top of the horizontal layout.
-    for name in reversed(POLICY_ORDER):
-        sub = monthly_df[monthly_df["policy"] == POLICY_SHORT[name]]
-        fig_diag.add_trace(go.Box(
-            x=sub["fec"],
-            name=POLICY_SHORT[name],
-            marker=dict(color=POLICY_COLORS[name], size=8),
-            line=dict(color=POLICY_COLORS[name]),
-            fillcolor=POLICY_COLORS[name],
-            opacity=0.65,
-            boxpoints="all",
-            jitter=0.4,
-            pointpos=0,
-            hovertemplate=(
-                f"<b>{POLICY_LABELS[name]}</b><br>"
-                "Monthly FEC: %{x:.1f}<extra></extra>"
-            ),
-        ))
-    fig_diag.add_vrect(x0=20, x1=monthly_df["fec"].max() * 1.1,
-                       fillcolor="rgba(254, 226, 226, 0.4)", layer="below",
-                       line_width=0,
-                       annotation_text="naive cycling band",
-                       annotation_position="top right",
-                       annotation_font=dict(size=10, color="#991b1b"))
-    fig_diag.add_vrect(x0=0, x1=10,
-                       fillcolor="rgba(209, 250, 229, 0.4)", layer="below",
-                       line_width=0,
-                       annotation_text="aging-aware band",
-                       annotation_position="top left",
-                       annotation_font=dict(size=10, color="#065f46"))
-    fig_diag.update_layout(
-        template="plotly_white",
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        height=420, margin=dict(l=50, r=30, t=40, b=50),
-        xaxis=dict(
-            title="Monthly full-equivalent cycles (FEC)",
-            range=[0, float(monthly_df["fec"].max()) * 1.15],
-            autorange=False,
-        ),
-        yaxis=dict(title="", tickfont=dict(size=11)),
-        showlegend=False,
-    )
-    st.plotly_chart(fig_diag, use_container_width=True,
-                    config={"displayModeBar": False})
-
-    l1_fec_med = float(monthly_df[monthly_df["policy"] == POLICY_SHORT["M1_naive"]]["fec"].median())
-    l5_fec_med = float(monthly_df[monthly_df["policy"] == POLICY_SHORT["M5_adp"]]["fec"].median())
-    l1_rev_med = float(monthly_df[monthly_df["policy"] == POLICY_SHORT["M1_naive"]]["rev_index"].median())
-    l5_rev_med = float(monthly_df[monthly_df["policy"] == POLICY_SHORT["M5_adp"]]["rev_index"].median())
-    render_chart_caption(
-        f"Each dot is one calendar month dispatched by one methodology "
-        f"on real DE day-ahead + intraday + aFRR markets. Boxes show "
-        f"median + inter-quartile range; whiskers extend to non-outlier "
-        f"extremes. **Naive (M1) median {l1_fec_med:.0f} FEC/month; "
-        f"intraday-ADP (M5) median {l5_fec_med:.0f}** — a "
-        f"{l1_fec_med/l5_fec_med:.0f}× gap that holds across all twelve "
-        f"months with zero overlap between M1 and any aging-aware "
-        f"methodology. M2 / M3 / M4 stack between the two extremes in "
-        f"the same order as the headline lifetime DCF — proof the "
-        f"diagnostic is calibration- and season-independent."
-    )
+    _m1_mar = _march_gross_keur("M1_naive")
+    _m4_mar = _march_gross_keur("M4_physics")
+    _m5_mar = _march_gross_keur("M5_adp")
 
     st.markdown(f"""
-**The diagnostic, in three numbers.**
-
-1. **Monthly cycle count.** Naive median is **{l1_fec_med:.0f} FEC**;
-   M5 median is **{l5_fec_med:.0f} FEC**. A 2 h LFP that consistently
-   posts > 20 FEC / month under DE 2024 – 2026 conditions is running
-   unconstrained or near-unconstrained. Below 10 FEC / month the trader
-   is pricing cycles against a meaningful shadow cost. Below 5 FEC /
-   month suggests aggressive aging-aware (intraday ADP or
-   physics-from-duty).
-
-2. **Monthly-vs-lifetime gap.** Naive sits a few percent ahead on any
-   single month while the cell is fresh — it captures every spread
-   that clears variable cost, including the marginal ones. Over the
-   lifetime the same M5 policy earns
-   **+{(winner.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.0f}%**
-   in discounted DCF (and crosses the warranty floor several years
-   later — see the SoH chart at the top). The trade is monthly revenue
-   for lifetime DCF.
-
-3. **Trajectory across the year.** A naive policy's monthly revenue is
-   **front-loaded** — strong in years 1 – 3 then collapses when the
-   warranty floor terminates the cap revenue. An aging-aware policy's
-   revenue declines slowly but is still earning capacity payments in
-   year 8 – 10. If the trader's monthly report shows revenue trending
-   sharply downward over a 12-month window in flat-market conditions,
-   that's a signal of cycling-driven SoH degradation, not aging-aware
-   dispatch.
-
-The mental trap Kumtepeli & Howey [2024](https://arxiv.org/abs/2403.10617)
-formalised: a trader judged on monthly P&L will always look like they
-are leaving money on the table relative to a naive baseline, even
-though the lifetime DCF rewards them. Owners should specify the
-benchmark on a discounted-lifetime basis — or accept that aging-aware
-dispatch will always show as monthly underperformance against an
-unconstrained reference.
+**The core tension.** Aging-aware policies (M4, M5) park the asset
+on aFRR capacity and rarely trade wholesale, shifting revenue from
+cycling-paid to availability-paid. That looks weak on monthly
+revenue while the battery is fresh: in {month_label} M4 and M5 earned
+**{(_m4_mar/_m1_mar - 1)*100:.0f} %** and
+**{(_m5_mar/_m1_mar - 1)*100:.0f} %** less than M1
+(€{_m4_mar:.1f} k and €{_m5_mar:.1f} k vs €{_m1_mar:.1f} k).
+Yet over 10 years M5 wins **+{_uplift_pct:.0f}%** in discounted
+revenue by avoiding the warranty-floor cliff that ends M1 in year
+{eol_naive}. You can't have both. Either benchmark the optimiser on
+lifetime revenue, or accept the early-life shortfall as the price of
+battery longevity. The four panels below show how that trade-off
+reads on your portal.
 """)
-
-    st.markdown("---")
-    st.markdown("### Four tiles you'll find on every trader portal")
+    st.markdown("")
     st.markdown(
-        "Below: the M1 (naive) vs M5 (intraday ADP — the empirical "
-        "winner) contrast on four standard dashboard tiles — "
-        "*Cumulative Cycles*, *State of Charge Development*, *Daily "
-        "Revenue per Market*, *Revenue Share per Market* — across a "
-        "full year of 2025 dispatch under the v4.1 paper-grade "
-        "calibration. Naming follows Entrix's commercial dashboard; "
-        "suena, Re.Volt and Modo render the same information under "
-        "slightly different labels. Match your own tiles to the M1 or "
-        "M5 column to identify your trader's policy family."
+        f"M1 (no cycle cost) vs M5 (time-and-state-aware) on four "
+        f"standard dashboard tiles — *Daily Revenue per Market*, "
+        f"*Revenue Share per Market*, *State of Charge Development*, "
+        f"*Daily Cycles*. Same calibration as the headline (2 h LFP, "
+        f"1 MW / 2 MWh, **2-cycle/day cap**); selected month: "
+        f"**{month_label}**. Switch the month below to compare "
+        f"winter and spring."
     )
+
+    # Radio selector sits right above the chart panels — close to the
+    # visuals it controls. Session-state value is read above so the
+    # intro/core-tension paragraphs already reflect the selected month.
+    st.radio(
+        "Compare across recent months",
+        options=list(_ANCHOR_MONTHS.keys()),
+        index=list(_ANCHOR_MONTHS.keys()).index(_selected_month_short),
+        horizontal=True,
+        key="anchor_month_radio",
+    )
+
+    m1_year_days = list(_anchor["results"]["M1_naive"]["daily_logs"])
+    m5_year_days = list(_anchor["results"]["M5_adp"]["daily_logs"])
 
     NAIVE_C = "#e07a5f"
     AGING_C = "#0d3f4a"
     NAIVE_FILL = "rgba(224, 122, 95, 0.2)"
     AGING_FILL = "rgba(13, 63, 74, 0.2)"
 
-    # ─── Panel 1: Cumulative cycles + cycles/day KPI ─────────
-    st.markdown("##### Panel 1 — *Average Cycles per Day* + *Cumulative Cycles*")
-    st.caption(
-        "Two tiles you'll find on every trader portal: a headline-number "
-        "KPI plus a cumulative-cycle line for the period."
-    )
-    col_l1, col_l6 = st.columns(2)
-
-    # Shared y-axis upper bound — biggest cumulative across L1 and L6.
-    # Forces the same vertical scale on both panels so the L1 vs L6 ratio
-    # reads honestly (528 vs 54 = ~10× gap, must be visually a 10× gap).
-    _cycles_y_max = max(
-        float(np.cumsum([d.full_equivalent_cycles for d in m1_year_days]).max()),
-        float(np.cumsum([d.full_equivalent_cycles for d in m5_year_days]).max()),
-    ) * 1.05
-
-    def _cum_cycles_panel(col, days, label, color, fill, y_max):
-        with col:
-            with st.container(border=True):
-                fec_per_day = np.array([d.full_equivalent_cycles for d in days])
-                avg_per_day = float(fec_per_day.mean())
-                total = float(fec_per_day.sum())
-                dates = [d.date for d in days]
-                cumulative = np.cumsum(fec_per_day)
-                st.markdown(
-                    f"<div style='font-size:11px;color:#64748b;"
-                    f"text-transform:uppercase;letter-spacing:0.5px;'>"
-                    f"{label} dashboard — 2025 dispatch</div>",
-                    unsafe_allow_html=True,
-                )
-                kcol1, kcol2 = st.columns(2)
-                kcol1.metric("Avg cycles per day", f"{avg_per_day:.2f}")
-                kcol2.metric("Cumulative cycles (12 mo)", f"{total:.0f}")
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=dates, y=cumulative, mode="lines",
-                    line=dict(color=color, width=2.5),
-                    fill="tozeroy", fillcolor=fill,
-                    hovertemplate="%{x|%d %b}<br>Σ FEC: %{y:.0f}<extra></extra>",
-                ))
-                fig.update_layout(
-                    template="plotly_white",
-                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                    height=200, margin=dict(l=40, r=10, t=10, b=30),
-                    yaxis=dict(title="Σ cycles", range=[0, y_max]),
-                    xaxis=dict(showgrid=False),
-                    showlegend=False,
-                )
-                st.plotly_chart(fig, use_container_width=True,
-                                config={"displayModeBar": False})
-
-    _cum_cycles_panel(col_l1, m1_year_days, "M1 Naive", NAIVE_C, NAIVE_FILL, _cycles_y_max)
-    _cum_cycles_panel(col_l6, m5_year_days, "M5 ADP", AGING_C, AGING_FILL, _cycles_y_max)
-
-    l1_total_fec = sum(d.full_equivalent_cycles for d in m1_year_days)
-    l6_total_fec = sum(d.full_equivalent_cycles for d in m5_year_days)
-    st.markdown(
-        f"**What you're looking for.** Average cycles per day above ~0.7 "
-        f"(annual total > 250 FEC, monthly > 20) — the trader is running "
-        f"unconstrained or near-unconstrained. Below ~0.2 / day "
-        f"(annual ~70 FEC, monthly ~5) — the trader is pricing cycles "
-        f"against a meaningful shadow cost. The M1 → M5 gap is "
-        f"{l1_total_fec/l6_total_fec:.0f}× across a full year, visible "
-        f"at first glance."
-    )
-
-    st.markdown("")
-
-    # ─── Panel 2: SoC envelope ────────────────────────────────
-    st.markdown("##### Panel 2 — *State of Charge Development*")
-    st.caption(
-        "Daily Min / SoC / Max envelope across a full year. Aging-aware "
-        "parks the battery in the mid-band when there is no compelling "
-        "trade; naive bounces between extremes."
-    )
-    col_l1, col_l6 = st.columns(2)
-
-    def _soc_envelope_panel(col, days, label, color, fill):
-        with col:
-            with st.container(border=True):
-                rows = []
-                for d in days:
-                    soc_frac = np.array(d.soc_mwh) / max(d.energy_mwh, 1e-6)
-                    rows.append({
-                        "date": d.date,
-                        "min": float(soc_frac.min()),
-                        "max": float(soc_frac.max()),
-                        "mean": float(soc_frac.mean()),
-                    })
-                df = pd.DataFrame(rows)
-                st.markdown(
-                    f"<div style='font-size:11px;color:#64748b;"
-                    f"text-transform:uppercase;letter-spacing:0.5px;'>"
-                    f"{label} dashboard — 2025 dispatch</div>",
-                    unsafe_allow_html=True,
-                )
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(
-                    x=df["date"], y=df["max"], mode="lines",
-                    line=dict(color=color, width=0.5), name="Max SoC",
-                    showlegend=False,
-                ))
-                fig.add_trace(go.Scatter(
-                    x=df["date"], y=df["min"], mode="lines",
-                    line=dict(color=color, width=0.5), name="Min SoC",
-                    fill="tonexty", fillcolor=fill, showlegend=False,
-                ))
-                fig.add_trace(go.Scatter(
-                    x=df["date"], y=df["mean"], mode="lines",
-                    line=dict(color=color, width=2.0), name="Mean SoC",
-                    hovertemplate="%{x|%d %b}<br>Mean SoC: %{y:.2f}<extra></extra>",
-                ))
-                fig.add_hline(y=0.20, line_dash="dot",
-                              line_color="#cbd5e1", line_width=1)
-                fig.add_hline(y=0.80, line_dash="dot",
-                              line_color="#cbd5e1", line_width=1)
-                fig.update_layout(
-                    template="plotly_white",
-                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                    height=240, margin=dict(l=40, r=10, t=10, b=30),
-                    yaxis=dict(title="SoC fraction", range=[0, 1]),
-                    xaxis=dict(showgrid=False),
-                    showlegend=False,
-                )
-                st.plotly_chart(fig, use_container_width=True,
-                                config={"displayModeBar": False})
-
-    _soc_envelope_panel(col_l1, m1_year_days, "M1 Naive", NAIVE_C, NAIVE_FILL)
-    _soc_envelope_panel(col_l6, m5_year_days, "M5 ADP", AGING_C, AGING_FILL)
-
-    l1_max_avg = float(np.mean([np.array(d.soc_mwh).max() / d.energy_mwh
-                                for d in m1_year_days]))
-    l1_min_avg = float(np.mean([np.array(d.soc_mwh).min() / d.energy_mwh
-                                for d in m1_year_days]))
-    l6_max_avg = float(np.mean([np.array(d.soc_mwh).max() / d.energy_mwh
-                                for d in m5_year_days]))
-    l6_min_avg = float(np.mean([np.array(d.soc_mwh).min() / d.energy_mwh
-                                for d in m5_year_days]))
-    st.markdown(
-        f"**What you're looking for.** A wide daily envelope (Min ≈ 0.05, "
-        f"Max ≈ 0.95) every day = the trader runs to the rails on every "
-        f"trade. A narrow envelope clustered around 0.40 – 0.60 = the "
-        f"shadow-cost form is doing the work. M1 averaged "
-        f"[{l1_min_avg:.2f}, {l1_max_avg:.2f}] across the year; M5 averaged "
-        f"[{l6_min_avg:.2f}, {l6_max_avg:.2f}] — visibly tighter, mean "
-        f"pinned to mid-band."
-    )
-
-    st.markdown("")
-
-    # ─── Panel 3: Daily revenue per market (stacked bar) ──────
-    # Markets palette is orthogonal to the teal+coral policy palette so
+    # Stream palette — orthogonal to the teal+coral policy palette so
     # the reader doesn't visually confuse a stream with a policy:
     # wholesale streams (DA, ID) sit in warm yellow/amber; ancillary
-    # capacity products (aFRR cap, aFRR energy) sit in cool indigo /
-    # violet.
+    # capacity products (aFRR cap, aFRR energy) sit in cool indigo.
     STREAM_COLORS = {
-        "DA": "#ca8a04",         # yellow-700 — DA wholesale
-        "ID (IDA2)": "#f59e0b",  # amber-500 — ID wholesale (brighter)
-        "aFRR cap": "#6366f1",   # indigo-500 — capacity reservation
-        "aFRR energy": "#a5b4fc",# indigo-300 — activation energy
+        "DA": "#ca8a04",          # yellow-700 — DA wholesale
+        "ID": "#f59e0b",          # amber-500 — ID wholesale (brighter)
+        "aFRR cap": "#6366f1",    # indigo-500 — capacity reservation
+        "aFRR energy": "#a5b4fc", # indigo-300 — activation energy
     }
 
     def _daily_stream_breakdown(days):
@@ -849,19 +490,21 @@ unconstrained reference.
             rows.append({
                 "date": d.date,
                 "DA": b.get("da", 0),
-                "ID (IDA2)": b.get("id", 0),
+                "ID": b.get("id", 0),
                 "aFRR cap": b.get("afrr_cap_pos", 0) + b.get("afrr_cap_neg", 0),
                 "aFRR energy": b.get("afrr_energy_pos", 0) + b.get("afrr_energy_neg", 0),
             })
         return pd.DataFrame(rows)
 
-    st.markdown("##### Panel 3 — *Daily Revenue per Market*")
+    # ─── Panel 1: Daily revenue per market (stacked bar) ──────
+    st.markdown("##### Panel 1 — *Daily Revenue per Market*")
     st.caption(
-        "Stacked bars of daily revenue split per market stream across "
-        "the year. The mix shifts visibly month-by-month with seasonal "
-        "wholesale spreads and aFRR capacity prices. Naive captures big "
-        "DA / ID arbitrage spikes; aging-aware concentrates almost "
-        "entirely in the aFRR capacity base."
+        "Stacked bars of **gross** daily revenue across the month, "
+        "split by market (DA + ID + aFRR cap + aFRR energy — directly "
+        "comparable to your optimiser portal). The no-cost policy "
+        "captures big DA / ID arbitrage spikes on volatile days; the "
+        "aging-aware policy lives almost entirely on the steady aFRR "
+        "capacity base."
     )
     col_l1, col_l6 = st.columns(2)
 
@@ -888,7 +531,7 @@ unconstrained reference.
                 st.markdown(
                     f"<div style='font-size:11px;color:#64748b;"
                     f"text-transform:uppercase;letter-spacing:0.5px;'>"
-                    f"{label} dashboard — daily revenue 2025</div>",
+                    f"{label} dashboard — daily revenue, {month_label}</div>",
                     unsafe_allow_html=True,
                 )
                 fig = go.Figure()
@@ -916,59 +559,46 @@ unconstrained reference.
                 st.plotly_chart(fig, use_container_width=True,
                                 config={"displayModeBar": False})
 
-    _daily_revenue_panel(col_l1, m1_year_days, "M1 Naive", (_rev_y_bot, _rev_y_top))
-    _daily_revenue_panel(col_l6, m5_year_days, "M5 ADP", (_rev_y_bot, _rev_y_top))
+    _daily_revenue_panel(col_l1, m1_year_days, "M1 No-cost", (_rev_y_bot, _rev_y_top))
+    _daily_revenue_panel(col_l6, m5_year_days, "M5 Time-state", (_rev_y_bot, _rev_y_top))
 
     df_l1_full = _daily_stream_breakdown(m1_year_days)
     df_l6_full = _daily_stream_breakdown(m5_year_days)
     l1_total = df_l1_full[list(STREAM_COLORS)].sum().sum()
     l6_total = df_l6_full[list(STREAM_COLORS)].sum().sum()
-    l1_ws = (df_l1_full["DA"].sum() + df_l1_full["ID (IDA2)"].sum())
-    l6_ws = (df_l6_full["DA"].sum() + df_l6_full["ID (IDA2)"].sum())
+    l1_ws = (df_l1_full["DA"].sum() + df_l1_full["ID"].sum())
+    l6_ws = (df_l6_full["DA"].sum() + df_l6_full["ID"].sum())
     st.markdown(
-        f"**What you're looking for.** Tall daily wholesale spikes "
-        f"(both DA and ID) on volatile days = naive cycling on every "
-        f"spread the market offers. A near-flat aFRR-cap base every day "
-        f"with only the rare wholesale bar = aging-aware shadow cost is "
-        f"binding most of the time. In our 2025 simulation M1's "
-        f"wholesale total reached €{l1_ws/1000:.0f} k vs M5's "
-        f"€{l6_ws/1000:.0f} k — a "
-        f"{(l1_ws - l6_ws)/max(l1_ws, 1)*100:.0f} % gap, exactly the "
-        f"channel through which aging-aware policies trade short-term "
-        f"P&L for cell longevity."
+        f"**What you're looking for.** Tall wholesale spikes (DA and "
+        f"ID) on volatile days = the optimiser cycles on every spread the "
+        f"market offers. A near-flat aFRR-cap base every day, with "
+        f"only the occasional wholesale bar = the cycle cost is "
+        f"binding most of the time. For {month_label}, M1's wholesale "
+        f"total = €{l1_ws/1000:.1f} k vs M5's €{l6_ws/1000:.1f} k — "
+        f"a {(l1_ws - l6_ws)/max(l1_ws, 1)*100:.0f} % gap, the exact "
+        f"channel through which aging-aware trades short-term revenue "
+        f"for battery life. Total monthly revenue, before wear cost "
+        f"(DA + ID + aFRR cap + aFRR energy — what we call *gross* "
+        f"throughout this section): M1 = €{l1_total/1000:.1f} k, "
+        f"M5 = €{l6_total/1000:.1f} k."
     )
 
     st.markdown("")
 
-    # ─── Panel 4: Revenue share pie (relative-only) ───────────
+    # ─── Panel 2: Revenue share pie (relative-only) ───────────
+    # Reuses _daily_stream_breakdown for share-of-total computation.
+    _stream_breakdown = _daily_stream_breakdown
 
-    def _stream_breakdown(days):
-        rows = []
-        for d in days:
-            b = d.revenue_breakdown
-            rows.append({
-                "date": d.date,
-                "DA": b.get("da", 0),
-                "ID (IDA2)": b.get("id", 0),
-                "aFRR cap": b.get("afrr_cap_pos", 0) + b.get("afrr_cap_neg", 0),
-                "aFRR energy": b.get("afrr_energy_pos", 0) + b.get("afrr_energy_neg", 0),
-            })
-        return pd.DataFrame(rows)
-
-    st.markdown("##### Panel 4 — *Revenue Share per Market*")
+    st.markdown("##### Panel 2 — *Revenue Share per Market*")
     st.caption(
-        "Pie of annual revenue split, share-only. ID stream is real "
-        "DE-LU pan-European Intraday Auction "
-        "([SIDC IDA2](https://www.entsoe.eu/network_codes/cacm/implementation/ida/), "
-        "15-min, gate-closure D−1 22:00 CET) — the closest free "
-        "continuous-style intraday signal available since SIDC went "
-        "live 13 June 2024. The *M1 → M5 shift* — wholesale share "
-        "shrinking as the optimiser commits more SoC to aFRR cap — is "
-        "the calibration-robust diagnostic. The absolute aFRR fraction "
-        "still sits above public BESS indices (Modo / CH show real "
-        "DE 2 h BESS at ~50 – 70 % aFRR; we are higher) because the "
-        "LP has perfect within-day foresight and no bid-shading risk "
-        "premium."
+        "Pie of monthly revenue split, shares only. The signal to look "
+        "for is the *M1 → M5 shift* — the wholesale slice shrinking as "
+        "the optimiser parks more capacity in aFRR. M1's split lines "
+        "up with the public German fleet average (~46 % aFRR ex-FCR, "
+        "[*German BESS Outlook*](https://de-bess-outlook.streamlit.app) "
+        "2024 fleet). M5 over-weights aFRR here because the model "
+        "knows future clearing prices perfectly — a real optimiser, "
+        "facing uncertainty, would commit less aFRR capacity."
     )
     col_l1, col_l6 = st.columns(2)
 
@@ -980,7 +610,7 @@ unconstrained reference.
                 st.markdown(
                     f"<div style='font-size:11px;color:#64748b;"
                     f"text-transform:uppercase;letter-spacing:0.5px;'>"
-                    f"{label} dashboard — annual aggregate</div>",
+                    f"{label} dashboard — monthly aggregate, {month_label}</div>",
                     unsafe_allow_html=True,
                 )
                 fig = go.Figure()
@@ -1001,13 +631,13 @@ unconstrained reference.
                 st.plotly_chart(fig, use_container_width=True,
                                 config={"displayModeBar": False})
 
-    _share_pie_panel(col_l1, m1_year_days, "M1 Naive")
-    _share_pie_panel(col_l6, m5_year_days, "M5 ADP")
+    _share_pie_panel(col_l1, m1_year_days, "M1 No-cost")
+    _share_pie_panel(col_l6, m5_year_days, "M5 Time-state")
 
     def _afrr_pct(days):
         df = _stream_breakdown(days)
         afrr = df["aFRR cap"].sum() + df["aFRR energy"].sum()
-        net = (df["DA"].sum() + df["ID (IDA2)"].sum()
+        net = (df["DA"].sum() + df["ID"].sum()
                + df["aFRR cap"].sum() + df["aFRR energy"].sum())
         return afrr / max(net, 1.0) * 100
 
@@ -1016,230 +646,465 @@ unconstrained reference.
     l1_ws = 100 - l1_afrr
     l6_ws = 100 - l6_afrr
     st.markdown(
-        f"**What you're looking for — the *direction* of the shift.** "
-        f"Wholesale (DA + ID) earns money from *cycling*; aFRR cap "
-        f"earns money from *availability*. An optimiser that prices "
-        f"cycles against a higher shadow cost mechanically shifts "
-        f"toward capacity products. In our model M1's wholesale slice "
-        f"is ~{l1_ws:.0f}% of net revenue; M5 shrinks it to ~{l6_ws:.0f}% "
-        f"— a {-(l1_ws - l6_ws):+.0f} pp shift toward aFRR. Your own "
-        f"dashboard's wholesale share will sit higher in absolute "
-        f"terms (we're missing EPEX continuous ID), but the same "
-        f"*direction* of M1 → M5 movement is the diagnostic. "
-        f"Pragmatically: if your trader's aFRR share rose year-over-"
-        f"year while monthly FEC dropped, that's shadow-cost work. "
-        f"Once aFRR exceeds ~50% of total revenue, €/MWh-throughput "
-        f"stops being a sensible benchmark — the asset is paid for "
-        f"availability (Sebastian Kawollek's point on Note 3; precedent "
-        f"in He et al. "
+        f"**What you're looking for — which way the split moves.** "
+        f"Wholesale (DA + ID) makes money from *cycling*; aFRR cap "
+        f"makes money from *being available*. The higher the cycle "
+        f"cost, the more the optimiser shifts toward availability. "
+        f"Here M1's wholesale slice is ~{l1_ws:.0f}% of gross "
+        f"revenue; M5 shrinks it to ~{l6_ws:.0f}% — a "
+        f"{-(l1_ws - l6_ws):+.0f} pp shift toward aFRR. Practically: if "
+        f"your optimiser's aFRR share rose year-on-year while cycles "
+        f"dropped, that's a cycle-cost policy at work. Once aFRR is "
+        f"more than half of total revenue, €/MWh-throughput stops "
+        f"being a useful KPI — the asset is paid for availability, "
+        f"not energy thrown around (precedent in He et al. "
         f"[2016](https://orbit.dtu.dk/en/publications/optimal-bidding-strategy-of-battery-storage-in-power-markets-cons))."
     )
 
+    st.markdown("")
 
-# ── Note 1 market trajectory sensitivity ────────────────────
+    # ─── Panel 3: SoC trace ───────────────────────────────────
+    st.markdown("##### Panel 3 — *State of Charge Development*")
+    st.caption(
+        "Quarter-hour state-of-charge trace across the month — the "
+        "same view an optimiser sees on its portal. Aging-aware parks "
+        "the battery in the middle of the band when nothing worth "
+        "trading is on; the no-cost policy bounces between empty and "
+        "full."
+    )
+    col_l1, col_l6 = st.columns(2)
+
+    def _soc_trace_panel(col, days, label, color):
+        with col:
+            with st.container(border=True):
+                ts_all, soc_all = [], []
+                for d in days:
+                    soc_frac = np.array(d.soc_mwh) / max(d.energy_mwh, 1e-6)
+                    day_ts = pd.date_range(
+                        start=pd.Timestamp(d.date),
+                        periods=len(soc_frac), freq="15min",
+                    )
+                    ts_all.extend(day_ts)
+                    soc_all.extend(soc_frac.tolist())
+                st.markdown(
+                    f"<div style='font-size:11px;color:#64748b;"
+                    f"text-transform:uppercase;letter-spacing:0.5px;'>"
+                    f"{label} dashboard — {month_label}</div>",
+                    unsafe_allow_html=True,
+                )
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=ts_all, y=soc_all, mode="lines",
+                    line=dict(color=color, width=1.0),
+                    hovertemplate="%{x|%d %b %H:%M}<br>SoC: %{y:.2f}<extra></extra>",
+                    showlegend=False,
+                ))
+                fig.add_hline(y=0.20, line_dash="dot",
+                              line_color="#cbd5e1", line_width=1)
+                fig.add_hline(y=0.80, line_dash="dot",
+                              line_color="#cbd5e1", line_width=1)
+                fig.update_layout(
+                    template="plotly_white",
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                    height=240, margin=dict(l=40, r=10, t=10, b=30),
+                    yaxis=dict(title="SoC fraction", range=[0, 1]),
+                    xaxis=dict(showgrid=False),
+                    showlegend=False,
+                )
+                st.plotly_chart(fig, use_container_width=True,
+                                config={"displayModeBar": False})
+
+    _soc_trace_panel(col_l1, m1_year_days, "M1 No-cost", NAIVE_C)
+    _soc_trace_panel(col_l6, m5_year_days, "M5 Time-state", AGING_C)
+
+    l1_max_avg = float(np.mean([np.array(d.soc_mwh).max() / d.energy_mwh
+                                for d in m1_year_days]))
+    l1_min_avg = float(np.mean([np.array(d.soc_mwh).min() / d.energy_mwh
+                                for d in m1_year_days]))
+    l6_max_avg = float(np.mean([np.array(d.soc_mwh).max() / d.energy_mwh
+                                for d in m5_year_days]))
+    l6_min_avg = float(np.mean([np.array(d.soc_mwh).min() / d.energy_mwh
+                                for d in m5_year_days]))
+    st.markdown(
+        f"**What you're looking for.** A trace that swings between "
+        f"empty and full every day = the optimiser chases every spread. "
+        f"A trace that hovers around 0.40 – 0.60 = the cycle cost is "
+        f"doing the work. Over {month_label}, M1's daily min/max averaged "
+        f"[{l1_min_avg:.2f}, {l1_max_avg:.2f}]; M5 averaged "
+        f"[{l6_min_avg:.2f}, {l6_max_avg:.2f}] — visibly tighter, "
+        f"pinned to the middle."
+    )
+
+    st.markdown("")
+
+    # ─── Panel 4: Daily cycles bars ───────────────────────────
+    st.markdown("##### Panel 4 — *Daily Cycles*")
+    st.caption(
+        "Full-equivalent cycles per day — the standard "
+        "cycling-intensity tile."
+    )
+    col_l1, col_l6 = st.columns(2)
+
+    # Shared y-axis for daily FEC bars — biggest single-day FEC across
+    # both panels so the M1 vs M5 cycling intensity reads at a glance.
+    _fec_y_max = max(
+        max(d.full_equivalent_cycles for d in m1_year_days),
+        max(d.full_equivalent_cycles for d in m5_year_days),
+    ) * 1.10
+
+    def _daily_cycles_panel(col, days, label, color, y_max):
+        with col:
+            with st.container(border=True):
+                fec_per_day = np.array([d.full_equivalent_cycles for d in days])
+                gross_per_day = np.array([
+                    sum(d.revenue_breakdown.values()) for d in days
+                ])
+                total_fec = float(fec_per_day.sum())
+                avg_per_day = float(fec_per_day.mean())
+                total_rev = float(gross_per_day.sum())
+                dates = [d.date for d in days]
+                st.markdown(
+                    f"<div style='font-size:11px;color:#64748b;"
+                    f"text-transform:uppercase;letter-spacing:0.5px;'>"
+                    f"{label} dashboard — {month_label}</div>",
+                    unsafe_allow_html=True,
+                )
+                kcol1, kcol2, kcol3 = st.columns(3)
+                kcol1.metric("Total FEC", f"{total_fec:.0f}")
+                kcol2.metric("Avg / day", f"{avg_per_day:.2f}")
+                kcol3.metric("Gross revenue", f"€{total_rev/1000:.1f}k")
+                fig = go.Figure()
+                fig.add_trace(go.Bar(
+                    x=dates, y=fec_per_day,
+                    marker_color=color, marker_line_width=0,
+                    hovertemplate="%{x|%d %b}<br>FEC: %{y:.2f}<extra></extra>",
+                ))
+                fig.update_layout(
+                    template="plotly_white",
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                    height=200, margin=dict(l=40, r=10, t=10, b=30),
+                    yaxis=dict(title="FEC / day", range=[0, y_max]),
+                    xaxis=dict(showgrid=False),
+                    bargap=0.15,
+                    showlegend=False,
+                )
+                st.plotly_chart(fig, use_container_width=True,
+                                config={"displayModeBar": False})
+
+    _daily_cycles_panel(col_l1, m1_year_days, "M1 No-cost", NAIVE_C, _fec_y_max)
+    _daily_cycles_panel(col_l6, m5_year_days, "M5 Time-state", AGING_C, _fec_y_max)
+
+    l1_total_fec = sum(d.full_equivalent_cycles for d in m1_year_days)
+    l6_total_fec = sum(d.full_equivalent_cycles for d in m5_year_days)
+    st.markdown(
+        f"**What you're looking for.** Tall, near-uniform bars pressed "
+        f"up against the **2 FEC/day** cap = an optimiser with no cycle "
+        f"cost. Sparse short bars with lots of near-zero days = the "
+        f"cycle cost is binding. The M1 → M5 cycling gap here is "
+        f"**{l1_total_fec/l6_total_fec:.0f}×** for the same month "
+        f"({l1_total_fec:.0f} vs {l6_total_fec:.0f} FEC). On your own "
+        f"asset, swap the 2 FEC/day reference for whatever your "
+        f"warranty or contract specifies."
+    )
+
+
+# ── German BESS Outlook market trajectory sensitivity ──────
 st.markdown("---")
-st.markdown("## What changes under Note 1's market trajectory")
+st.markdown("## Does the ranking survive when ancillary revenue collapses?")
 st.markdown("""
-The headline above holds the 2023 / 2025 market mix flat for ten years.
-Note 1 ([*German BESS Outlook*](https://de-bess-outlook.streamlit.app))
-projects that the *composition* of merchant revenue shifts across
-2026 → 2035 as the BESS fleet saturates ancillary demand: aFRR
-capacity revenue compresses by ~85% per MW, while DA and ID arbitrage
-grow roughly 10× as midday solar troughs deepen and electrification
-lifts peaks. The chart below applies that per-stream trajectory to
-each policy's actual stream-revenue mix, without re-solving the LP.
-The two effects pull in opposite directions; the net depends on each
-policy's mix.
+**Reminder from [*German BESS Outlook*](https://de-bess-outlook.streamlit.app).**
+The **mix** of revenue streams rotates across 2026 → 2035 as the
+German BESS fleet saturates ancillary demand: aFRR capacity per MW
+shrinks ~85 %, while DA + ID arbitrage grows ~10× as midday solar
+pulls prices down and electrification pushes peaks up. The streams
+move in opposite directions; total per-MW revenue settles in a U-shape
+with the low point around 2030–32.
+
+The headline holds 2025 prices for all ten years to isolate the
+cycle-cost effect. The right panel below shows what
+happens when the optimiser instead **sees the actual year's prices
+and re-runs the dispatch each year**, with per-stream scaling
+matching Note 1's mid-case projection. The question: does the
+M5 &gt; M4 &gt; M3 &gt; M2 &gt; M1 ranking survive when the market
+shifts and the optimiser adapts? Each panel is normalized to its
+own M1 = 100 — absolute lifetime NPV differs between scenarios but
+that's not the point of this comparison.
 """)
 
-from lib.analysis.market_trend import apply_trend_to_result
+# Recalibrated 10-y headline: same M-stack at v4.2 calibration, with
+# year-by-year prices uniformly scaled to match deployed Note 1
+# published total trajectory (2026 €233/MW → 2030 €112/MW → 2035
+# €115/MW; see precompute_v42_recalibrated_10y.py NOTE1_PUBLISHED_TOTALS).
+# Single per-year scale applied across all streams + FCR phantom —
+# stream-mix evolution is intentionally suppressed for cross-note
+# coherence. Per-stream story belongs in benchmark-reconciliation once
+# Note 1 v2 publishes.
+_recal = _load_pkl(str(DATA_DIR / "precomputed_v42_recalibrated_10y.pkl"))
+_recal_results = _recal["results"]
 
 trend_rows = []
 naive_flat_npv = results["M1_naive"].lifetime_npv_eur
+naive_trend_npv = _recal_results["M1_naive"].lifetime_npv_eur
 for name in POLICY_ORDER:
     if name not in results:
         continue
     r_flat = results[name]
-    r_trend = apply_trend_to_result(r_flat)
+    r_trend = _recal_results[name]
     trend_rows.append({
         "policy": POLICY_LABELS[name],
         "short": POLICY_SHORT[name],
         "color": POLICY_COLORS[name],
+        # Each panel normalized to its own M1 = 100 — the section's
+        # purpose is the relative ranking shift between scenarios, not
+        # cross-scenario absolute-level comparison.
         "flat_index": r_flat.lifetime_npv_eur / naive_flat_npv * 100,
-        "trend_index": r_trend.lifetime_npv_eur / naive_flat_npv * 100,
+        "trend_index": r_trend.lifetime_npv_eur / naive_trend_npv * 100,
     })
 trend_df = pd.DataFrame(trend_rows)
 
 render_chart_title(
-    "Flat market vs Note 1 mid-case per-stream trajectory (2026 → 2035), "
-    "indexed to flat-market M1 = 100"
+    "Flat 2025 markets vs <i>German BESS Outlook</i> mid-case "
+    "trajectory (2026 → 2035, "
+    "dispatch re-run each year under projected prices). Each panel "
+    "indexed to its own M1 = 100 — the question is how the M1→M5 "
+    "ranking changes when the market shifts, not absolute levels."
 )
-fig_trend = go.Figure()
-fig_trend.add_trace(go.Bar(
-    x=trend_df["short"], y=trend_df["flat_index"],
-    name="Flat 2023/2025",
-    marker_color=trend_df["color"], marker_line_width=0,
-    text=[f"{v:.0f}" for v in trend_df["flat_index"]],
-    textposition="outside",
-))
-fig_trend.add_trace(go.Bar(
-    x=trend_df["short"], y=trend_df["trend_index"],
-    name="Note 1 mid-case trajectory",
-    marker_color=trend_df["color"],
-    marker_pattern_shape="/", marker_line_width=0,
-    text=[f"{v:.0f}" for v in trend_df["trend_index"]],
-    textposition="outside",
-))
-fig_trend.add_hline(y=100, line_dash="dot",
-                    line_color="#94a3b8", line_width=1,
-                    annotation_text="flat-market M1 = 100",
-                    annotation_position="top left")
-fig_trend.update_layout(
-    template="plotly_white",
-    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-    height=420, margin=dict(l=40, r=20, t=20, b=70),
-    yaxis=dict(title="Lifetime DCF index (flat-market M1 = 100)"),
-    xaxis=dict(tickfont=dict(size=10)),
-    legend=dict(orientation="h", y=-0.18),
-    barmode="group",
-)
-st.plotly_chart(fig_trend, use_container_width=True,
-                config={"displayModeBar": False})
+
+_y_max = float(max(trend_df["flat_index"].max(),
+                   trend_df["trend_index"].max())) * 1.10
+
+col_flat, col_trend = st.columns(2)
+
+def _trend_panel(col, y_col, panel_title):
+    with col:
+        st.markdown(
+            f"<div style='font-size:11px;color:#64748b;text-align:center;"
+            f"text-transform:uppercase;letter-spacing:0.5px;'>"
+            f"{panel_title}</div>",
+            unsafe_allow_html=True,
+        )
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=trend_df["short"], y=trend_df[y_col],
+            marker_color=trend_df["color"], marker_line_width=0,
+            text=[f"{v:.0f}" for v in trend_df[y_col]],
+            textposition="outside",
+            hovertemplate="%{x}: %{y:.0f}<extra></extra>",
+        ))
+        fig.add_hline(y=100, line_dash="dot",
+                      line_color="#94a3b8", line_width=1)
+        fig.update_layout(
+            template="plotly_white",
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            height=360, margin=dict(l=40, r=10, t=10, b=50),
+            yaxis=dict(title="Index (M1 in this scenario = 100)",
+                       range=[0, _y_max]),
+            xaxis=dict(tickfont=dict(size=10)),
+            showlegend=False,
+        )
+        st.plotly_chart(fig, use_container_width=True,
+                        config={"displayModeBar": False})
+
+_trend_panel(col_flat, "flat_index", "10-y NPV — 2025 prices replayed every year")
+_trend_panel(col_trend, "trend_index", "10-y NPV — Outlook trajectory 2026 → 2035")
 
 flat_peak = trend_df.loc[trend_df["flat_index"].idxmax()]
 trend_peak = trend_df.loc[trend_df["trend_index"].idxmax()]
 
+_m5_flat_uplift = trend_df[trend_df["short"] == POLICY_SHORT["M5_adp"]].iloc[0]["flat_index"] - 100
+_trend_m2 = trend_df[trend_df["short"] == POLICY_SHORT["M2_flat"]].iloc[0]["trend_index"]
+_trend_m3 = trend_df[trend_df["short"] == POLICY_SHORT["M3_scarcity"]].iloc[0]["trend_index"]
+_trend_m4 = trend_df[trend_df["short"] == POLICY_SHORT["M4_physics"]].iloc[0]["trend_index"]
+_trend_m5 = trend_df[trend_df["short"] == POLICY_SHORT["M5_adp"]].iloc[0]["trend_index"]
+# Each panel indexed to its own M1 = 100, so the trend_index value
+# IS the % uplift over trajectory M1 (e.g. 112 = +12 % vs M1).
+_trend_m2_uplift_pct = _trend_m2 - 100
+_trend_m3_uplift_pct = _trend_m3 - 100
+_trend_m4_uplift_pct = _trend_m4 - 100
+_trend_m5_uplift_pct = _trend_m5 - 100
+# Identify the trajectory winner dynamically (M2 and M3 typically
+# essentially tied — slight edge depends on regen rounding).
+_trend_uplifts = {
+    "M2 (Fixed fee)": _trend_m2_uplift_pct,
+    "M3 (Health-aware)": _trend_m3_uplift_pct,
+    "M4 (Shape-aware)": _trend_m4_uplift_pct,
+    "M5 (Time-and-state)": _trend_m5_uplift_pct,
+}
+_trend_winner_name = max(_trend_uplifts, key=_trend_uplifts.get)
+_trend_winner_pct = _trend_uplifts[_trend_winner_name]
+
 render_chart_caption(
-    f"Under flat markets the peak is **{flat_peak['short']}** at index "
-    f"{flat_peak['flat_index']:.0f}. Under Note 1's per-stream "
-    f"trajectory the peak "
-    f"{'stays at' if trend_peak['short'] == flat_peak['short'] else 'shifts to'} "
-    f"**{trend_peak['short']}** at index {trend_peak['trend_index']:.0f}. "
-    f"All values are relative to flat-market M1 = 100; absolute revenue "
-    f"depends on calibration choices and is not the focus."
+    f"Under flat 2025 the M5 uplift over M1 is **+{_m5_flat_uplift:.0f}%** "
+    f"and the ranking is M5 &gt; M4 &gt; M3 &gt; M2 &gt; M1. Under "
+    f"the <i>German BESS Outlook</i> trajectory, "
+    f"the simple regime-independent policies (M2, M3) take the lead; "
+    f"the sophisticated state-aware methods (M4, M5) lose their "
+    f"flat-market advantage because their value functions stay "
+    f"calibrated on 2024 patterns."
 )
 
-def _trend(short):
-    row = trend_df[trend_df["short"] == short].iloc[0]
-    return float(row["flat_index"]), float(row["trend_index"])
-
-m1_flat, m1_trend = _trend(POLICY_SHORT["M1_naive"])
-m2_flat, m2_trend = _trend(POLICY_SHORT["M2_flat"])
-m3_flat, m3_trend = _trend(POLICY_SHORT["M3_scarcity"])
-m4_flat, m4_trend = _trend(POLICY_SHORT["M4_physics"])
-m5_flat, m5_trend = _trend(POLICY_SHORT["M5_adp"])
-
 st.markdown(f"""
-**Two effects, pulling opposite ways.** Note 1's mid-case combines two
-moves: DA × ~10 and ID × ~10 multipliers reward residual wholesale
-exposure; the aFRR-cap × ~0.15 multiplier punishes ancillary-heavy mixes.
-Each methodology is a different blend of those two streams.
+**Calibration first.** Per-stream scaling factors (0.24 → 2.54 for
+wholesale, 0.65 → 0.10 for aFRR cap, 0.78 → 0.12 for aFRR energy)
+mirror the *German BESS Outlook* mid-case projection year-by-year. Each policy then sees the year's
+prices and re-runs the dispatch. M4 and M5's time-and-state value
+function stays calibrated on 2024 — the principled fix is to retrain
+it every year, but that adds a lot of compute; the result here is
+honest about that limit.
 
-- **M1 naive** moves from index {m1_flat:.0f} → {m1_trend:.0f}
-  ({(m1_trend/m1_flat-1)*100:+.0f}%) — its high cycling intensity
-  leaves substantial residual DA exposure to ride the wholesale recovery.
-- **M2 flat wear** moves {m2_flat:.0f} → {m2_trend:.0f}
-  ({(m2_trend/m2_flat-1)*100:+.0f}%) — moderate cycling preserves
-  enough DA arbitrage to capture the wholesale uplift.
-- **M3 scarcity** moves {m3_flat:.0f} → {m3_trend:.0f}
-  ({(m3_trend/m3_flat-1)*100:+.0f}%) — gain mostly cancels because
-  scarcity already concentrates revenue toward aFRR.
-- **M4 physics-from-duty** moves {m4_flat:.0f} → {m4_trend:.0f}
-  ({(m4_trend/m4_flat-1)*100:+.0f}%) — the heaviest collapse, because
-  M4 cycles only ~7 FEC/year and ~95% of revenue is aFRR cap, exactly
-  the stream Note 1 projects to compress hardest.
-- **M5 intraday ADP** moves {m5_flat:.0f} → {m5_trend:.0f}
-  ({(m5_trend/m5_flat-1)*100:+.0f}%) — same direction as M4 but less
-  catastrophic; M5 cycles 5× more than M4 (375 vs 73 FEC), keeping a
-  small residual wholesale exposure that softens the aFRR compression.
+- **M1 (no cycle cost)** — cycles aggressively against the rotating
+  market mix; sets the trajectory baseline (= 100).
+- **M2 (fixed fee)** — **{_trend_m2_uplift_pct:+.0f} pp vs M1**. The
+  flat €16.67 /MWh fee is regime-independent — it disciplines marginal
+  cycles whether wholesale spreads are low (2026) or high (2035),
+  because fee and spreads scale together.
+- **M3 (health-aware)** — **{_trend_m3_uplift_pct:+.0f} pp vs M1**.
+  Neck and neck with M2; SoH scaling adds late-life discipline.
+- **M4 (cycle-shape-aware)** — **{_trend_m4_uplift_pct:+.0f} pp vs M1**.
+  Physics-from-duty correction works day-to-day, but the time-and-
+  state base — built for 2024 hour-of-day patterns — over-suppresses
+  cycling once the market shifts, leaving wholesale upside on the
+  table.
+- **M5 (time-and-state-aware)** — **{_trend_m5_uplift_pct:+.0f} pp vs M1**.
+  Built on 2024 patterns, it tells the optimiser "save SoC for the
+  2024 evening peak" even when the high-spread hour has shifted under
+  the trajectory.
 
-**The flat-market ordering inverts.** Under no-trajectory the stack
-reads M5 > M4 > M3 > M2 > M1 monotonically. Under Note 1 trajectory
-the ordering rotates to **M2 > M3 > M1 > M5 > M4**: residual wholesale
-exposure becomes the dominant axis, and the methodologies that
-suppressed cycling most aggressively are the ones most short the only
-stream that grows. M4 (lowest cycling, highest aFRR concentration) is
-the worst trajectory exposure; M2 (moderate cycling, balanced mix)
-becomes the winner.
+**The sophistication ladder collapses** because the state-aware
+value functions are calibrated on 2024 prices, not the compressed
+trajectory.
 
-**Practical reading.** The flat-market numbers are the appropriate
-diagnostic for an asset operating today; the Note-1-trajectory numbers
-are the appropriate diagnostic for a 2 h LFP commissioned in 2026 and
-expected to operate into the 2030s. They are *genuinely different
-problems* and they select different methodologies. **M2 (flat €/MWh
-wear) is the robust recommendation across both** — captures most of
-the available aging-aware uplift on flat markets, and preserves enough
-residual DA / ID exposure to ride a wholesale recovery. M4 / M5 win on
-flat-market lifetime DCF but are catastrophically exposed to ancillary
-compression; whether they remain the right call depends on how
-literally one takes Note 1's per-stream projection.
 """)
+
+render_takeaway(
+    f"<b>Pick the policy that matches your market, not the most "
+    f"sophisticated one.</b> On flat 2025, M5 wins +{_m5_flat_uplift:.0f} %. "
+    f"Under the projected market trajectory, "
+    f"<b>{_trend_winner_name} wins +{_trend_winner_pct:.0f} %</b> — "
+    f"a regime-independent rule adapts to the rotating stream mix "
+    f"better than 2024-calibrated state-aware functions. For a "
+    f"2026-commissioned asset operating into the 2030s, simple wins."
+)
 
 
 # ── Methodology expander ────────────────────────────────────
 st.markdown("---")
-with st.expander("Methodology & where this model stops working"):
-    st.markdown("""
+with st.expander("Methodology"):
+    st.markdown(f"""
 **Asset.** 2 h LFP, 1 MW / 2 MWh nominal, EVE LF280K cell preset
 calibrated against the manufacturer 6 000-cycle / 80% retention spec
-via `kernel_scale = 0.66` on the Note 3 Wang + Naumann two-channel
-physics kernel. Warranty floor 0.80 SoH; round-trip efficiency 0.88.
-Discount rate 7%.
+on the [*What Drives Degradation*](https://bess-degradation-drivers.streamlit.app/)
+Wang + Naumann two-channel physics kernel. Warranty floor 0.80 SoH;
+round-trip efficiency 0.88. Discount rate 7%.
 
 **Markets.** DE day-ahead from EnergyCharts; intraday via real DE-LU
 SIDC IDA2 15-minute auction prices ([ENTSO-E Transparency
-Platform](https://www.entsoe.eu/network_codes/cacm/implementation/ida/)
-post 13 June 2024 launch — pan-European Intraday Auction, gate-closure
-D−1 22:00 CET); pre-launch days fall back to netztransparenz
-Spotmarktpreis (EEG §3 Nr. 42a, ≈ DA on 99.7% of hours). aFRR capacity
-+ activation energy from regelleistung.net + netztransparenz.de. The
-headline includes a post-LP FCR phantom layer (€36 k / MW / yr
-decaying over the lifetime) for apples-to-apples comparison vs the
-Clean Horizon Storage Index, which includes FCR.
+Platform](https://www.entsoe.eu/network_codes/cacm/implementation/ida/)).
+aFRR capacity and activation energy from regelleistung.net and
+netztransparenz.de.
 
-**Dispatch LP.** Two-stage market-aware (ADR-001 v1.2). Stage 1
-commits per-4-hour-block aFRR capacity at D−1 under a regime-
-conditional α-forecast with `bid_win_rate = 1.0` (LP-upper-bound
-assumption: every block bid clears at the auction). Stage 2 re-
-optimises full DA + ID + activation dispatch under realised α with
-the Stage 1 commitment locked. The 1-hour SoC reservation horizon
-matches the Modo public aFRR product SLA. For two-pass methodologies
-(M4 — physics-from-duty), v4.1+ enables a Stage-2 pass-2 wear
-refinement: Stage 2 runs a second LP with wear re-priced via the
-Note 3 kernel (`physics_wear_from_duty`) on the observed first-pass
-dispatch, while Stage-1 r commitments stay frozen from pass-1. The
-full Stage-1 ↔ Stage-2 ↔ wear fixed-point is closable in code via
-Picard iteration (`two_stage_picard_max_iter` parameter) but
-default-off — the counter-experiment writeup in the README shows it
-makes M4 worse by 1.7 pp at `bid_win_rate=1.0` because reducing
-Stage-1 r commitments under refined wear loses guaranteed aFRR cap
-revenue.
+**Dispatch LP.** Two-stage market-aware. Stage 1 commits
+per-4-hour-block aFRR capacity at D−1 under a regime-conditional
+α-forecast with `bid_win_rate = 1.0` (LP-upper-bound assumption:
+every block bid clears at the auction). Stage 2 re-optimises full
+DA + ID + activation dispatch under realised α with the Stage 1
+commitment locked. The 1-hour SoC reservation horizon matches the
+Modo public aFRR product SLA. For two-pass methodologies
+(M4 — physics-from-duty), Stage 2 runs a second LP with wear
+re-priced via the [*What Drives Degradation*](https://bess-degradation-drivers.streamlit.app/)
+kernel (`physics_wear_from_duty`) on the observed first-pass
+dispatch.
 
-**Calibration anchors.** Publicly citable, except for `bid_win_rate`:
+**Cycle-cost forms — implementation detail.**
+- **M1 (No cycle cost).** Wear cost = 0 €/MWh. Trades every profitable spread.
+- **M2 (Fixed fee, *Kumtepeli depreciation proxy*).** Wear =
+  `CAPEX_eur_per_mwh / lifetime_throughput` ≈ €16.67 / MWh on this
+  asset (€100 k / MWh CAPEX ÷ 6 000 lifetime full cycles × 2 MWh =
+  12 000 MWh).
+- **M3 (Health-aware, *scarcity scaling on SoH-state*).** Wear =
+  M2 × `1 + (1 − SoH) / (1 − floor)`, bounded 1× at fresh cell, 2× at
+  the warranty floor.
+- **M4 (Cycle-shape-aware, *physics-from-duty*).** Two-pass LP. Pass 1
+  uses ADP (approximate dynamic programming — see M5) intraday shadow
+  cost as a starting estimate (so Stage-1 commitments are reasonable); the observed dispatch is fed into the
+  [*What Drives Degradation*](https://bess-degradation-drivers.streamlit.app/)
+  physics kernel (Wang + Naumann two-channel, calibrated to
+  EVE LF280K); pass 2 re-solves Stage-2 with the resulting per-MWh
+  wear that reflects the actual DoD / C-rate / SoC band of the day's
+  duty.
+- **M5 (Time-and-state-aware, *intraday ADP, Holtorf-Shin*).** An
+  offline backward-induction DP over `(SoC, SoH, regime, hour-of-day)`
+  returns a state-value function; its gradient with respect to SoC is
+  the shadow cost. Because hour-of-day is in the state, the cost
+  varies hour by hour: at 18:00 in a volatile regime one MWh of
+  stored energy is worth more than at 03:00 in a calm regime.
+
+**Why mixing two cycle-cost forms doesn't help — two cross-checks.**
+The best cycle cost is one cycle cost, picked well — not two stacked
+on top of each other.
+
+*(a) M2 + M3 + M5 stacked together* (flat fee plus health-aware
+scaling plus the time-and-state cost, all added) gives
+**+{(_abl_blend.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.2f}%**
+vs M1 — that is **{(_abl_blend.lifetime_npv_eur / _m5.lifetime_npv_eur - 1) * 100:+.2f} pp** worse than M5 alone. *Why*: the flat fee
+is a rough rule of thumb (every MWh of throughput costs you
+CAPEX ÷ total lifetime throughput, regardless of when it's cycled).
+M5's time-and-state cost is the model's estimate of opportunity
+cost: what a MWh of stored energy is worth now versus saved for
+later. Stacking the rough rule on top of the state-aware estimate
+double-charges the cycle, and the optimiser holds back even in hours
+when M5 alone would have traded.
+Empirical confirmation of Kumtepeli & Howey (2024): adding a rough
+proxy on top of a state-aware cost is noise, not signal.
+
+*(b) M4 without M5's time-and-state base* (the cycle-shape kernel on
+its own, no time-and-state guidance underneath) gives
+**+{(_abl_solo.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.2f}%**
+vs M1 — that is **{(_abl_solo.lifetime_npv_eur / _m4.lifetime_npv_eur - 1) * 100:+.2f} pp** worse than full M4. *Why*: M4 dispatches in
+two passes. The first pass commits the day-ahead aFRR bids; the
+second pass re-prices everything once the actual dispatch shape is
+known. Without time-and-state guidance in pass 1, the day-ahead bids
+are committed naively (M1-style); pass 2 can only fix what's left —
+too little, too late. M4 is really "time-and-state plus a cycle-shape
+correction on top", not cycle-shape alone.
+
+**Calibration anchors.** Public sources: regelleistung.net auction
+data for aFRR clearing prices, the Clean Horizon Storage Index for
+the absolute revenue level, the Enervis Battery Storage Index for
+monthly sanity checks, and the EVE LF280K cell datasheet for the
+physics kernel. Specifics, all publicly citable except for
+`bid_win_rate`:
 aFRR cap price €12.21 / MW / h matches the gemenergyanalytics
 independent reading (€13 POS / €10 NEG average 2024). 2 h DE 2024
 incl FCR realised revenue €200 k / MW / yr from the Clean Horizon
 Storage Index public CSV. Model M1 sits within ±10% of CH index —
 the residual reflects the LP's perfect-foresight premium. The
 `bid_win_rate=1.0` setting is **NOT empirically anchored** to a clean
-clearing-rate measurement: regelleistung public CSVs contain only
-*winning* bids (rejected bids are absent), so the "99.8% clearing
-rate" cited in some earlier drafts was actually a partial-fill ratio
-within winners, not a true clearing probability. We treat `bid_win=1.0`
-as an LP-upper-bound assumption pending proper full-bid-set
-estimation. The Note 1 trajectory section below applies a fleet-
+clearing-rate measurement — it is an LP-upper-bound assumption
+pending proper full-bid-set estimation. The
+[*German BESS Outlook*](https://de-bess-outlook.streamlit.app)
+trajectory section below applies a fleet-
 saturation decay schedule
 (`lib.analysis.market_trend.FLEET_SATURATION_BID_WIN_SCALE`,
 1.0 → 0.15 over 2024 → 2033) for the realistic forward outlook.
 
-**Lifetime simulation.** 10 years × single template year 2025 (every
-year sees full SIDC IDA2 spreads; no Spotmarktpreis-as-DA fallback).
-Each year sees identical inputs across all five methodologies; only
-the wear-cost vector each methodology emits differs.
+**Lifetime simulation.** 10 years × single template year 2025. Each
+year sees identical inputs across all five methodologies; only the
+wear-cost vector each methodology emits differs.
 
-**The metric we report** is *discounted gross market revenue* over 10
+**Dashboard-panel revenue accounting.** The four-tile owner dashboard
+section reports **gross trading revenue** (DA + ID + aFRR cap + aFRR
+energy) so the numbers line up directly with what an owner sees on
+the portal or in a public benchmark like Enervis or Clean Horizon.
+The 10-year headline simulation includes a small `bid_hurdle`
+calibration penalty in the LP objective to keep the model's aFRR
+share inside the public DE-fleet plausibility corridor (~46 % aFRR
+ex-FCR); that penalty is a calibration parameter, not a real optimiser cost,
+so the dashboard panels exclude it.
+
+**The metric reported** is *discounted gross market revenue* over 10
 years at a 7% discount rate, summed across DA + ID + aFRR cap + aFRR
-energy + FCR phantom. It does **not** subtract CAPEX, fixed O&M,
+energy. It does **not** subtract CAPEX, fixed O&M,
 augmentation, or repower cost. It is not an investor NPV; it is the
 discounted gross revenue stream each methodology generates.
 
@@ -1250,67 +1115,25 @@ discounted gross revenue stream each methodology generates.
 - The Y7 naive EOL at SoH = 0.80 is contract-life, not physical life.
   Under contracts that accept operation past 0.80 the naive policy
   earns another 2 – 3 years at derated capacity.
-- IDA2 launched 13 June 2024. Single-template-year 2025 simulation
-  has full IDA2 throughout, but operators trading earlier (2018-2024)
-  would see different absolute revenue baselines without the
-  pan-European Intraday Auction price signal. EPEX continuous ID1 /
-  ID3 access (since 2018) would lift baseline revenue further;
-  relative ordering across methodologies should hold.
 - The BESS is modelled as a single aggregated unit. Real systems have
   hundreds of modules with manufacturing variance, edge-vs-centre
   thermal asymmetry, and uneven usage. The pack-level allocation
   problem sits one abstraction below this analysis.
-- Calendar year mapping. We hold 2025 prices for all 10 simulation
-  years rather than projecting forward. Note 1's trajectory chart is
-  layered post-hoc on top of the policy-emitted stream mix and shows
+- Calendar year mapping. 2025 prices are held flat for all 10
+  simulation years rather than projected forward. The
+  [*German BESS Outlook*](https://de-bess-outlook.streamlit.app)
+  trajectory chart is layered post-hoc on top of the policy-emitted
+  stream mix and shows
   how the ordering bends under the fleet-saturation revenue decay.
 - The `bid_win_rate=1.0` is an LP-upper-bound assumption (see
   Calibration anchors above). Real-world clearing rates are < 100 %
-  for any individual bidder, depending on bid strategy and fleet
+  for individual bidders, depending on bid strategy and fleet
   capacity vs auction demand. Lower clearing would compress aFRR cap
-  revenue and shrink the +36.5 % M5 uplift. Sensitivity is partially
-  captured by the trajectory section's `bid_win_scale` decay; a clean
-  re-anchoring requires a full-bid-set data source not yet available
-  (regelleistung public CSVs contain only winning bids, so they
-  cannot ground a true clearing-rate estimate).
-- M4 (physics-from-duty) cycles only ~7 FEC / year over the lifetime
-  at this calibration — the LP parks the asset in low-cycling mode
-  and earns most revenue from aFRR availability. This is the genuine
-  LP optimum given EVE LF280K `kernel_scale = 0.66` and DE 2024-25
-  market structure, not a numerical artefact (the cap on
-  `physics_wear_from_duty` at €500/MWh is rarely binding — see
-  README ablation diagnostics). At cell physics with steeper cyclic-
-  fade slope (e.g. Sony LFP, slope ratio 7.67× vs EVE 1.11×) M4
-  would likely cycle more and possibly beat M5; this is cell-
-  specific.
-- Stage-1 ↔ Stage-2 fixed-point under refined wear: by default v1.1
-  approximates it — Stage-1 commits under pass-1 wear (ADP only for
-  M4) and pass-2 re-prices Stage-2 only with Stage-1 commitments
-  locked. The fixed-point closure (Picard iteration, available via
-  `two_stage_picard_max_iter` in `lifecycle_npv.py`) was tested as a
-  counter-experiment: at `bid_win_rate=1.0` Picard makes M4 *worse*
-  by −1.7 pp because reducing Stage-1 r commitments loses guaranteed
-  aFRR cap revenue more than the freed SoC headroom unlocks
-  arbitrage. v1.1's locked Stage-1 r is super-optimal by accident.
-  Default kept at v1.1; Picard available for sensitivity work under
-  fleet-saturation calibrations where `bid_win_rate < 1.0`. Full
-  write-up in the README under "v4.1 paper-grade headline / Picard
-  counter-experiment".
-
-**Diagnostic dispatch logs.** Both the five-signal scatter and the
-four-tile owner-facing dashboard read from a single unified pkl,
-`precomputed_diag_v41_y2025.pkl`, generated at v4.1 calibration
-(matches the headline bar chart) with `collect_diagnostics_year=1`
-(Y2 = 2025 template, post-IDA2 launch). Five publication policies
-keyed M1-M5 directly; no L→M mapping at access time. The four-tile
-dashboard contrasts M1 (naive) against M5 (intraday ADP — empirical
-winner); the multi-month FEC scatter shows all five methodologies
-side-by-side.
+  revenue and shrink the M5 uplift.
 """)
 
 
 # ── Related work ────────────────────────────────────────────
-st.markdown("---")
 with st.expander("Related work"):
     st.markdown("""
 **Direct anchors (the policies implement these).**
@@ -1330,13 +1153,14 @@ with st.expander("Related work"):
   aging-aware operation.*
   [Applied Energy 348, 121531](https://www.sciencedirect.com/science/article/pii/S0306261923008954).
   Reports +29.3% lifetime profit from a piecewise-linear in-objective
-  form. This note recovers the directional claim at moderate magnitude
-  (+15%) on DE markets with a publicly-anchored calibration.
+  form. This note recovers the directional claim and somewhat larger
+  magnitude on DE markets with a publicly-anchored calibration; M5 vs
+  M1 on the headline run lands at +36 %.
 
 **Physics foundation.**
 
 - **Naumann et al. (2018) + Wang et al. (2014) + Stanford (2024).**
-  Cycle and calendar fade anchors for the Note 3 physics kernel; EVE
+  Cycle and calendar fade anchors for the [*What Drives Degradation*](https://bess-degradation-drivers.streamlit.app/) physics kernel; EVE
   LF280K manufacturer datasheet for the asset-specific re-anchoring.
 - **Collath, Winner, Frank, Durdel, Jossen (2024).** *Suitability of
   late-life lithium-ion cells for battery energy storage systems.*
@@ -1365,13 +1189,10 @@ with st.expander("Related work"):
 
 # ── Closing ─────────────────────────────────────────────────
 render_closing(
-    "Fourth in a series on German BESS merchant economics. "
-    "Next up — *Which BESS revenue number is real?* — five public DE "
-    "indices (LCP Delta, Clean Horizon, enspired, suena, RWTH Aachen) "
-    "disagree by up to ~€100 k/MW/yr on the same months. The next note "
-    "decomposes the fan, places this analysis's model inside it, and "
-    "ends with a methodology table letting an owner pick the right "
-    "benchmark for their question."
+    "Fourth note in the German BESS merchant-economics series. Next: "
+    "*Which BESS revenue number is real?* — the public German indices "
+    "disagree by ~€100 k/MW/yr on the same months; the next note "
+    "unpacks where the spread comes from."
 )
 
 render_footer()

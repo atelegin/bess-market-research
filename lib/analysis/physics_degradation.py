@@ -80,6 +80,7 @@ def physics_degradation_per_day(
     preset: Optional[CellPreset] = None,
     temperature_c: float = 25.0,
     age_accel_slope: float = 2.5,
+    kernel_scale: float = 1.0,
 ) -> float:
     """Compute Δ SoH for one day under the Note 3 physics kernel.
 
@@ -91,12 +92,27 @@ def physics_degradation_per_day(
         temperature_c: Cell-internal temperature (°C). Default 25 (indoor).
         age_accel_slope: Acceleration factor slope; SoH-reduction consumes
             life faster as SoH drops. Default 2.5 matches the linear model.
+        kernel_scale: Joint multiplier on ``k_cal`` and ``k_cyc`` of the
+            preset. Default ``1.0`` reproduces the academic Naumann /
+            Stanford-anchored kernel (gated by Note 3's tripwire test).
+            Set to ``0.66`` to land the EVE LF280K manufacturer endurance
+            anchor (6000 cycles to 80 % retention at 25 °C / 0.5 C / 1.0
+            DoD) — used by Note 4 paper headline. The scale represents
+            the residual physical difference between Stanford-era K2
+            18650 academic cells and modern 280 Ah prismatic LFP cells.
 
     Returns:
         Positive Δ SoH to subtract from current SoH.
     """
     if preset is None:
         preset = DEFAULT_PRESET
+    if kernel_scale != 1.0:
+        from dataclasses import replace
+        preset = replace(
+            preset,
+            k_cal=preset.k_cal * float(kernel_scale),
+            k_cyc=preset.k_cyc * float(kernel_scale),
+        )
 
     fec_day = float(day_result.full_equivalent_cycles)
     # Zero-dispatch day: only calendar fade applies. Call at years=1 and

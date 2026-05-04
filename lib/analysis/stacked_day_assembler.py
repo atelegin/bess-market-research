@@ -111,7 +111,13 @@ def _extract_day_slice(
     frame: pd.DataFrame, target_date: Date, col: str,
     expected_len: int, tz: str = "UTC",
 ) -> Optional[np.ndarray]:
-    """Slice a 15-min-indexed DataFrame to a single day, UTC-aligned."""
+    """Slice a 15-min-indexed DataFrame to a single day, UTC-aligned.
+
+    Pads short slabs (DST spring-forward = 92 quarter-hours instead of 96)
+    by repeating the last valid value. The LP framework discretises every
+    day on a fixed 96-interval grid; without this padding the spring-
+    forward day silently fails assembly and is dropped from results.
+    """
     if frame is None or frame.empty or col not in frame.columns:
         return None
     if frame.index.tz is None:
@@ -125,7 +131,13 @@ def _extract_day_slice(
         return None
     values = slab.to_numpy(dtype=float)
     if len(values) < expected_len:
-        return None
+        # Pad up to expected_len by repeating the last valid value. Tolerate
+        # gaps up to 8 quarter-hours (DST = 4); larger gaps signal genuinely
+        # incomplete data and should still skip.
+        if expected_len - len(values) > 8 or len(values) == 0:
+            return None
+        pad = np.full(expected_len - len(values), values[-1])
+        values = np.concatenate([values, pad])
     return values[:expected_len]
 
 
@@ -142,6 +154,14 @@ def assemble_day_inputs(
     activations_frame: pd.DataFrame | None = None,
     use_aep_for_id: bool = False,
     use_spotmarktpreis_for_id: bool = True,
+    # SIDC pan-European intraday auction prices (15-min) — preferred
+    # ID source for dates ≥ 2024-06-13. The frame is built upstream as
+    # **IDA2 with IDA1 fallback** (model A+, see _prefetch_year_frames
+    # in stacked_year_runner.py and lib/data/ida_prices.py docstring):
+    # IDA2 carries ~98% of slots, IDA1 fills the residual ~1.8%, total
+    # coverage ≈ 99.9%. When provided AND the day's slice is non-empty,
+    # this frame takes priority over Spotmarktpreis.
+    ida_frame: pd.DataFrame | None = None,
 ) -> Optional[StackedDayInputs]:
     """
     Build the 8 input arrays for the stacked-market LP for one day.
@@ -192,7 +212,42 @@ def assemble_day_inputs(
     # use_aep_for_id=True to exploit netztransparenz AEP imbalance prices
     # — NOT a market, documented-against; kept for debugging only.
     prices_id = None
-    if use_aep_for_id:
+    # Priority 0: SIDC pan-European intraday auctions for DE-LU
+    # (15-min, real auction clearings; available from 2024-06-13).
+    # The upstream `ida_frame` is IDA2-with-IDA1-fallback (model A+).
+    # Real ID signal — not a DA-collapsing proxy. The combined feed
+    # covers ~99.9 % of slots; residual gaps (e.g. days where neither
+    # IDA1 nor IDA2 published a given block) are back-filled from DA.
+    # Reject the day entirely if more than 25 % of intervals are
+    # missing — in practice this almost never triggers under A+.
+    if ida_frame is not None and not ida_frame.empty:
+        local_ida = (
+            ida_frame.tz_convert("UTC") if ida_frame.index.tz is not None
+            else ida_frame.tz_localize("UTC")
+        )
+        target_idx = pd.date_range(
+            start=day_start, periods=PERIODS_PER_DAY, freq="15min", tz="UTC",
+        )
+        day_ida = local_ida["price_eur_mwh"].reindex(target_idx)
+        nan_count = int(day_ida.isna().sum())
+        if nan_count <= int(PERIODS_PER_DAY * 0.25):
+            arr = day_ida.to_numpy(dtype=float)
+            # Fill remaining gaps from DA (15-min step-expanded already).
+            mask = np.isnan(arr)
+            if mask.any():
+                arr[mask] = prices_da[mask]
+            prices_id = arr
+        else:
+            logger.info(
+                f"assemble_day_inputs({target_date}): IDA has {nan_count}/{PERIODS_PER_DAY} "
+                f"missing intervals (>25% threshold) — falling back to spot/DA"
+            )
+    elif ida_frame is not None:
+        logger.debug(f"assemble_day_inputs({target_date}): ida_frame is empty")
+
+    if prices_id is not None:
+        pass
+    elif use_aep_for_id:
         if id_frame is None:
             try:
                 id_frame = fetch_id_aep(

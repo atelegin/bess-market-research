@@ -61,9 +61,16 @@ class ShadowCostPolicy(ABC):
     cycle cap) via :meth:`lp_overrides`. Most policies return an empty
     dict — the exception is a constraint-based policy such as
     :class:`SoCWindowPolicy`.
+
+    Two-pass policies (ROADMAP channel (b) rainflow proxy) set
+    :attr:`uses_two_pass` ``= True``. The runner then solves the LP once
+    with the first-pass wear, reads the resulting SoC trajectory, asks
+    the policy to :meth:`refine_wear_cost`, and re-solves. This captures
+    "deep cycles cost more" without full cycle-counting MILP.
     """
 
     name: str
+    uses_two_pass: bool = False
 
     @abstractmethod
     def wear_cost(
@@ -98,6 +105,31 @@ class ShadowCostPolicy(ABC):
         otherwise see.
         """
         return {}
+
+    def refine_wear_cost(
+        self,
+        first_pass_soc: np.ndarray,
+        energy_mwh: float,
+        soh_current: float,
+        day_of_year: int = 1,
+        periods_per_day: int = 96,
+        duration_h: float = 2.0,
+        day_result=None,
+    ) -> np.ndarray:
+        """Second-pass wear vector given the first-pass SoC trajectory.
+
+        Only called by the runner when :attr:`uses_two_pass` is ``True``.
+        Default implementation returns the first-pass wear (no-op) — safe
+        to inherit for single-pass policies.
+
+        ``day_result`` is the first-pass :class:`StackedDispatchResult`;
+        unused by default, but the ``ProgressivePolicy`` physics-from-
+        duty layer reads it.
+        """
+        return self.wear_cost(
+            soh_current=soh_current, day_of_year=day_of_year,
+            periods_per_day=periods_per_day, duration_h=duration_h,
+        )
 
 
 @dataclass(frozen=True)
@@ -253,6 +285,87 @@ class SoCWindowPolicy(ShadowCostPolicy):
         }
 
 
+@dataclass(frozen=True)
+class DoDAwareRainflowProxyPolicy(ShadowCostPolicy):
+    """Two-pass DoD-aware shadow cost (ROADMAP channel (b), proxy).
+
+    A rainflow-grade policy would identify full charge-discharge cycles
+    in the resulting SoC trace and price each by its depth. That requires
+    either cycle-counting MILP or LP+rainflow fixed-point iteration —
+    both expensive and beyond Note 4's scope.
+
+    The proxy here captures the same mechanism ("deep cycles damage more
+    than shallow cycles") with a two-pass LP:
+
+    1. **Pass 1.** Solve the daily LP with the baseline flat wear
+       (same level as :class:`DepreciationProxyPolicy`). Observe the
+       per-interval SoC trajectory the LP would use in a plain
+       proxy-priced world.
+    2. **Pass 2.** Price each interval's throughput by::
+
+           wear[t] = base × (1 + dod_multiplier × dev[t] ** dod_exponent)
+
+       where ``dev[t] = |SoC(t)/E_usable − 0.5|`` ∈ [0, 0.5]. A throughput
+       period the first-pass LP chose to spend at extreme SoC (deep
+       discharge bottom, full-to-top charging) is now expensive; middle-
+       SoC throughput stays at baseline.
+
+    The second solve then shifts cycling away from extremes — the
+    continuous-penalty analogue of :class:`SoCWindowPolicy`'s hard cutoff.
+
+    Not claimed to be a convergent fixed point; the second-pass SoC
+    differs from the first-pass one. Two passes is a calibrated empirical
+    compromise (one more solve per day = ~2× runtime; extra passes show
+    <0.5 % lifetime-NPV delta in our tests).
+
+    Args:
+        base_eur_per_mwh: Mid-SoC baseline (same as the depreciation
+            proxy — typical ``CAPEX / lifetime_throughput ≈ 16.67``).
+        dod_multiplier: Controls steepness of the SoC-deviation penalty.
+            With default ``dod_exponent = 1``, a value of ``8`` makes
+            throughput at ``|SoC − 0.5| = 0.5`` five times more
+            expensive than at ``SoC = 0.5``.
+        dod_exponent: Nonlinearity in the deviation term (1 = linear,
+            2 = quadratic). Higher exponents concentrate the penalty at
+            the extremes.
+    """
+
+    name: str = "dod_aware_rainflow"
+    base_eur_per_mwh: float = 16.67
+    dod_multiplier: float = 8.0
+    dod_exponent: float = 1.0
+    uses_two_pass: bool = True
+
+    def wear_cost(
+        self,
+        soh_current: float,
+        day_of_year: int = 1,
+        periods_per_day: int = 96,
+        duration_h: float = 2.0,
+    ) -> np.ndarray:
+        return np.full(periods_per_day, self.base_eur_per_mwh)
+
+    def refine_wear_cost(
+        self,
+        first_pass_soc: np.ndarray,
+        energy_mwh: float,
+        soh_current: float,
+        day_of_year: int = 1,
+        periods_per_day: int = 96,
+        duration_h: float = 2.0,
+        day_result=None,
+    ) -> np.ndarray:
+        if energy_mwh <= 0 or len(first_pass_soc) != periods_per_day:
+            return self.wear_cost(
+                soh_current=soh_current, day_of_year=day_of_year,
+                periods_per_day=periods_per_day, duration_h=duration_h,
+            )
+        soc_frac = np.clip(first_pass_soc / energy_mwh, 0.0, 1.0)
+        dev = np.abs(soc_frac - 0.5)
+        multiplier = 1.0 + self.dod_multiplier * (dev ** self.dod_exponent)
+        return self.base_eur_per_mwh * multiplier
+
+
 class ADPPolicy(ShadowCostPolicy):
     """Shadow cost from a solved backward-induction DP (A3.4 online lookup).
 
@@ -361,6 +474,29 @@ class ADPPolicyIntraday(ShadowCostPolicy):
     produce: same shadow cost at peak vs trough, same at fresh vs aged.
     This policy is the principled Holtorf-Shin reference and the
     empirical answer to "do we need full intraday DP for Note 4?".
+
+    Physics-informed aging layer (Note 3 kernel)
+    ---------------------------------------------
+    When :attr:`physics_wear_eur_per_mwh` is supplied, the policy adds
+    the SoH-dependent physics wear (from the Note 3 Wang+Naumann
+    calibrated kernel) on top of the DP's arbitrage-derived shadow
+    cost. This closes methodology simplification #2 for the intraday DP
+    cleanly — the DP stays a pure arbitrage planner; the aging cost
+    enters at online-lookup time as a per-MWh-throughput additive
+    term::
+
+        shadow_cost[t] = |∂V/∂SoC|[t]  +  physics_wear(SoH)
+
+    First component (hour-varying): opportunity cost of depleting SoC at
+    this hour. Second (SoH-varying): physics cost of one MWh of
+    throughput at current SoH. LP sees the combined signal and
+    suppresses cycling when either dominates.
+
+    The earlier "aging-inside-Bellman" experiment flattened the
+    ``|∂V/∂SoC|`` signal (DP policy pre-emptively suppressed cycling,
+    shrinking the gradient), so the LP saw a weaker wear signal and
+    cycled MORE — a counterproductive coupling. Additive integration
+    preserves both signals independently.
     """
 
     name: str = "adp_intraday"
@@ -372,11 +508,22 @@ class ADPPolicyIntraday(ShadowCostPolicy):
         regime_classification,
         year_start: Optional[_dt.date] = None,
         regime_override: Optional[int] = None,
+        physics_wear_eur_per_mwh: Optional[np.ndarray] = None,
     ) -> None:
         self._result = intraday_result
         self._grids = grids
         self._regime = regime_classification
         self._regime_override = regime_override
+        self._physics_wear = (
+            np.asarray(physics_wear_eur_per_mwh, dtype=float)
+            if physics_wear_eur_per_mwh is not None else None
+        )
+        if self._physics_wear is not None:
+            if self._physics_wear.shape != grids.soh_grid.shape:
+                raise ValueError(
+                    f"physics_wear_eur_per_mwh shape {self._physics_wear.shape} "
+                    f"must match grids.soh_grid shape {grids.soh_grid.shape}"
+                )
         if year_start is None:
             first_label_date = next(iter(regime_classification.regime_labels.index))
             if isinstance(first_label_date, _dt.date):
@@ -412,14 +559,379 @@ class ADPPolicyIntraday(ShadowCostPolicy):
     ) -> np.ndarray:
         soh_idx = self._soh_idx(soh_current)
         reg_idx = self._regime_for_day(day_of_year)
-        hourly = self._result.shadow_cost[soh_idx, reg_idx]  # (24,)
+        hourly = self._result.shadow_cost[soh_idx, reg_idx]  # (24,) arbitrage only
         # Expand to periods_per_day by repeating each hour's value
         intervals_per_hour = periods_per_day // 24
         remainder = periods_per_day - 24 * intervals_per_hour
         vector = np.repeat(hourly, intervals_per_hour)
         if remainder > 0:
             vector = np.concatenate([vector, np.full(remainder, hourly[-1])])
+        # Add Note 3 physics-kernel-derived aging cost (SoH-varying, constant
+        # across hours within a day). See class docstring for rationale.
+        if self._physics_wear is not None:
+            vector = vector + float(self._physics_wear[soh_idx])
         return vector
+
+
+class ProgressivePolicy(ShadowCostPolicy):
+    """Progressively stacked shadow-cost policy.
+
+    Each flag enables **one additional layer** on top of the previous
+    ones; layers either add to the per-interval wear vector, modify
+    the LP-level envelope (SoC window), or refine the wear in a second
+    LP pass (DoD rainflow). This is the canonical Note 4 framing: each
+    level includes **everything from the previous levels**, so empirical
+    comparisons show incremental value per layer rather than an
+    apples-to-oranges race between alternative formulas.
+
+    Layer order (as used in Note 4)::
+
+        L1  Naive                    — no layers
+        L2  + SoC window              — hard constraint 20–80 %
+        L3  + Flat wear               — CAPEX ÷ lifetime throughput
+        L4  + Scarcity scaling        — multiply flat by (1-SoH)/(SoH-floor)
+        L5  + DoD rainflow            — 2-pass: weight extreme-SoC throughput
+        L6  + Intraday ADP shadow     — add hour-varying |∂V/∂SoC|[h]
+        L7  + Physics wear (Note 3)   — add SoH-dependent aging per MWh
+
+    All layers coexist. No "alternative" policies in the note — every
+    policy is the one before plus one more layer.
+
+    Args:
+        name: Human-readable identifier.
+        use_soc_window: Toggle the LP SoC envelope constraint.
+        soc_min_frac, soc_max_frac: Envelope bounds.
+        flat_base_eur_per_mwh: Flat throughput cost (0 disables).
+        use_scarcity: Scale flat cost by ``(1−SoH)/max(SoH−floor, ε)``.
+        warranty_floor, epsilon: Scarcity denominator parameters.
+        dod_multiplier, dod_exponent: DoD rainflow penalty shape. 0 disables.
+        adp_result, adp_grids, adp_regime, adp_year_start: Intraday ADP
+            solved result + lookup metadata. ``None`` disables.
+        physics_wear_eur_per_mwh: Per-SoH physics wear array. ``None`` disables.
+    """
+
+    def __init__(
+        self,
+        *,
+        name: str,
+        use_soc_window: bool = False,
+        soc_min_frac: float = 0.20,
+        soc_max_frac: float = 0.80,
+        flat_base_eur_per_mwh: float = 0.0,
+        use_scarcity: bool = False,
+        warranty_floor: float = 0.80,
+        epsilon: float = 0.005,
+        dod_multiplier: float = 0.0,
+        dod_exponent: float = 1.0,
+        adp_result=None,
+        adp_grids=None,
+        adp_regime=None,
+        adp_year_start: Optional[_dt.date] = None,
+        adp_scale: float = 1.0,
+        physics_wear_eur_per_mwh: Optional[np.ndarray] = None,
+        physics_weight: float = 1.0,
+        physics_subtract_flat_base: bool = False,
+        use_physics_from_duty: bool = False,
+        physics_preset=None,
+        physics_temperature_c: float = 25.0,
+        physics_capex_eur_per_mwh: float = 100_000.0,
+        physics_max_wear_eur_per_mwh: float = 500.0,
+        physics_kernel_scale: float = 1.0,
+    ) -> None:
+        self.name = name
+        self._use_soc_window = use_soc_window
+        self._soc_min_frac = soc_min_frac
+        self._soc_max_frac = soc_max_frac
+        self._flat_base = float(flat_base_eur_per_mwh)
+        self._use_scarcity = use_scarcity
+        self._warranty_floor = warranty_floor
+        self._epsilon = epsilon
+        self._dod_multiplier = float(dod_multiplier)
+        self._dod_exponent = float(dod_exponent)
+        self._adp_result = adp_result
+        self._adp_grids = adp_grids
+        self._adp_regime = adp_regime
+        self._adp_scale = float(adp_scale)
+        self._physics_wear = (
+            np.asarray(physics_wear_eur_per_mwh, dtype=float)
+            if physics_wear_eur_per_mwh is not None else None
+        )
+        self._physics_weight = float(physics_weight)
+        self._physics_subtract_flat_base = physics_subtract_flat_base
+        self._use_physics_from_duty = use_physics_from_duty
+        self._physics_preset = physics_preset
+        self._physics_temperature_c = physics_temperature_c
+        self._physics_capex = physics_capex_eur_per_mwh
+        self._physics_max_wear = physics_max_wear_eur_per_mwh
+        self._physics_kernel_scale = float(physics_kernel_scale)
+        self.uses_two_pass = (
+            self._dod_multiplier > 0.0 or self._use_physics_from_duty
+        )
+        if adp_result is not None:
+            if adp_grids is None or adp_regime is None:
+                raise ValueError(
+                    "adp_result requires adp_grids and adp_regime to enable the ADP layer"
+                )
+            if adp_year_start is None:
+                first_label_date = next(iter(adp_regime.regime_labels.index))
+                if isinstance(first_label_date, _dt.date):
+                    adp_year_start = first_label_date
+                else:
+                    adp_year_start = _dt.date(first_label_date.year, 1, 1)
+        self._adp_year_start = adp_year_start
+
+    def _soh_idx(self, soh_current: float, grid) -> int:
+        if soh_current <= grid[0]:
+            return 0
+        if soh_current >= grid[-1]:
+            return len(grid) - 1
+        return max(0, int(np.searchsorted(grid, soh_current, side="right")) - 1)
+
+    def _regime_for_day(self, day_of_year: int) -> int:
+        if self._adp_regime is None:
+            return 0
+        target = self._adp_year_start + _dt.timedelta(days=int(day_of_year) - 1)
+        labels = self._adp_regime.regime_labels
+        if target in labels.index:
+            return int(labels.loc[target])
+        return int(np.argmax(self._adp_regime.stationary))
+
+    def _base_wear(
+        self, soh_current: float, periods_per_day: int,
+    ) -> np.ndarray:
+        base = self._flat_base
+        if self._use_scarcity and base > 0.0:
+            # Bounded scarcity: ``factor = 1 + (1-SoH) / (1-floor)`` — grows
+            # monotonically from 1.0 at fresh cell to 2.0 at the warranty
+            # floor. Gradual SoH-dependent wear increase (replaces the
+            # earlier unbounded ``(1-SoH)/(SoH-floor)`` form, which was zero
+            # at fresh cell — caused over-cycling early and NPV loss vs L3).
+            floor = self._warranty_floor
+            scarcity_factor = 1.0 + max(0.0, 1.0 - soh_current) / max(
+                1.0 - floor, 1e-6
+            )
+            base = base * scarcity_factor
+        return np.full(periods_per_day, base)
+
+    def wear_cost(
+        self,
+        soh_current: float,
+        day_of_year: int = 1,
+        periods_per_day: int = 96,
+        duration_h: float = 2.0,
+    ) -> np.ndarray:
+        v = self._base_wear(soh_current, periods_per_day)
+
+        # ADP intraday layer (hour-varying opportunity cost)
+        if self._adp_result is not None:
+            soh_idx = self._soh_idx(soh_current, self._adp_grids.soh_grid)
+            reg_idx = self._regime_for_day(day_of_year)
+            hourly = self._adp_result.shadow_cost[soh_idx, reg_idx]   # (24,)
+            iph = periods_per_day // 24
+            vec = np.repeat(hourly, iph)
+            remainder = periods_per_day - len(vec)
+            if remainder > 0:
+                vec = np.concatenate([vec, np.full(remainder, hourly[-1])])
+            v = v + self._adp_scale * vec
+
+        # Physics aging layer (SoH-varying, constant across intervals).
+        # When ``physics_subtract_flat_base`` is True, only the DELTA above
+        # the flat base is added — avoids double-counting with L3/L4 layers.
+        if self._physics_wear is not None:
+            soh_idx = self._soh_idx(soh_current, self._adp_grids.soh_grid
+                                    if self._adp_grids is not None
+                                    else np.linspace(self._warranty_floor, 1.0, len(self._physics_wear)))
+            phys = float(self._physics_wear[soh_idx])
+            if self._physics_subtract_flat_base:
+                phys = max(0.0, phys - self._flat_base)
+            v = v + self._physics_weight * phys
+
+        return v
+
+    def lp_overrides(
+        self, soh_current: float, day_of_year: int = 1,
+    ) -> dict:
+        if self._use_soc_window:
+            return {
+                "soc_min_frac": self._soc_min_frac,
+                "soc_max_frac": self._soc_max_frac,
+            }
+        return {}
+
+    def refine_wear_cost(
+        self,
+        first_pass_soc: np.ndarray,
+        energy_mwh: float,
+        soh_current: float,
+        day_of_year: int = 1,
+        periods_per_day: int = 96,
+        duration_h: float = 2.0,
+        day_result=None,
+    ) -> np.ndarray:
+        """Second-pass wear given the first-pass dispatch.
+
+        Composes in order:
+        1. Base wear from :meth:`wear_cost` (flat/scarcity/ADP/physics-1D).
+        2. Duty-based physics wear (additive) — requires ``day_result``.
+        3. DoD rainflow multiplicative penalty on SoC extremes.
+        """
+        base = self.wear_cost(
+            soh_current=soh_current, day_of_year=day_of_year,
+            periods_per_day=periods_per_day, duration_h=duration_h,
+        )
+        # 2. Duty-based physics wear — calls the Note 3 kernel on the
+        # observed duty and adds the resulting scalar EUR/MWh cost.
+        if (self._use_physics_from_duty and day_result is not None
+                and self._physics_preset is not None):
+            from lib.analysis.physics_wear_lookup import physics_wear_from_duty
+            phys_scalar = physics_wear_from_duty(
+                day_result=day_result, energy_mwh=energy_mwh,
+                soh_current=soh_current, preset=self._physics_preset,
+                temperature_c=self._physics_temperature_c,
+                capex_eur_per_mwh=self._physics_capex,
+                warranty_floor=self._warranty_floor,
+                epsilon=self._epsilon,
+                max_wear_eur_per_mwh=self._physics_max_wear,
+                kernel_scale=self._physics_kernel_scale,
+            )
+            base = base + self._physics_weight * phys_scalar
+
+        # 3. DoD rainflow multiplicative penalty on extreme-SoC throughput.
+        if self._dod_multiplier > 0.0 and energy_mwh > 0 \
+                and len(first_pass_soc) == periods_per_day:
+            soc_frac = np.clip(first_pass_soc / energy_mwh, 0.0, 1.0)
+            dev = np.abs(soc_frac - 0.5)
+            multiplier = 1.0 + self._dod_multiplier * (dev ** self._dod_exponent)
+            base = base * multiplier
+        return base
+
+
+class RainflowPolicy(ShadowCostPolicy):
+    """Rainflow sidebar: per-cycle DoD penalty via 2-pass post-hoc rainflow extraction.
+
+    Methodology sibling of :class:`ProgressivePolicy` (does NOT stack on
+    L1–L6 — it is an alternative to L4/L5/L6, not an addition). Mirror
+    of the Collath sidebar but with a structurally different penalty
+    target: instead of throughput-per-window (Collath), the second-pass
+    wear is derived from rainflow-extracted cycle DoDs evaluated against
+    a convex per-cycle aging function f(DoD) calibrated against the
+    Note 3 Wang+Naumann kernel at ``kernel_scale = 0.66`` (Note 4
+    manufacturer anchor — same as L6). This is channel (b) in the
+    [ROADMAP] taxonomy: *"a rainflow-based piecewise cost that depends
+    on DoD of each cycle"*. Built around Shi-Xu et al. (2018,
+    arXiv:1703.07968) — convex rainflow-cycle cost in SoC trajectory.
+
+    Pipeline per day:
+      1. Pass 1: solve LP with a small bootstrap wear (so the LP has a
+         reason to leave power on the table when revenue is thin) and
+         the SoC envelope active.
+      2. Extract rainflow cycles ``(DoD, mean_SoC)`` from the first-pass
+         SoC trajectory.
+      3. Evaluate piecewise-linear f(DoD) at each cycle, sum, age-scale,
+         convert to scalar EUR/MWh, cap at ``max_wear``.
+      4. Pass 2: solve LP again with the refined scalar wear.
+
+    See :func:`lib.analysis.rainflow_wear.rainflow_wear_from_duty` for
+    the second-pass formula and
+    :doc:`scripts/rainflow_sidebar/rainflow_calibrate_eve_lf280k.py` for
+    the calibration that fills ``rainflow_coeffs``.
+
+    Args:
+        name: Human-readable identifier (default "Rainflow_sidebar").
+        rainflow_coeffs: dict with ``dod_breakpoints`` and ``cycle_fade``
+            arrays from the calibration ``.npz``.
+        soc_min_frac, soc_max_frac: SoC envelope bounds. Default
+            [0.20, 0.80] matches L2.
+        bootstrap_wear_eur_per_mwh: Pass-1 warm-start wear. Default
+            €30/MWh — small enough to let the LP cycle, large enough
+            to avoid degenerate "fill the cap" first passes.
+        capex_eur_per_mwh: CAPEX anchor for monetisation. Default
+            €100k/MWh, same as L6.
+        warranty_floor: SoH below which warranty void. Default 0.80.
+        max_wear_eur_per_mwh: Pass-2 cap to keep LP numerics tractable
+            near the warranty floor (default €500/MWh, same as L6).
+        age_accel_slope: Per-unit SoH-loss acceleration on the per-
+            cycle fade. Default 2.5, same as L6.
+    """
+
+    uses_two_pass: bool = True
+
+    def __init__(
+        self,
+        *,
+        name: str = "Rainflow_sidebar",
+        rainflow_coeffs: dict,
+        soc_min_frac: float = 0.20,
+        soc_max_frac: float = 0.80,
+        bootstrap_wear_eur_per_mwh: float = 30.0,
+        capex_eur_per_mwh: float = 100_000.0,
+        warranty_floor: float = 0.80,
+        epsilon: float = 0.005,
+        max_wear_eur_per_mwh: float = 500.0,
+        age_accel_slope: float = 2.5,
+    ) -> None:
+        self.name = name
+        if "dod_breakpoints" not in rainflow_coeffs or "cycle_fade" not in rainflow_coeffs:
+            raise ValueError(
+                "rainflow_coeffs must contain 'dod_breakpoints' and 'cycle_fade'"
+            )
+        self._coeffs = {
+            "dod_breakpoints": np.asarray(rainflow_coeffs["dod_breakpoints"], dtype=float),
+            "cycle_fade": np.asarray(rainflow_coeffs["cycle_fade"], dtype=float),
+        }
+        self._soc_min_frac = float(soc_min_frac)
+        self._soc_max_frac = float(soc_max_frac)
+        self._bootstrap = float(bootstrap_wear_eur_per_mwh)
+        self._capex = float(capex_eur_per_mwh)
+        self._warranty_floor = float(warranty_floor)
+        self._epsilon = float(epsilon)
+        self._max_wear = float(max_wear_eur_per_mwh)
+        self._age_accel_slope = float(age_accel_slope)
+
+    def wear_cost(
+        self,
+        soh_current: float,
+        day_of_year: int = 1,
+        periods_per_day: int = 96,
+        duration_h: float = 2.0,
+    ) -> np.ndarray:
+        """Pass-1 bootstrap wear (flat scalar)."""
+        return np.full(periods_per_day, self._bootstrap)
+
+    def lp_overrides(
+        self, soh_current: float, day_of_year: int = 1,
+    ) -> dict:
+        return {
+            "soc_min_frac": self._soc_min_frac,
+            "soc_max_frac": self._soc_max_frac,
+        }
+
+    def refine_wear_cost(
+        self,
+        first_pass_soc: np.ndarray,
+        energy_mwh: float,
+        soh_current: float,
+        day_of_year: int = 1,
+        periods_per_day: int = 96,
+        duration_h: float = 2.0,
+        day_result=None,
+    ) -> np.ndarray:
+        """Pass-2 refined wear from rainflow-cycle aging."""
+        if day_result is None or energy_mwh <= 0:
+            return self.wear_cost(soh_current, day_of_year, periods_per_day, duration_h)
+        from lib.analysis.rainflow_wear import rainflow_wear_from_duty
+        scalar = rainflow_wear_from_duty(
+            day_result=day_result,
+            energy_mwh=energy_mwh,
+            soh_current=soh_current,
+            rainflow_coeffs=self._coeffs,
+            capex_eur_per_mwh=self._capex,
+            warranty_floor=self._warranty_floor,
+            epsilon=self._epsilon,
+            max_wear_eur_per_mwh=self._max_wear,
+            age_accel_slope=self._age_accel_slope,
+        )
+        return np.full(periods_per_day, scalar)
 
 
 # Convenience factory for Note 4 policy comparisons.
