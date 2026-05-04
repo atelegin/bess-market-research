@@ -128,20 +128,19 @@ apply_theme(show_sidebar=False)
 render_header(
     title="Cost of a Cycle: Is Your Optimiser Aging-Aware?",
     kicker="GERMAN BESS | COST OF A CYCLE",
-    subtitle="Every cycle wears the battery. The fix is a wear fee the optimiser subtracts from every trade — and five ways to set that fee are in active use today. Pick well and you trade early-life revenue for extra years of battery life.",
+    subtitle="Every cycle wears the battery. How the optimiser charges for that wear — or whether it does at all — decides how early-life revenue trades against years of battery life.",
 )
 
 # ── Intro ───────────────────────────────────────────────────
 st.markdown("""
-What should the wear fee depend on? A flat €/MWh for every cycle,
-the battery's age, the hour of day, or the depth, C-rate and SoC
-band of the dispatch the battery saw today? The optimiser then
-skips any trade whose spread doesn't cover the fee.
+What should the wear fee depend on? A flat €/MWh per cycle, the
+battery's age, or the shape of today's dispatch — how deep each
+cycle goes, how fast, and which part of the 0–100 % range it sits
+in? The optimiser then skips any trade whose spread doesn't cover
+the fee.
 
-This note runs five of those answers on a 2 h LFP battery
-(1 MW / 2 MWh) trading 2025 German day-ahead, intraday and aFRR
-markets, replayed for 10 years. All five see the same prices and
-activation signals; only the cycle price differs.
+This note runs five answers in parallel. All see the same prices
+and activations; only the cycle cost differs.
 """)
 
 # ── Load data ───────────────────────────────────────────────
@@ -218,15 +217,11 @@ st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 render_chart_caption(
     "Ten-year simulation, 2 h LFP battery, 1 MW / 2 MWh, 2025 German "
     "markets replayed every year. All five policies see the same "
-    "prices and activation signals; only the cycle price differs. "
-    "Bars are indexed to M1 = 100. Absolute revenue depends on "
-    "modelling choices (perfect-foresight optimiser, FCR add-on, "
-    "calibration parameters) and is not the point of this chart — the "
-    "ranking and the ~+36 % M1 → M5 spread are what matter and are "
-    "robust to those choices. The section further down — "
+    "prices and activation signals; only the cycle cost differs. "
+    "Bars indexed to M1 = 100. The ranking and ~+36 % M1 → M5 spread "
+    "are robust to modelling choices. The section further down — "
     "<i>Does the ranking survive when ancillary revenue collapses?</i> — "
-    "shows how the ranking changes once wholesale grows and aFRR cap "
-    "shrinks."
+    "shows how it changes once wholesale grows and aFRR cap shrinks."
 )
 
 
@@ -240,44 +235,36 @@ _m5 = results["M5_adp"]
 _abl_blend = ablation_results.get("ablation_M5_with_classical_stack")
 _abl_solo = ablation_results.get("ablation_physics_without_adp")
 st.markdown(f"""
-Each policy looks at more of the battery's state than the last:
-nothing → fixed fee → health → cycle shape → time and state. Full
-formulas are in the methodology expander at the bottom.
+Each policy uses a richer view of the battery's state: nothing →
+fixed fee → health → cycle shape → time and state. Full formulas
+are in the methodology expander at the bottom.
 
-**M1 — No cycle cost.** Trade every spread that beats variable cost,
-no penalty for wear. The simplest baseline: most cycles, shortest
-battery life. **{fec_naive:,} full-equivalent cycles** (FEC — one
-full charge plus one full discharge of the nameplate energy)
-lifetime; battery hits the 80 % warranty floor in year {eol_naive};
-lifetime revenue index = 100 (by definition).
+**M1 — No cycle cost.** Trade every profitable spread, no penalty
+for wear. The simplest baseline: most cycles, shortest battery
+life. **{fec_naive:,} full-equivalent cycles** (FEC — one full
+charge plus one full discharge of the nameplate energy) lifetime;
+battery hits the 80 % warranty floor in year {eol_naive}; lifetime
+revenue index = 100 (by definition).
 
 **M2 — Fixed fee.** Subtract a flat €/MWh wear charge from every
 cycle — CAPEX divided by expected lifetime throughput
 (≈ €16.67 / MWh here). Cycling drops to
 **{int(_m2.annual_fec.sum()):,} FEC**; revenue
 **+{(_m2.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.1f}%**
-vs M1. The single biggest jump in the stack: most of the aging-aware
-value comes from a sensible per-MWh penalty, not from sophistication.
+vs M1 — the single biggest jump in the stack.
 
 **M3 — Health-aware.** Same fee, but scaled up as the cell ages
 (1× fresh → 2× at the warranty floor). Adds
 **+{(_m3.lifetime_npv_eur / _m2.lifetime_npv_eur - 1) * 100:.1f} pp**
 over M2 by suppressing cycling once the battery is already worn.
 
-**M4 — Cycle-shape-aware.** The optimiser solves the day twice: a
-first pass dispatches with a rough wear estimate; the resulting
-schedule is fed through the [degradation
-physics](https://bess-degradation-drivers.streamlit.app/) to compute
-the actual wear of *that specific dispatch shape*; the optimiser then re-solves
-the intraday with that refined per-MWh wear cost. Three things drive
-it: *depth of discharge* (how much of the battery is used in one cycle —
-a 100 % swing is much harder on the cell than two 50 % swings),
-*C-rate* (how fast the battery is charged or discharged — high power
-heats the cell and accelerates wear), and *SoC band* (where in the
-0–100 % range the cycle sits — cells stress most near full and
-empty). A day spent on shallow, mid-band cycles is priced cheap; a
-day with deep full-range cycles at high power is priced expensive.
-Adds
+**M4 — Cycle-shape-aware.** The optimiser solves the day twice:
+a first pass dispatches with a rough wear estimate; that schedule
+is fed through the
+[degradation physics](https://bess-degradation-drivers.streamlit.app/)
+to price the *actual* wear of that specific dispatch shape — depth,
+C-rate and where in the 0–100 % range the cycle sits; the second
+pass re-solves the intraday with the refined per-MWh wear. Adds
 **+{(_m4.lifetime_npv_eur / _m3.lifetime_npv_eur - 1) * 100:.1f} pp**
 over M3.
 
@@ -370,10 +357,10 @@ with col_soh:
 
 render_chart_caption(
     f"M1 (no cycle cost) earns the most while the battery is fresh, "
-    f"then hits the 80 % warranty floor in year {eol_naive} and loses "
-    f"all aFRR cap revenue after that. M2 and M3 cycle less as the "
-    f"battery ages, extending its life by ~2 years. M4 and M5 hold "
-    f"back so much that they never reach the floor inside 10 years."
+    f"then hits the 80 % warranty floor in year {eol_naive} and "
+    f"stops earning. M2 and M3 cycle less as the battery ages, "
+    f"extending its life by ~2 years. M4 and M5 stay above the "
+    f"floor for the full 10 years."
 )
 
 
@@ -528,12 +515,6 @@ reads on your portal.
         with col:
             with st.container(border=True):
                 df = _daily_stream_breakdown(days)
-                st.markdown(
-                    f"<div style='font-size:11px;color:#64748b;"
-                    f"text-transform:uppercase;letter-spacing:0.5px;'>"
-                    f"{label} dashboard — daily revenue, {month_label}</div>",
-                    unsafe_allow_html=True,
-                )
                 fig = go.Figure()
                 for stream, color in STREAM_COLORS.items():
                     fig.add_trace(go.Bar(
@@ -562,25 +543,12 @@ reads on your portal.
     _daily_revenue_panel(col_l1, m1_year_days, "M1 No-cost", (_rev_y_bot, _rev_y_top))
     _daily_revenue_panel(col_l6, m5_year_days, "M5 Time-state", (_rev_y_bot, _rev_y_top))
 
-    df_l1_full = _daily_stream_breakdown(m1_year_days)
-    df_l6_full = _daily_stream_breakdown(m5_year_days)
-    l1_total = df_l1_full[list(STREAM_COLORS)].sum().sum()
-    l6_total = df_l6_full[list(STREAM_COLORS)].sum().sum()
-    l1_ws = (df_l1_full["DA"].sum() + df_l1_full["ID"].sum())
-    l6_ws = (df_l6_full["DA"].sum() + df_l6_full["ID"].sum())
     st.markdown(
-        f"**What you're looking for.** Tall wholesale spikes (DA and "
-        f"ID) on volatile days = the optimiser cycles on every spread the "
-        f"market offers. A near-flat aFRR-cap base every day, with "
-        f"only the occasional wholesale bar = the cycle cost is "
-        f"binding most of the time. For {month_label}, M1's wholesale "
-        f"total = €{l1_ws/1000:.1f} k vs M5's €{l6_ws/1000:.1f} k — "
-        f"a {(l1_ws - l6_ws)/max(l1_ws, 1)*100:.0f} % gap, the exact "
-        f"channel through which aging-aware trades short-term revenue "
-        f"for battery life. Total monthly revenue, before wear cost "
-        f"(DA + ID + aFRR cap + aFRR energy — what we call *gross* "
-        f"throughout this section): M1 = €{l1_total/1000:.1f} k, "
-        f"M5 = €{l6_total/1000:.1f} k."
+        "**What you're looking for.** Tall wholesale spikes (DA and "
+        "ID) on volatile days = the optimiser cycles on every spread "
+        "the market offers. A near-flat aFRR-cap base every day, with "
+        "only the occasional wholesale bar = the cycle cost is doing "
+        "the work."
     )
 
     st.markdown("")
@@ -591,14 +559,9 @@ reads on your portal.
 
     st.markdown("##### Panel 2 — *Revenue Share per Market*")
     st.caption(
-        "Pie of monthly revenue split, shares only. The signal to look "
-        "for is the *M1 → M5 shift* — the wholesale slice shrinking as "
-        "the optimiser parks more capacity in aFRR. M1's split lines "
-        "up with the public German fleet average (~46 % aFRR ex-FCR, "
-        "[*German BESS Outlook*](https://de-bess-outlook.streamlit.app) "
-        "2024 fleet). M5 over-weights aFRR here because the model "
-        "knows future clearing prices perfectly — a real optimiser, "
-        "facing uncertainty, would commit less aFRR capacity."
+        "Pie of monthly revenue split, shares only. Look for the "
+        "*M1 → M5 shift* — the wholesale slice shrinking as the "
+        "optimiser parks more capacity in aFRR."
     )
     col_l1, col_l6 = st.columns(2)
 
@@ -607,12 +570,6 @@ reads on your portal.
             with st.container(border=True):
                 df = _stream_breakdown(days)
                 shares = {s: max(df[s].sum(), 0) for s in STREAM_COLORS}
-                st.markdown(
-                    f"<div style='font-size:11px;color:#64748b;"
-                    f"text-transform:uppercase;letter-spacing:0.5px;'>"
-                    f"{label} dashboard — monthly aggregate, {month_label}</div>",
-                    unsafe_allow_html=True,
-                )
                 fig = go.Figure()
                 fig.add_trace(go.Pie(
                     labels=list(shares.keys()),
@@ -654,11 +611,7 @@ reads on your portal.
         f"revenue; M5 shrinks it to ~{l6_ws:.0f}% — a "
         f"{-(l1_ws - l6_ws):+.0f} pp shift toward aFRR. Practically: if "
         f"your optimiser's aFRR share rose year-on-year while cycles "
-        f"dropped, that's a cycle-cost policy at work. Once aFRR is "
-        f"more than half of total revenue, €/MWh-throughput stops "
-        f"being a useful KPI — the asset is paid for availability, "
-        f"not energy thrown around (precedent in He et al. "
-        f"[2016](https://orbit.dtu.dk/en/publications/optimal-bidding-strategy-of-battery-storage-in-power-markets-cons))."
+        f"dropped, that's a cycle-cost policy at work."
     )
 
     st.markdown("")
@@ -686,12 +639,6 @@ reads on your portal.
                     )
                     ts_all.extend(day_ts)
                     soc_all.extend(soc_frac.tolist())
-                st.markdown(
-                    f"<div style='font-size:11px;color:#64748b;"
-                    f"text-transform:uppercase;letter-spacing:0.5px;'>"
-                    f"{label} dashboard — {month_label}</div>",
-                    unsafe_allow_html=True,
-                )
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(
                     x=ts_all, y=soc_all, mode="lines",
@@ -763,12 +710,6 @@ reads on your portal.
                 avg_per_day = float(fec_per_day.mean())
                 total_rev = float(gross_per_day.sum())
                 dates = [d.date for d in days]
-                st.markdown(
-                    f"<div style='font-size:11px;color:#64748b;"
-                    f"text-transform:uppercase;letter-spacing:0.5px;'>"
-                    f"{label} dashboard — {month_label}</div>",
-                    unsafe_allow_html=True,
-                )
                 kcol1, kcol2, kcol3 = st.columns(3)
                 kcol1.metric("Total FEC", f"{total_fec:.0f}")
                 kcol2.metric("Avg / day", f"{avg_per_day:.2f}")
@@ -800,11 +741,9 @@ reads on your portal.
         f"**What you're looking for.** Tall, near-uniform bars pressed "
         f"up against the **2 FEC/day** cap = an optimiser with no cycle "
         f"cost. Sparse short bars with lots of near-zero days = the "
-        f"cycle cost is binding. The M1 → M5 cycling gap here is "
-        f"**{l1_total_fec/l6_total_fec:.0f}×** for the same month "
-        f"({l1_total_fec:.0f} vs {l6_total_fec:.0f} FEC). On your own "
-        f"asset, swap the 2 FEC/day reference for whatever your "
-        f"warranty or contract specifies."
+        f"cycle cost is doing the work. The M1 → M5 cycling gap here "
+        f"is **{l1_total_fec/l6_total_fec:.0f}×** for the same month "
+        f"({l1_total_fec:.0f} vs {l6_total_fec:.0f} FEC)."
     )
 
 
@@ -813,22 +752,17 @@ st.markdown("---")
 st.markdown("## Does the ranking survive when ancillary revenue collapses?")
 st.markdown("""
 **Reminder from [*German BESS Outlook*](https://de-bess-outlook.streamlit.app).**
-The **mix** of revenue streams rotates across 2026 → 2035 as the
-German BESS fleet saturates ancillary demand: aFRR capacity per MW
-shrinks ~85 %, while DA + ID arbitrage grows ~10× as midday solar
-pulls prices down and electrification pushes peaks up. The streams
-move in opposite directions; total per-MW revenue settles in a U-shape
-with the low point around 2030–32.
+Between 2026 and 2035, aFRR capacity revenue per MW shrinks ~85 %
+as the German BESS fleet saturates ancillary demand, while DA + ID
+arbitrage grows as midday solar deepens and electrification lifts
+evening peaks. The two move in opposite directions; total per-MW
+revenue settles into a U-shape with the low point around 2030–32.
 
 The headline holds 2025 prices for all ten years to isolate the
-cycle-cost effect. The right panel below shows what
-happens when the optimiser instead **sees the actual year's prices
-and re-runs the dispatch each year**, with per-stream scaling
-matching Note 1's mid-case projection. The question: does the
-M5 &gt; M4 &gt; M3 &gt; M2 &gt; M1 ranking survive when the market
-shifts and the optimiser adapts? Each panel is normalized to its
-own M1 = 100 — absolute lifetime NPV differs between scenarios but
-that's not the point of this comparison.
+cycle-cost effect. Does the M5 &gt; M4 &gt; M3 &gt; M2 &gt; M1
+ranking survive when the market shifts? The right panel re-runs
+the dispatch each year under projected prices, with per-source
+scaling matching Note 1's mid-case.
 """)
 
 # Recalibrated 10-y headline: same M-stack at v4.2 calibration, with
@@ -934,55 +868,21 @@ _trend_winner_name = max(_trend_uplifts, key=_trend_uplifts.get)
 _trend_winner_pct = _trend_uplifts[_trend_winner_name]
 
 render_chart_caption(
-    f"Under flat 2025 the M5 uplift over M1 is **+{_m5_flat_uplift:.0f}%** "
-    f"and the ranking is M5 &gt; M4 &gt; M3 &gt; M2 &gt; M1. Under "
-    f"the <i>German BESS Outlook</i> trajectory, "
-    f"the simple regime-independent policies (M2, M3) take the lead; "
-    f"the sophisticated state-aware methods (M4, M5) lose their "
-    f"flat-market advantage because their value functions stay "
-    f"calibrated on 2024 patterns."
+    f"Under flat 2025, M5 wins <b>+{_m5_flat_uplift:.0f}%</b>. Under "
+    f"the projected trajectory, the simple regime-independent "
+    f"policies (M2, M3) take the lead. Each panel is normalised to "
+    f"its own M1 = 100; absolute lifetime NPV differs between "
+    f"scenarios but that's not the point of this comparison."
 )
 
-st.markdown(f"""
-**Calibration first.** Per-stream scaling factors (0.24 → 2.54 for
-wholesale, 0.65 → 0.10 for aFRR cap, 0.78 → 0.12 for aFRR energy)
-mirror the *German BESS Outlook* mid-case projection year-by-year. Each policy then sees the year's
-prices and re-runs the dispatch. M4 and M5's time-and-state value
-function stays calibrated on 2024 — the principled fix is to retrain
-it every year, but that adds a lot of compute; the result here is
-honest about that limit.
-
-- **M1 (no cycle cost)** — cycles aggressively against the rotating
-  market mix; sets the trajectory baseline (= 100).
-- **M2 (fixed fee)** — **{_trend_m2_uplift_pct:+.0f} pp vs M1**. The
-  flat €16.67 /MWh fee is regime-independent — it disciplines marginal
-  cycles whether wholesale spreads are low (2026) or high (2035),
-  because fee and spreads scale together.
-- **M3 (health-aware)** — **{_trend_m3_uplift_pct:+.0f} pp vs M1**.
-  Neck and neck with M2; SoH scaling adds late-life discipline.
-- **M4 (cycle-shape-aware)** — **{_trend_m4_uplift_pct:+.0f} pp vs M1**.
-  Physics-from-duty correction works day-to-day, but the time-and-
-  state base — built for 2024 hour-of-day patterns — over-suppresses
-  cycling once the market shifts, leaving wholesale upside on the
-  table.
-- **M5 (time-and-state-aware)** — **{_trend_m5_uplift_pct:+.0f} pp vs M1**.
-  Built on 2024 patterns, it tells the optimiser "save SoC for the
-  2024 evening peak" even when the high-spread hour has shifted under
-  the trajectory.
-
-**The sophistication ladder collapses** because the state-aware
-value functions are calibrated on 2024 prices, not the compressed
-trajectory.
-
-""")
 
 render_takeaway(
     f"<b>Pick the policy that matches your market, not the most "
     f"sophisticated one.</b> On flat 2025, M5 wins +{_m5_flat_uplift:.0f} %. "
     f"Under the projected market trajectory, "
     f"<b>{_trend_winner_name} wins +{_trend_winner_pct:.0f} %</b> — "
-    f"a regime-independent rule adapts to the rotating stream mix "
-    f"better than 2024-calibrated state-aware functions. For a "
+    f"a regime-independent rule adapts to the shifting market better "
+    f"than 2024-calibrated state-aware functions. For a "
     f"2026-commissioned asset operating into the 2030s, simple wins."
 )
 
@@ -997,21 +897,20 @@ on the [*What Drives Degradation*](https://bess-degradation-drivers.streamlit.ap
 Wang + Naumann two-channel physics kernel. Warranty floor 0.80 SoH;
 round-trip efficiency 0.88. Discount rate 7%.
 
-**Markets.** DE day-ahead from EnergyCharts; intraday via real DE-LU
-SIDC IDA2 15-minute auction prices ([ENTSO-E Transparency
-Platform](https://www.entsoe.eu/network_codes/cacm/implementation/ida/)).
+**Markets.** DE day-ahead from EnergyCharts; intraday from DE-LU
+15-minute auctions and continuous trading
+([ENTSO-E Transparency Platform](https://www.entsoe.eu/network_codes/cacm/implementation/ida/)).
 aFRR capacity and activation energy from regelleistung.net and
 netztransparenz.de.
 
 **Dispatch LP.** Two-stage market-aware. Stage 1 commits
 per-4-hour-block aFRR capacity at D−1 under a regime-conditional
-α-forecast with `bid_win_rate = 1.0` (LP-upper-bound assumption:
-every block bid clears at the auction). Stage 2 re-optimises full
+α-forecast (`bid_win_rate = 1.0`; see *Where this model stops
+working* below for the caveat). Stage 2 re-optimises full
 DA + ID + activation dispatch under realised α with the Stage 1
-commitment locked. The 1-hour SoC reservation horizon matches the
-Modo public aFRR product SLA. For two-pass methodologies
-(M4 — physics-from-duty), Stage 2 runs a second LP with wear
-re-priced via the [*What Drives Degradation*](https://bess-degradation-drivers.streamlit.app/)
+commitment locked. For two-pass methodologies (M4 —
+physics-from-duty), Stage 2 runs a second LP with wear re-priced
+via the [*What Drives Degradation*](https://bess-degradation-drivers.streamlit.app/)
 kernel (`physics_wear_from_duty`) on the observed first-pass
 dispatch.
 
@@ -1039,77 +938,20 @@ dispatch.
   varies hour by hour: at 18:00 in a volatile regime one MWh of
   stored energy is worth more than at 03:00 in a calm regime.
 
-**Why mixing two cycle-cost forms doesn't help — two cross-checks.**
-The best cycle cost is one cycle cost, picked well — not two stacked
-on top of each other.
-
-*(a) M2 + M3 + M5 stacked together* (flat fee plus health-aware
-scaling plus the time-and-state cost, all added) gives
+**Why one cycle cost beats two.** Two cross-checks confirm the best
+cycle cost is one cost, picked well. Stacking M2+M3 under M5 gives
 **+{(_abl_blend.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.2f}%**
-vs M1 — that is **{(_abl_blend.lifetime_npv_eur / _m5.lifetime_npv_eur - 1) * 100:+.2f} pp** worse than M5 alone. *Why*: the flat fee
-is a rough rule of thumb (every MWh of throughput costs you
-CAPEX ÷ total lifetime throughput, regardless of when it's cycled).
-M5's time-and-state cost is the model's estimate of opportunity
-cost: what a MWh of stored energy is worth now versus saved for
-later. Stacking the rough rule on top of the state-aware estimate
-double-charges the cycle, and the optimiser holds back even in hours
-when M5 alone would have traded.
-Empirical confirmation of Kumtepeli & Howey (2024): adding a rough
-proxy on top of a state-aware cost is noise, not signal.
-
-*(b) M4 without M5's time-and-state base* (the cycle-shape kernel on
-its own, no time-and-state guidance underneath) gives
+vs M1 ({(_abl_blend.lifetime_npv_eur / _m5.lifetime_npv_eur - 1) * 100:+.2f} pp vs M5 alone) — the rough flat fee
+double-charges what the time-and-state cost already prices. Running
+M4's shape kernel without an ADP base gives
 **+{(_abl_solo.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.2f}%**
-vs M1 — that is **{(_abl_solo.lifetime_npv_eur / _m4.lifetime_npv_eur - 1) * 100:+.2f} pp** worse than full M4. *Why*: M4 dispatches in
-two passes. The first pass commits the day-ahead aFRR bids; the
-second pass re-prices everything once the actual dispatch shape is
-known. Without time-and-state guidance in pass 1, the day-ahead bids
-are committed naively (M1-style); pass 2 can only fix what's left —
-too little, too late. M4 is really "time-and-state plus a cycle-shape
-correction on top", not cycle-shape alone.
-
-**Calibration anchors.** Public sources: regelleistung.net auction
-data for aFRR clearing prices, the Clean Horizon Storage Index for
-the absolute revenue level, the Enervis Battery Storage Index for
-monthly sanity checks, and the EVE LF280K cell datasheet for the
-physics kernel. Specifics, all publicly citable except for
-`bid_win_rate`:
-aFRR cap price €12.21 / MW / h matches the gemenergyanalytics
-independent reading (€13 POS / €10 NEG average 2024). 2 h DE 2025
-incl FCR realised revenue €236 k / MW / yr from the Clean Horizon
-Storage Index public CSV. Model M1 Y1 = €279 k / MW / yr — **+18 %**
-above the CH index, reflecting the LP's perfect-foresight premium
-(the LP sees realised prices in Stage-2; CH's COSMOS simulates
-fleet-realistic dispatch with forecast errors) plus the
-`bid_win_rate=1.0` LP-upper-bound assumption. The
-`bid_win_rate=1.0` setting is **NOT empirically anchored** to a clean
-clearing-rate measurement — it is an LP-upper-bound assumption
-pending proper full-bid-set estimation. The
-[*German BESS Outlook*](https://de-bess-outlook.streamlit.app)
-trajectory section below applies a fleet-
-saturation decay schedule
-(`lib.analysis.market_trend.FLEET_SATURATION_BID_WIN_SCALE`,
-1.0 → 0.15 over 2024 → 2033) for the realistic forward outlook.
+({(_abl_solo.lifetime_npv_eur / _m4.lifetime_npv_eur - 1) * 100:+.2f} pp vs full M4) — without time-and-state
+guidance in pass 1, the day-ahead bids are committed naively before
+the shape correction in pass 2 can act.
 
 **Lifetime simulation.** 10 years × single template year 2025. Each
 year sees identical inputs across all five methodologies; only the
 wear-cost vector each methodology emits differs.
-
-**Dashboard-panel revenue accounting.** The four-tile owner dashboard
-section reports **gross trading revenue** (DA + ID + aFRR cap + aFRR
-energy) so the numbers line up directly with what an owner sees on
-the portal or in a public benchmark like Enervis or Clean Horizon.
-The 10-year headline simulation includes a small `bid_hurdle`
-calibration penalty in the LP objective to keep the model's aFRR
-share inside the public DE-fleet plausibility corridor (~46 % aFRR
-ex-FCR); that penalty is a calibration parameter, not a real optimiser cost,
-so the dashboard panels exclude it.
-
-**The metric reported** is *discounted gross market revenue* over 10
-years at a 7% discount rate, summed across DA + ID + aFRR cap + aFRR
-energy. It does **not** subtract CAPEX, fixed O&M,
-augmentation, or repower cost. It is not an investor NPV; it is the
-discounted gross revenue stream each methodology generates.
 
 **Where this model stops working.**
 - The naive policy is a strawman. It assumes zero cycle pricing AND
@@ -1125,9 +967,8 @@ discounted gross revenue stream each methodology generates.
 - Calendar year mapping. 2025 prices are held flat for all 10
   simulation years rather than projected forward. The
   [*German BESS Outlook*](https://de-bess-outlook.streamlit.app)
-  trajectory chart is layered post-hoc on top of the policy-emitted
-  stream mix and shows
-  how the ordering bends under the fleet-saturation revenue decay.
+  trajectory chart layers fleet-saturation revenue decay on top of
+  each policy's dispatch and shows how the ranking shifts.
 - The `bid_win_rate=1.0` is an LP-upper-bound assumption (see
   Calibration anchors above). Real-world clearing rates are < 100 %
   for individual bidders, depending on bid strategy and fleet
