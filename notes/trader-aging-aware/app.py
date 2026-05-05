@@ -73,14 +73,14 @@ POLICY_LABELS = {
     "M2_flat":      "M2 — Fixed fee",
     "M3_scarcity":  "M3 — Health-aware",
     "M4_physics":   "M4 — Cycle-shape-aware",
-    "M5_adp":       "M5 — Time-and-state-aware",
+    "M5_adp":       "M5 — Opportunity cost",
 }
 POLICY_SHORT = {
     "M1_naive":     "M1 No-cost",
     "M2_flat":      "M2 Fixed-fee",
     "M3_scarcity":  "M3 Health",
     "M4_physics":   "M4 Shape",
-    "M5_adp":       "M5 Time-state",
+    "M5_adp":       "M5 Opp-cost",
 }
 # M1 sits in warm terra-coral as the unconstrained-baseline reference —
 # visually orthogonal to the teal stack so it reads as the "odd one out"
@@ -214,7 +214,7 @@ render_chart_caption(
     "(sum of revenue over the asset's life, future euros discounted "
     "at 7 %/yr). Going right, each policy looks at more of the "
     "battery's state — from no cycle cost at all to a full "
-    "time-and-state price. Ten-year simulation, 2 h LFP battery, "
+    "opportunity cost priced hour by hour. Ten-year simulation, 2 h LFP battery, "
     "1 MW / 2 MWh, 2025 German markets replayed every year. All "
     "five policies see the same prices and activation signals; only "
     "the cycle cost differs. Bars indexed to M1 = 100. The ranking "
@@ -267,7 +267,7 @@ pass re-solves the intraday with the refined per-MWh wear. Adds
 **+{(_m4.lifetime_npv_eur / _m3.lifetime_npv_eur - 1) * 100:.1f} pp**
 over M3.
 
-**M5 — Time-and-state-aware.** The cycle cost now varies hour by
+**M5 — Opportunity cost.** The cycle cost now varies hour by
 hour and with the *market regime* — *volatile* days (fat spreads
 worth chasing) get a low cost so the battery cycles freely, *calm*
 days (tight spreads, cycling isn't worth much) get a high cost so
@@ -430,7 +430,7 @@ reads on the portal.
 """)
     st.markdown("")
     st.markdown(
-        f"M1 (no cycle cost) vs M5 (time-and-state-aware) on four "
+        f"M1 (no cycle cost) vs M5 (opportunity cost) on four "
         f"standard dashboard tiles — *Daily Revenue per Market*, "
         f"*Revenue Share per Market*, *State of Charge Development*, "
         f"*Daily Cycles*. Same calibration as the headline (2 h LFP, "
@@ -540,7 +540,7 @@ reads on the portal.
                                 config={"displayModeBar": False})
 
     _daily_revenue_panel(col_l1, m1_year_days, "M1 No-cost", (_rev_y_bot, _rev_y_top))
-    _daily_revenue_panel(col_l6, m5_year_days, "M5 Time-state", (_rev_y_bot, _rev_y_top))
+    _daily_revenue_panel(col_l6, m5_year_days, "M5 Opp-cost", (_rev_y_bot, _rev_y_top))
 
     st.markdown(
         "**What you're looking for.** Tall wholesale spikes (DA and "
@@ -588,7 +588,7 @@ reads on the portal.
                                 config={"displayModeBar": False})
 
     _share_pie_panel(col_l1, m1_year_days, "M1 No-cost")
-    _share_pie_panel(col_l6, m5_year_days, "M5 Time-state")
+    _share_pie_panel(col_l6, m5_year_days, "M5 Opp-cost")
 
     def _afrr_pct(days):
         df = _stream_breakdown(days)
@@ -661,7 +661,7 @@ reads on the portal.
                                 config={"displayModeBar": False})
 
     _soc_trace_panel(col_l1, m1_year_days, "M1 No-cost", NAIVE_C)
-    _soc_trace_panel(col_l6, m5_year_days, "M5 Time-state", AGING_C)
+    _soc_trace_panel(col_l6, m5_year_days, "M5 Opp-cost", AGING_C)
 
     l1_max_avg = float(np.mean([np.array(d.soc_mwh).max() / d.energy_mwh
                                 for d in m1_year_days]))
@@ -732,7 +732,7 @@ reads on the portal.
                                 config={"displayModeBar": False})
 
     _daily_cycles_panel(col_l1, m1_year_days, "M1 No-cost", NAIVE_C, _fec_y_max)
-    _daily_cycles_panel(col_l6, m5_year_days, "M5 Time-state", AGING_C, _fec_y_max)
+    _daily_cycles_panel(col_l6, m5_year_days, "M5 Opp-cost", AGING_C, _fec_y_max)
 
     l1_total_fec = sum(d.full_equivalent_cycles for d in m1_year_days)
     l6_total_fec = sum(d.full_equivalent_cycles for d in m5_year_days)
@@ -858,7 +858,7 @@ _trend_uplifts = {
     "M2 (Fixed fee)": _trend_m2_uplift_pct,
     "M3 (Health-aware)": _trend_m3_uplift_pct,
     "M4 (Shape-aware)": _trend_m4_uplift_pct,
-    "M5 (Time-and-state)": _trend_m5_uplift_pct,
+    "M5 (Opportunity cost)": _trend_m5_uplift_pct,
 }
 _trend_winner_name = max(_trend_uplifts, key=_trend_uplifts.get)
 _trend_winner_pct = _trend_uplifts[_trend_winner_name]
@@ -927,7 +927,7 @@ kernel on the observed first-pass dispatch.
   EVE LF280K); pass 2 re-solves Stage-2 with the resulting per-MWh
   wear that reflects the actual DoD / C-rate / SoC band of the day's
   duty.
-- **M5 (Time-and-state-aware, *intraday ADP, Holtorf-Shin*).** An
+- **M5 (Opportunity cost, *intraday ADP, Holtorf-Shin*).** An
   offline backward-induction DP over `(SoC, SoH, regime, hour-of-day)`
   returns a state-value function; its gradient with respect to SoC is
   the shadow cost. Because hour-of-day is in the state, the cost
@@ -938,10 +938,10 @@ kernel on the observed first-pass dispatch.
 cycle cost is one cost, picked well. Stacking M2+M3 under M5 gives
 **+{(_abl_blend.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.2f}%**
 vs M1 ({(_abl_blend.lifetime_npv_eur / _m5.lifetime_npv_eur - 1) * 100:+.2f} pp vs M5 alone) — the rough flat fee
-double-charges what the time-and-state cost already prices. Running
+double-charges what the opportunity cost already prices. Running
 M4's shape kernel without an ADP base gives
 **+{(_abl_solo.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.2f}%**
-({(_abl_solo.lifetime_npv_eur / _m4.lifetime_npv_eur - 1) * 100:+.2f} pp vs full M4) — without time-and-state
+({(_abl_solo.lifetime_npv_eur / _m4.lifetime_npv_eur - 1) * 100:+.2f} pp vs full M4) — without opportunity-cost
 guidance in pass 1, the day-ahead bids are committed naively before
 the shape correction in pass 2 can act.
 
