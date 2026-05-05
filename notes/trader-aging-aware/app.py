@@ -267,13 +267,16 @@ pass re-solves the intraday with the refined per-MWh wear. Adds
 **+{(_m4.lifetime_npv_eur / _m3.lifetime_npv_eur - 1) * 100:.1f} pp**
 over M3.
 
-**M5 — Opportunity cost.** The cycle cost now varies hour by
-hour and with the *market regime* — *volatile* days (fat spreads
-worth chasing) get a low cost so the battery cycles freely, *calm*
-days (tight spreads, cycling isn't worth much) get a high cost so
-the battery sits. At 18:00 on a volatile day one MWh in the cell is
-worth more than at 03:00 on a calm one. Cycles drop to **{int(_m5.annual_fec.sum()):,} FEC**
-lifetime — about {(fec_naive / max(int(_m5.annual_fec.sum()), 1)):.0f}× fewer
+**M5 — Opportunity cost.** Each cycle is priced by what you give
+up by cycling now instead of saving it for later. M5 estimates how
+much each state — SoC, SoH, market regime, hour of day — is worth
+in expected future revenue, then charges each cycle the drop in
+future value it causes. On *volatile* days (fat spreads everywhere)
+that drop is small — the next hour is likely worth cycling too — so
+the battery trades freely. On *calm* days (tight spreads, every
+cycle wasted) the drop is large — better to save the cycle for the
+next volatile window — so the battery sits. Cycles drop to
+**{int(_m5.annual_fec.sum()):,} FEC** lifetime — about {(fec_naive / max(int(_m5.annual_fec.sum()), 1)):.0f}× fewer
 than M1. Revenue
 **+{(_m5.lifetime_npv_eur / naive.lifetime_npv_eur - 1) * 100:.1f}%**
 vs M1 — peak of the stack.
