@@ -79,30 +79,38 @@ def fetch_fcr_weekly_prices(year: int) -> pd.DataFrame | None:
     """
     Fetch FCR settlement prices per 4h block and aggregate to weekly average.
     Returns DataFrame with columns: [week_start, eur_mw_4h] (average EUR/MW per 4h block).
+
+    Uses ``_fetch_regelleistung_xlsx`` so years where the annual URL returns
+    empty bytes (future-end-date semantics on regelleistung.net for the
+    current calendar year) fall back to month-by-month concatenation.
     """
     cache_path = CACHE_DIR / f"fcr_weekly_{year}.csv"
     if cache_path.exists():
         df = pd.read_csv(cache_path, parse_dates=["week_start"])
         return df
 
-    url = f"{BASE_URL}/RESULT_OVERVIEW_CAPACITY_MARKET_FCR_{year}-01-01_{year}-12-31.xlsx"
-    try:
-        r = requests.get(url, timeout=60)
-        if r.status_code != 200:
-            return None
-        df = pd.read_excel(io.BytesIO(r.content))
-        df["date"] = pd.to_datetime(df["DATE_FROM"])
-        price_col = "GERMANY_SETTLEMENTCAPACITY_PRICE_[EUR/MW]"
-        df["price"] = pd.to_numeric(df[price_col], errors="coerce")
-        df = df.dropna(subset=["price"])
-        df["week_start"] = df["date"].dt.to_period("W").apply(lambda p: p.start_time)
-        weekly = df.groupby("week_start")["price"].mean().reset_index()
-        weekly.columns = ["week_start", "eur_mw_4h"]
-        weekly.to_csv(cache_path, index=False)
-        return weekly
-    except Exception as e:
-        logger.warning(f"FCR weekly {year}: {e}")
+    url_template = (
+        f"{BASE_URL}/RESULT_OVERVIEW_CAPACITY_MARKET_FCR_"
+        "{start}_{end}.xlsx"
+    )
+    content = _fetch_regelleistung_xlsx(url_template, year)
+    if content is None:
+        logger.warning(f"FCR weekly {year}: no data from regelleistung")
         return None
+    try:
+        df = pd.read_excel(io.BytesIO(content))
+    except Exception as e:
+        logger.warning(f"FCR weekly {year}: parse error: {e}")
+        return None
+    df["date"] = pd.to_datetime(df["DATE_FROM"])
+    price_col = "GERMANY_SETTLEMENTCAPACITY_PRICE_[EUR/MW]"
+    df["price"] = pd.to_numeric(df[price_col], errors="coerce")
+    df = df.dropna(subset=["price"])
+    df["week_start"] = df["date"].dt.to_period("W").apply(lambda p: p.start_time)
+    weekly = df.groupby("week_start")["price"].mean().reset_index()
+    weekly.columns = ["week_start", "eur_mw_4h"]
+    weekly.to_csv(cache_path, index=False)
+    return weekly
 
 
 def fetch_afrr_weekly_prices(year: int) -> pd.DataFrame | None:
