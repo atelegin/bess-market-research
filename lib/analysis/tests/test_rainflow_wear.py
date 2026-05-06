@@ -31,12 +31,15 @@ def _build_day(soc_trace: np.ndarray, fec: float = 1.0) -> StackedDispatchResult
     discharge = np.zeros(96); discharge[48:] = 1.0 / 4
     return StackedDispatchResult(
         charge_da=charge, discharge_da=discharge,
+        charge_ida1=zeros, discharge_ida1=zeros,
         charge_id=zeros, discharge_id=zeros,
         r_pos=zeros, r_neg=zeros, a_pos=zeros, a_neg=zeros,
+        r_fcr=zeros,
         soc=soc_trace,
-        revenue_da=0.0, revenue_id=0.0,
+        revenue_da=0.0, revenue_ida1=0.0, revenue_id=0.0,
         revenue_afrr_cap_pos=0.0, revenue_afrr_cap_neg=0.0,
         revenue_afrr_energy_pos=0.0, revenue_afrr_energy_neg=0.0,
+        revenue_fcr_cap=0.0,
         revenue_total=0.0, full_equivalent_cycles=fec, success=True,
     )
 

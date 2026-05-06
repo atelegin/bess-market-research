@@ -351,14 +351,17 @@ def optimize_day_stacked_collath(
 
     return StackedDispatchResult(
         charge_da=c_da, discharge_da=d_da,
+        charge_ida1=np.zeros(T), discharge_ida1=np.zeros(T),  # Collath fork: Model B IDA1 not modelled
         charge_id=c_id, discharge_id=d_id,
         r_pos=r_pos, r_neg=r_neg, a_pos=a_pos, a_neg=a_neg,
+        r_fcr=np.zeros(T),                              # Collath fork: FCR not modelled
         soc=soc,
-        revenue_da=revenue_da, revenue_id=revenue_id,
+        revenue_da=revenue_da, revenue_ida1=0.0, revenue_id=revenue_id,
         revenue_afrr_cap_pos=revenue_afrr_cap_pos,
         revenue_afrr_cap_neg=revenue_afrr_cap_neg,
         revenue_afrr_energy_pos=revenue_afrr_energy_pos,
         revenue_afrr_energy_neg=revenue_afrr_energy_neg,
+        revenue_fcr_cap=0.0,
         revenue_total=revenue_total,
         full_equivalent_cycles=fec,
         success=True,
