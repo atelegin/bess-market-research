@@ -268,16 +268,22 @@ def project_full_stack(
     **wholesale_kwargs,
 ) -> list[dict]:
     """
-    Generate full revenue stack for each year under the AS/wholesale
-    equilibrium allocation (Simon / Schäfer correction, 2026-04).
+    Generate full revenue stack for each year (additive stacking).
 
-    Per-MW-of-fleet revenue = f · p_AS + (1 − f) · p_WH where ``f`` is the
-    equilibrium AS participation share from ``solve_as_wholesale_allocation``.
-    At interior equilibrium this equals ``p_AS = p_WH``.
+    Per-MW revenue = wholesale (DA + ID at full fleet competition) + ancillary
+    (FCR + aFRR cap + aFRR energy at full fleet competition), each scaled by
+    fleet-average remaining capacity. This is the published Note 1 model.
+
+    NOTE (2026-06 revert): the AS/wholesale *equilibrium* allocation added in
+    2026-04 (``solve_as_wholesale_allocation``, "Simon / Schäfer correction")
+    was explicitly deferred for Note 1 redeploy but leaked into the public
+    de-bess-outlook / cycles-marginal-value apps via the shared lib, silently
+    dropping the 2026 headline from ~233 to ~150 kEUR/MW. Reverted here to the
+    additive stacking the published notes were written around. The equilibrium
+    solver is retained (unused by this function) for the Note 4 line of work.
 
     Returns list of dicts with keys: year, da, id, fcr, afrr_cap, afrr_energy,
-    total, f_on_as, equilibrium_type. All revenue values in kEUR/MW/yr of
-    fleet nameplate.
+    total. All revenue values in kEUR/MW/yr of fleet nameplate.
     """
     if bess_buildout is None:
         bess_buildout = DEFAULT_BESS_BUILDOUT
@@ -287,40 +293,19 @@ def project_full_stack(
     for year in years:
         bess_gw = bess_buildout.get(year, bess_buildout[max(k for k in bess_buildout if k <= year)])
 
-        alloc = solve_as_wholesale_allocation(
-            year=year,
-            bess_gw_total=bess_gw,
-            historical_da_keur=historical_da_keur,
-            duration_h=duration_h,
-            gas_2040=gas_2040,
-            pv_2040_gw=pv_2040_gw,
-            **wholesale_kwargs,
-        )
-        f = alloc["f"]
-
-        # Wholesale component at reduced competition (gw_on_wh MW cannibalise)
-        _eps = max(1e-3, bess_gw * 1e-4)
+        # Additive stacking: wholesale and ancillary both at full fleet
+        # competition (the published Note 1 model). See the equilibrium-split
+        # revert note in this function's docstring.
         wh = project_wholesale(
             year=year,
             historical_da_annual=historical_da_keur,
-            bess_gw=max(alloc["gw_on_wh"], _eps),
+            bess_gw=bess_gw,
             gas_2040=gas_2040,
             pv_2040_gw=pv_2040_gw,
             **wholesale_kwargs,
         )
-        # AS component at reduced supply (gw_on_as MW competing for AS demand)
-        anc = ancillary_revenue(
-            year=year,
-            bess_gw=max(alloc["gw_on_as"], _eps),
-            duration_h=duration_h,
-        )
 
-        # Scale each side by the fleet fraction to get per-MW-of-fleet revenue.
-        r_da = (1.0 - f) * wh["da"]
-        r_id = (1.0 - f) * wh["id"]
-        r_fcr = f * anc["fcr"]
-        r_afrr_cap = f * anc["afrr_cap"]
-        r_afrr_energy = f * anc["afrr_energy"]
+        anc = ancillary_revenue(year=year, bess_gw=bess_gw, duration_h=duration_h)
 
         # Degradation: fleet-average across projection-era cohorts only
         # (pre-2026 fleet is already captured in the historical baseline)
@@ -332,14 +317,12 @@ def project_full_stack(
 
         results.append({
             "year": year,
-            "da": round(r_da * deg, 1),
-            "id": round(r_id * deg, 1),
-            "fcr": round(r_fcr * deg, 1),
-            "afrr_cap": round(r_afrr_cap * deg, 1),
-            "afrr_energy": round(r_afrr_energy * deg, 1),
-            "total": round((r_da + r_id + r_fcr + r_afrr_cap + r_afrr_energy) * deg, 1),
-            "f_on_as": round(f, 3),
-            "equilibrium_type": alloc["equilibrium_type"],
+            "da": round(wh["da"] * deg, 1),
+            "id": round(wh["id"] * deg, 1),
+            "fcr": round(anc["fcr"] * deg, 1),
+            "afrr_cap": round(anc["afrr_cap"] * deg, 1),
+            "afrr_energy": round(anc["afrr_energy"] * deg, 1),
+            "total": round((wh["wholesale_total"] + anc["total"]) * deg, 1),
         })
 
     return results
