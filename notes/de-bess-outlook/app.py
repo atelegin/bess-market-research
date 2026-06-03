@@ -146,39 +146,21 @@ if not hist_bars_df.empty:
     proj_df = pd.concat([hist_bars_df, proj_df], ignore_index=True)
 
 
-def _add_afrr_combined(df: pd.DataFrame) -> pd.DataFrame:
-    """Adds `afrr = afrr_cap + afrr_energy` column — see STACK_KEYS comment
-    below for why we combine the two at the chart layer."""
-    if df.empty or "afrr" in df.columns:
-        return df
-    out = df.copy()
-    if "afrr_cap" in out.columns:
-        out["afrr"] = out["afrr_cap"].fillna(0) + out.get("afrr_energy", 0).fillna(0) \
-            if "afrr_energy" in out.columns else out["afrr_cap"].fillna(0)
-    return out
-
-
-proj_df = _add_afrr_combined(proj_df)
-
 # ── Chart setup ──────────────────────────────────────────────
-# aFRR capacity and aFRR energy are combined into one `afrr` bar. In years
-# when wholesale spreads justified paying for NEG-activation charge (e.g.
-# 2023), aFRR energy alone is NET NEGATIVE because operators pay TSO more
-# than they earn from POS discharge — the absorbed energy is then
-# recaptured through DA/ID peak-hour resale (the aFRR↔wholesale conjugate
-# coupling). Displaying aFRR energy as a negative stack bar alongside
-# positive components confuses readers and is clipped by the axis range
-# anyway. Combining gives the economically correct net aFRR contribution
-# per MW, at the cost of hiding the cap-vs-energy split (retained in
-# methodology copy and tooltips).
-STACK_KEYS = ["da", "id", "fcr", "afrr"]
+# aFRR is shown as two stacked bars — capacity (auction) and energy
+# (activation) — matching the published Note 1. The 2026-04 deploy-prep change
+# that combined them into one bar was a guard against NET-NEGATIVE aFRR energy
+# being clipped at the y=0 axis floor; the deployed dataset has positive aFRR
+# energy in every year (hist 2023-2025: +7..+10; forecast 2026+: +1..+12), so
+# the split renders cleanly and is restored here.
+STACK_KEYS = ["da", "id", "fcr", "afrr_cap", "afrr_energy"]
 LABELS = {
     "da": "Day-Ahead", "id": "Intraday",
-    "fcr": "FCR", "afrr": "aFRR (cap + energy)",
+    "fcr": "FCR", "afrr_cap": "aFRR capacity", "afrr_energy": "aFRR energy",
 }
 COLORS = {
     "da": "#93c5fd", "id": "#3b82f6",
-    "fcr": "#fbbf24", "afrr": "#ef4444",
+    "fcr": "#fbbf24", "afrr_cap": "#f87171", "afrr_energy": "#dc2626",
 }
 hist_year_set = set(hist_rev.keys()) if hist_rev else set()
 
