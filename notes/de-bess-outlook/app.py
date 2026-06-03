@@ -480,23 +480,26 @@ For context:
 st.markdown(f"""
 ## Scenario sensitivity
 
-Use the sidebar sliders to explore (sorted by impact on 2035 revenue):
+Use the sidebar sliders to explore (sorted by impact on 2035 total revenue):
 
 | Scenario | Impact on 2035 revenue |
 |:---|:---|
-| Cannibalisation: Low → High | ~53% swing (dominant uncertainty) |
-| BESS fleet 60 GW (vs {bess_2040:.0f} GW base) | ~15–20% lower wholesale |
-| BESS fleet 20 GW | ~15% higher wholesale |
-| Gas TTF €60/MWh (vs €30 base) | ~15% higher (wider peak spreads) |
-| Gas TTF €15/MWh | ~10% lower (compressed peak prices) |
-| Demand 1200 TWh (vs {demand_2040} TWh base) | ~8% higher via stronger recovery |
-| Solar PV 400 GW (vs {pv_2040} GW base) | ~6% higher (deeper duck curve) |
+| Cannibalisation: Low → High | ~51% swing (dominant uncertainty) |
+| Gas TTF €60/MWh (vs €30 base) | ~19% higher (wider peak spreads) |
+| Solar PV 400 GW (vs {pv_2040} GW base) | ~17% higher (deeper duck curve) |
+| BESS fleet 20 GW (vs {bess_2040:.0f} GW base) | ~14% higher (less cannibalisation) |
+| Gas TTF €15/MWh | ~9% lower (compressed peak prices) |
+| Demand 1200 TWh (vs {demand_2040} TWh base) | ~5% higher via stronger recovery |
+| BESS fleet 60 GW | ~2% lower (cannibalisation already near-saturated) |
 
 **Cannibalisation is the dominant uncertainty**, dwarfing all other scenario parameters.
 The three scenarios in the sidebar — explained in detail in the next section — range
 from mild to severe. Use the scenario selector to see the full range.
 
-The other big swing factor is **gas price**.
+The next-biggest factors are **gas price** and **solar PV build-out** — each swings
+2035 revenue by roughly 17–19%. Beyond ~25 GW the BESS fleet barely moves wholesale:
+mid-scenario cannibalisation is already near its ceiling, so a 60 GW fleet trims 2035
+revenue only ~2%.
 """)
 
 # ── Section 6: Cannibalisation uncertainty ──────────────────
